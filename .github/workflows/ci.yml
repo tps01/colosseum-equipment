@@ -18,26 +18,20 @@ jobs:
           repository: tps01/colosseum-core
           ref: develop
           path: .deps/colosseum-core
-      - name: Checkout shared dependency
-        uses: actions/checkout@v4
-        with:
-          repository: tps01/colosseum-shared
-          ref: main
-          path: .deps/colosseum-shared
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: |
           python -m pip install -U pip
-          python -m pip install -e .deps/colosseum-core -e .deps/colosseum-shared
+          python -m pip install -e .deps/colosseum-core
           python -m pip install -e ".[test,static]"
           python -m pip check
       - name: Test
         run: pytest -q
       - name: Package metadata
         run: |
-          python -c "from importlib.metadata import entry_points; import colosseum_equipment; assert colosseum_equipment.__version__ == '0.1.1'; assert any(ep.name == 'equipment' for ep in entry_points(group='colosseum.plugins'))"
+          python -c "from importlib.metadata import entry_points; import colosseum_equipment; assert colosseum_equipment.__version__ == '0.1.2'; assert any(ep.name == 'equipment' for ep in entry_points(group='colosseum.plugins'))"
       - name: Static
         run: |
           ruff check colosseum_equipment

@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from colosseum.config.loader import ConfigError
-from colosseum_shared.network import IPv4NetworkBinding
+
+from colosseum_equipment.network import IPv4NetworkBinding
 
 from .idn_registry import KIND_SECTIONS, classify_idn
 from .network_filter import BlockedSubnet, filter_resources, resolve_blacklist

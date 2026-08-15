@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-
-from colosseum_shared.parsing.text import parse_float as _parse_float
-from colosseum_shared.parsing.text import strip_response
+import re
 
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.transports.base import Transport
@@ -11,11 +9,15 @@ from colosseum_equipment.transports.base import Transport
 _logger = logging.getLogger("colosseum.equipment")
 
 
+def strip_response(text: str) -> str:
+    return text.strip()
+
+
 def parse_float(text: str) -> float:
-    try:
-        return _parse_float(text)
-    except ValueError as exc:
-        raise EquipmentResponseError(str(exc)) from exc
+    match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", text)
+    if not match:
+        raise EquipmentResponseError(f"No numeric value in response: {text!r}")
+    return float(match.group(0))
 
 
 def format_definite_length_block(payload: bytes) -> bytes:

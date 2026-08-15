@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.1.1"
+version = "0.1.2"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,6 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
   "colosseum-core>=0.15,<0.16",
-  "colosseum-shared>=0.1,<0.2",
   "matplotlib",
   "numpy",
   "pyftdi>=0.55",
@@ -67,9 +66,7 @@ packages = ["colosseum_equipment"]
 exclude = ["tests/", "build/", "examples/"]
 mypy_path = [
   ".deps/colosseum-core",
-  ".deps/colosseum-shared",
   "../colosseum-core",
-  "../colosseum-shared",
 ]
 strict = true
 warn_unused_ignores = true
@@ -80,7 +77,6 @@ module = [
   "pyftdi.*",
   "scipy.*",
   "numpy.*",
-  "paramiko.*",
   "matplotlib.*",
   "pyvisa.*",
   "pyvisa_sim.*",

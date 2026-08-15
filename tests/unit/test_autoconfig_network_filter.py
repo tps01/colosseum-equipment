@@ -10,7 +10,7 @@ from colosseum_equipment.autoconfig.network_filter import (
     is_resource_blacklisted,
     resolve_blacklist,
 )
-from colosseum_shared.network import IPv4NetworkBinding
+from colosseum_equipment.network import IPv4NetworkBinding
 
 
 def _bindings() -> list[IPv4NetworkBinding]:

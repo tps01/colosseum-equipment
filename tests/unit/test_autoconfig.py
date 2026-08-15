@@ -10,7 +10,7 @@ from colosseum.config.loader import ConfigError
 from colosseum.context import get_context
 from colosseum_equipment.api._autoconfig import autoconfig
 from colosseum_equipment.autoconfig.discovery import discover_equipment_config
-from colosseum_shared.network import IPv4NetworkBinding
+from colosseum_equipment.network import IPv4NetworkBinding
 
 
 class _FakeInstrument:
