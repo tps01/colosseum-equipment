@@ -1,0 +1,14 @@
+---
+description: Git flow and change-management policy
+alwaysApply: true
+---
+
+# Git Flow
+
+- `main` is release-only and must remain deployable.
+- Base normal work on `develop`, the integration branch.
+- Create `feature/*` and `fix/*` branches from `develop`; open their pull requests to `develop`.
+- Release by pull request from `develop` to `main`, then tag the release on `main`.
+- Create `hotfix/*` branches from `main`; merge each hotfix into both `main` and `develop`.
+- Keep pull requests focused, reviewable, and free of unrelated changes.
+- Agents must not commit, push, merge, tag, or publish unless the user explicitly requests it.

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import inspect
-from typing import Callable, cast
+from collections.abc import Callable
+from typing import cast
 
 from colosseum.context import require_context
 from colosseum.decorators import (

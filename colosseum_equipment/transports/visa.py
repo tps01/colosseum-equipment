@@ -12,7 +12,7 @@ from colosseum_equipment.transports.visa_errors import map_visa_exception, raise
 _logger = logging.getLogger("colosseum.equipment")
 
 
-def _find_repo_root() -> Path | None:
+def _find_checkout_root() -> Path | None:
     # visa.py -> transports -> colosseum_equipment -> repository root
     package_root = Path(__file__).resolve().parents[2]
     if (package_root / "pyproject.toml").is_file():
@@ -20,8 +20,8 @@ def _find_repo_root() -> Path | None:
     current = Path.cwd().resolve()
     for directory in (current, *current.parents):
         if (directory / "pyproject.toml").is_file() and (
-            (directory / "colosseum_equipment").is_dir() or (directory / "colosseum").is_dir()
-        ):
+            directory / "colosseum_equipment"
+        ).is_dir():
             return directory
     return None
 
@@ -31,7 +31,7 @@ def resolve_sim_definition(path: str) -> Path:
     candidate = Path(path)
     if candidate.is_file():
         return candidate.resolve()
-    for base in (Path.cwd(), _find_repo_root() or Path()):
+    for base in (Path.cwd(), _find_checkout_root() or Path()):
         if base == Path():
             continue
         resolved = (base / candidate).resolve()
@@ -52,12 +52,7 @@ class VISATransport(Transport):
         sim_definition: str | None = None,
         visa_library: str | None = None,
     ) -> None:
-        try:
-            import pyvisa
-        except ImportError as exc:  # pragma: no cover
-            raise EquipmentConnectionError(
-                "pyvisa is required for driver=visa. Install with: pip install colosseum[hardware]"
-            ) from exc
+        import pyvisa
 
         self._resource = resource
         self._timeout = timeout

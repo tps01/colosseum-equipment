@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 
 import pytest
@@ -11,23 +10,19 @@ import pytest
 from colosseum.config import load_config
 from colosseum.context import require_context
 
-pytestmark = [
-    pytest.mark.visa_sim,
-    pytest.mark.skipif(sys.version_info < (3, 10), reason="pyvisa-sim requires Python 3.10+"),
-]
+pytestmark = pytest.mark.visa_sim
 
 REPO = Path(__file__).resolve().parents[2]
 BENCH_RF = REPO / "examples" / "configs" / "bench.rf.visa-sim.toml"
 
 
 @pytest.fixture
-def bench_rf(repo_root: Path) -> Path:
+def bench_rf() -> Path:
     assert BENCH_RF.is_file()
     return BENCH_RF
 
 
 def test_load_config_rf_bench(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     store = load_config(bench_rf)
     vsg = store.list_items("equipment.vsg")
     speca = store.list_items("equipment.speca")
@@ -39,7 +34,6 @@ def test_load_config_rf_bench(bench_rf, isolated_cwd) -> None:
 
 
 def test_vsg_set_frequency_and_output(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.api import scpi, vsg
 
     load_config(bench_rf)
@@ -51,7 +45,6 @@ def test_vsg_set_frequency_and_output(bench_rf, isolated_cwd) -> None:
 
 
 def test_speca_peak_and_marker_power(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.api import speca
 
     load_config(bench_rf)
@@ -62,7 +55,6 @@ def test_speca_peak_and_marker_power(bench_rf, isolated_cwd) -> None:
 
 
 def test_speca_shutdown_hook_succeeds_after_use(bench_rf, isolated_cwd, caplog) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.connections import get_cached_instrument
 
     with caplog.at_level(logging.ERROR, logger="colosseum.plugins"):
@@ -75,7 +67,6 @@ def test_speca_shutdown_hook_succeeds_after_use(bench_rf, isolated_cwd, caplog) 
 
 
 def test_speca_marker_at_frequency_and_verify(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.api import speca
 
     load_config(bench_rf)
@@ -86,7 +77,6 @@ def test_speca_marker_at_frequency_and_verify(bench_rf, isolated_cwd) -> None:
 
 
 def test_speca_trace_power_at_frequency_and_verify(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.api import speca
 
     load_config(bench_rf)
@@ -97,7 +87,6 @@ def test_speca_trace_power_at_frequency_and_verify(bench_rf, isolated_cwd) -> No
 
 
 def test_speca_save_trace_data(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.api import speca
 
     load_config(bench_rf)
@@ -110,7 +99,6 @@ def test_speca_save_trace_data(bench_rf, isolated_cwd) -> None:
 
 
 def test_rtsa_center_span(bench_rf, isolated_cwd) -> None:
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.api import rtsa, scpi
 
     load_config(bench_rf)

@@ -14,7 +14,7 @@ Example simulated DIO for smoke tests::
    port_lines = 8
    direction = 0xFF
 
-Example FT232H on a lab bench (requires ``pip install colosseum[io]``)::
+Example FT232H on a lab bench::
 
    [[io.dio]]
    dio_id = 1

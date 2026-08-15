@@ -1,5 +1,4 @@
 # Copy to examples/configs/bench.local.toml (gitignored) and fill in real bench resources.
-# See docs/testing/regression-test-procedure.md for Tier 4B hardware regression.
 
 [[equipment.psu]]
 psu_id = 1
@@ -17,16 +16,7 @@ interface = "usb"
 resource = "USB0::0x2A8D::0x8F01::INSTR"
 timeout = 5.0
 
-[shared.ssh]
-ssh_id = 1
-host = "192.168.1.100"
-port = 22
-username = "root"
-key_filename = "C:/path/to/id_rsa"
-password = ""
-timeout = 30.0
-
-# FT232H GPIO (requires: pip install colosseum[io])
+# FT232H GPIO
 [[io.dio]]
 dio_id = 1
 driver = ftdi-ft232h

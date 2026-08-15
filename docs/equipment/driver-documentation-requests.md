@@ -70,7 +70,7 @@ Use `frequency_unit = "MHz"` for 54107A/54109A/54111A per the GPIB guide.
 | `driver` slug | Kind | Dependency | Notes |
 |---------------|------|------------|-------|
 | `sim` | dio | (core) | In-memory GPIO for CI/offline |
-| `ftdi-ft232h` | dio | `pip install colosseum[io]` (pyftdi) | FT232H ADBUS/ACBUS GPIO via pyftdi URL in `resource` |
+| `ftdi-ft232h` | dio | pyftdi (installed by default) | FT232H ADBUS/ACBUS GPIO via pyftdi URL in `resource` |
 
 ### Bench TOML examples
 

@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from colosseum.config.loader import ConfigError
-from colosseum_shared.network import IPv4NetworkBinding
+
+from colosseum_equipment.network import IPv4NetworkBinding
 
 from .idn_registry import KIND_SECTIONS, classify_idn
 from .network_filter import BlockedSubnet, filter_resources, resolve_blacklist
@@ -92,13 +93,7 @@ def discover_equipment_config(
     resource_manager: object | None = None,
 ) -> AutoconfigResult:
     """Scan VISA resources and build a normalized-ready raw equipment config dict."""
-    try:
-        import pyvisa
-    except ImportError as exc:
-        raise ConfigError(
-            "pyvisa is required for col.equipment.autoconfig(). "
-            "Install with: pip install colosseum-equipment[hardware]"
-        ) from exc
+    import pyvisa
 
     blacklist_resolution = resolve_blacklist(blacklist, bindings=network_bindings)
     blocked = list(blacklist_resolution.blocked)

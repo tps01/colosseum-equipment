@@ -22,7 +22,6 @@ Example workflows
 
 * CW stimulus and swept spectrum: ``examples/test_rf_sweep.py`` (uses ``bench.rf.visa-sim.toml`` or hardware config)
 * Vector arb and RTSA capture: ``examples/test_rf_vector_mod.py``
-* Max-hold trace capture: ``examples/test_rf_bench_integration.py``
 * Offline trace plot: ``python examples/plot_trace.py outputs/<run>/traces/carrier.csv``
 
 Offline CI without hardware uses ``examples/configs/bench.rf.visa-sim.toml`` and ``pytest -m visa_sim``.
@@ -33,8 +32,8 @@ Trace and capture artifacts
 
 ``save_trace_data`` on ``col.equipment.speca`` writes a CSV under the active output directory and registers an
 artifact row. Pass ``save_plot=True`` or ``plot_path=`` for an optional PNG (``speca_trace_plot``);
-install ``colosseum[plot]`` for matplotlib-backed plot generation. RTSA IQ capture uses
-``save_IQ_data`` (see API docstrings).
+matplotlib support is included in the default installation. RTSA IQ capture uses ``save_IQ_data``
+(see API docstrings).
 
 Capability errors
 -----------------

@@ -22,16 +22,10 @@ def read_trace_csv(path: Path) -> tuple[list[float], list[float]]:
 
 
 def write_trace_plot(csv_path: Path, plot_path: Path) -> None:
-    try:
-        import matplotlib
+    import matplotlib
 
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError as exc:
-        raise RuntimeError(
-            "matplotlib is required for spectrum trace plots. "
-            "Install with: pip install colosseum[plot]"
-        ) from exc
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
     frequencies, amplitudes = read_trace_csv(csv_path)
     x_values = frequencies if frequencies else list(range(len(amplitudes)))

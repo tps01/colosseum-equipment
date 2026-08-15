@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import tarfile
+from pathlib import Path
+
+import numpy as np
+from scipy.io import loadmat
 
 from colosseum_equipment.instruments.factory import build_instrument
+from colosseum_equipment.instruments.rtsa.iq_export import write_iq_mat
 from colosseum_equipment.instruments.rtsa.tektronix_rsa5100b import TektronixRSA5100BRtsa
 
 from tests.support.stubs import RfStubTransport
@@ -45,3 +50,13 @@ def test_tek_save_iq_data_iq_tar(unit_runtime_context) -> None:
         assert "iq.bin" in names
         assert "metadata.json" in names
         assert archive.extractfile("iq.bin").read() == b"dead"
+
+
+def test_write_iq_mat(tmp_path: Path) -> None:
+    payload = np.array([1.0, 2.0, 3.0, 4.0], dtype="<f8").tobytes()
+    path = tmp_path / "capture.mat"
+
+    write_iq_mat(path, payload, metadata={"sample_rate": 1e6})
+
+    data = loadmat(path)
+    np.testing.assert_allclose(data["iq"].ravel(), np.array([1 + 2j, 3 + 4j]))
