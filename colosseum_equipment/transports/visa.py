@@ -13,12 +13,15 @@ _logger = logging.getLogger("colosseum.equipment")
 
 
 def _find_repo_root() -> Path | None:
+    # visa.py -> transports -> colosseum_equipment -> repository root
     package_root = Path(__file__).resolve().parents[2]
-    if (package_root / "pyproject.toml").is_file() and (package_root / "colosseum").is_dir():
+    if (package_root / "pyproject.toml").is_file():
         return package_root
     current = Path.cwd().resolve()
     for directory in (current, *current.parents):
-        if (directory / "pyproject.toml").is_file() and (directory / "colosseum").is_dir():
+        if (directory / "pyproject.toml").is_file() and (
+            (directory / "colosseum_equipment").is_dir() or (directory / "colosseum").is_dir()
+        ):
             return directory
     return None
 
