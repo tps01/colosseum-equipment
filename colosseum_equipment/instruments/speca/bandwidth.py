@@ -60,7 +60,7 @@ def measure_bandwidth_hz(
 
     band_freqs: list[float] = []
     band_amps: list[float] = []
-    for frequency, amplitude in zip(frequencies_hz, amplitudes_dbm):
+    for frequency, amplitude in zip(frequencies_hz, amplitudes_dbm, strict=True):
         if start_hz <= frequency <= stop_hz:
             band_freqs.append(frequency)
             band_amps.append(amplitude)

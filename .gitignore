@@ -37,6 +37,9 @@ venv-*/
 ENV/
 env/
 
+# CI dependency checkouts
+.deps/
+
 # Test / type-check caches
 .pytest_cache/
 .mypy_cache/
@@ -55,7 +58,9 @@ htmlcov/
 # Editors and IDEs
 .idea/
 .vscode/
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/*.mdc
 *.swp
 *.swo
 *~

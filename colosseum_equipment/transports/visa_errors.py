@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import NoReturn
 
+import pyvisa
+from pyvisa import constants
+
 from colosseum_equipment.exceptions import (
     EquipmentConnectionError,
     EquipmentError,
@@ -13,12 +16,6 @@ from colosseum_equipment.exceptions import (
 
 def map_visa_exception(exc: BaseException, *, resource: str) -> EquipmentError:
     """Return the equipment exception to raise for a PyVISA (or wrapper) failure."""
-    try:
-        import pyvisa
-        from pyvisa import constants
-    except ImportError:  # pragma: no cover
-        return EquipmentConnectionError(f"VISA error on `{resource}`: {exc}")
-
     if isinstance(exc, pyvisa.errors.InvalidSession):
         return EquipmentConnectionError(
             f"VISA session for `{resource}` is not open (already closed or never opened): {exc}"

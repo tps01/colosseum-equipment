@@ -27,13 +27,8 @@ def write_iq_bin(path: Path, payload: bytes) -> None:
 
 
 def write_iq_mat(path: Path, payload: bytes, *, metadata: dict[str, Any] | None = None) -> None:
-    try:
-        import numpy as np
-        from scipy.io import savemat
-    except ImportError as exc:  # pragma: no cover
-        raise RuntimeError(
-            "file_format='mat' requires scipy and numpy; install scipy or use bin/iq.tar"
-        ) from exc
+    import numpy as np
+    from scipy.io import savemat
 
     count = len(payload) // 8
     if count == 0:

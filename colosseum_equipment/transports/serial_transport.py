@@ -6,13 +6,7 @@ from colosseum_equipment.transports.base import Transport
 
 class SerialTransport(Transport):
     def __init__(self, port: str, baudrate: int = 115200, timeout: float = 2.0) -> None:
-        try:
-            import serial
-        except ImportError as exc:  # pragma: no cover
-            raise EquipmentConnectionError(
-                "pyserial is required for driver=serial. "
-                "Install with: pip install colosseum[hardware]"
-            ) from exc
+        import serial
 
         try:
             self._ser = serial.Serial(port=port, baudrate=baudrate, timeout=timeout)

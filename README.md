@@ -5,11 +5,10 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*` (instrum
 ## Install
 
 ```bash
-pip install colosseum-core colosseum-shared
-pip install -e ".[hardware,test]"
+pip install colosseum-equipment
 ```
 
-Optional extras: `io` (pyftdi), `plot` (matplotlib), `equipment-sim` (pyvisa-sim).
+The default installation includes VISA, serial, FTDI, plotting, PyVISA-sim, and IQ MAT export support.
 
 ## Usage
 
@@ -26,6 +25,9 @@ col.endex()
 ## Develop
 
 ```bash
-pip install -e ../colosseum-core -e ../colosseum-shared -e ".[test,static,plot]"
+pip install -e ../colosseum-core -e ../colosseum-shared
+pip install -e ".[test,static]"
 pytest
+ruff check colosseum_equipment
+mypy
 ```

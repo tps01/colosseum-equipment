@@ -1,16 +1,12 @@
-"""PyVISA-sim transport (requires Python 3.10+ and .[test] extra)."""
+"""PyVISA-sim transport tests."""
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 
-pytestmark = [
-    pytest.mark.visa_sim,
-    pytest.mark.skipif(sys.version_info < (3, 10), reason="pyvisa-sim requires Python 3.10+"),
-]
+pytestmark = pytest.mark.visa_sim
 
 REPO = Path(__file__).resolve().parents[2]
 PSU_YAML = REPO / "tests" / "fixtures" / "pyvisa_sim" / "generic_psu.yaml"
@@ -18,7 +14,6 @@ PSU_YAML = REPO / "tests" / "fixtures" / "pyvisa_sim" / "generic_psu.yaml"
 
 @pytest.fixture
 def visa_sim_transport(isolated_cwd):
-    pytest.importorskip("pyvisa_sim")
     from colosseum_equipment.transports.visa import VISATransport
 
     transport = VISATransport(

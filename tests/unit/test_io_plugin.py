@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 import colosseum as col
 from colosseum.config import load_config
 from colosseum.context import RuntimeContext
@@ -90,30 +88,3 @@ def test_io_connections_close_all(io_runtime_context: RuntimeContext, io_bench) 
     assert "io:backend:dio:1" in ctx.resource_cache
     close_all()
     assert "io:backend:dio:1" not in ctx.resource_cache
-
-
-def test_io_ftdi_missing_extra_records_command_error(
-    io_runtime_context: RuntimeContext,
-    io_bench,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    ctx = io_runtime_context
-    load_config(
-        io_bench(
-            """
-            [[io.dio]]
-            dio_id = 1
-            driver = ftdi-ft232h
-            resource = ftdi://ftdi:232h/1
-            port_lines = 8
-            direction = 0xFF
-            """,
-        )
-    )
-    import colosseum_equipment.io.backends.ftdi.dio as ftdi_mod
-
-    monkeypatch.setattr(ftdi_mod, "_gpio_controller", None)
-    assert col.io.dio.write_port(dio_id=1, value=0) is None
-    row = ctx.db.fetch_table_rows("commands")[-1]
-    assert row["status"] == "ERROR"
-    assert "colosseum[io]" in (row["message"] or "")

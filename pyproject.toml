@@ -1,38 +1,30 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.1.0"
+version = "0.1.1"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
-requires-python = ">=3.9"
-license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
   "colosseum-core>=0.15,<0.16",
   "colosseum-shared>=0.1,<0.2",
+  "matplotlib",
+  "numpy",
+  "pyftdi>=0.55",
+  "pyserial",
+  "pyvisa>=1.15",
+  "pyvisa-sim>=0.7,<0.8",
+  "scipy",
 ]
 
 [project.optional-dependencies]
-hardware = [
-  "pyvisa>=1.15; python_version >= '3.10'",
-  "pyvisa>=1.14,<1.15; python_version < '3.10'",
-  "pyserial",
-]
-io = ["pyftdi>=0.55"]
-plot = ["matplotlib"]
-equipment-sim = ["pyvisa-sim>=0.7,<0.8; python_version >= '3.10'"]
 test = [
   "pytest>=8.0",
-  "pyvisa>=1.15; python_version >= '3.10'",
-  "pyvisa>=1.14,<1.15; python_version < '3.10'",
-  "pyvisa-sim>=0.7,<0.8; python_version >= '3.10'",
-]
-equipment = [
-  "pyvisa>=1.15; python_version >= '3.10'",
-  "pyvisa>=1.14,<1.15; python_version < '3.10'",
-  "pyserial",
-  "matplotlib",
 ]
 static = [
   "bandit[toml]>=1.7",
@@ -51,16 +43,19 @@ equipment = "colosseum_equipment.docgen_entry:spec"
 [tool.setuptools.packages.find]
 include = ["colosseum_equipment*"]
 
+[tool.setuptools.package-data]
+colosseum_equipment = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration"]
 pythonpath = ["."]
 markers = [
-    "visa_sim: requires pyvisa-sim (.[test] extra; Python 3.10+)",
-    "plot: requires matplotlib save_plot path (slower)",
+    "visa_sim: exercises the PyVISA-sim backend",
+    "plot: exercises matplotlib plot generation (slower)",
 ]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 src = ["colosseum_equipment"]
 
@@ -71,6 +66,12 @@ select = ["E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
 python_version = "3.12"
 packages = ["colosseum_equipment"]
 exclude = ["tests/", "build/", "examples/"]
+mypy_path = [
+  ".deps/colosseum-core",
+  ".deps/colosseum-shared",
+  "../colosseum-core",
+  "../colosseum-shared",
+]
 strict = true
 warn_unused_ignores = true
 show_error_codes = true
@@ -80,10 +81,13 @@ module = [
   "pyftdi.*",
   "scipy.*",
   "numpy.*",
+  "paramiko.*",
   "matplotlib.*",
   "pyvisa.*",
   "pyvisa_sim.*",
   "serial.*",
+  "tomli",
+  "tomllib",
   "pytest",
 ]
 ignore_missing_imports = true

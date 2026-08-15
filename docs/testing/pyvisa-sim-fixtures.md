@@ -9,7 +9,7 @@ Colosseum supports two offline instrument simulation layers:
 
 ## Install
 
-PyVISA-sim is **not** in the default install; use the test extra (`pip install -e ".[test]"`). Requires **Python 3.10+** (`pyvisa-sim` 0.7.x).
+PyVISA-sim is included with `colosseum-equipment`. The package requires Python 3.10 or newer.
 
 ## Run tests
 
@@ -55,4 +55,4 @@ Reference workflow: [QCoDeS simulated PyVISA instruments](https://microsoft.gith
 
 ## New vendor models
 
-Provide programmer-manual SCPI tables and `*IDN?` strings before adding YAML and `model = "..."` factory entries. Hardware sign-off uses [regression-test-procedure.md](regression-test-procedure.md) with [`examples/configs/bench.local.toml.example`](../../examples/configs/bench.local.toml.example).
+Provide programmer-manual SCPI tables and `*IDN?` strings before adding YAML and `model = "..."` factory entries. Use [`examples/configs/bench.local.toml.example`](../../examples/configs/bench.local.toml.example) for hardware sign-off.

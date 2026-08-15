@@ -61,6 +61,7 @@ def write_trace_csv(
             for frequency, amplitude in zip(
                 frequency_axis(center_hz, span_hz, len(amplitudes_dbm)),
                 amplitudes_dbm,
+                strict=True,
             ):
                 writer.writerow([f"{frequency:.6f}", f"{amplitude:.6f}"])
         else:

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, Optional, cast
+from collections.abc import Callable
+from typing import Any, cast
 
 from colosseum.decorators import command
 
@@ -59,7 +60,7 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
         inspect.Parameter("command", inspect.Parameter.KEYWORD_ONLY, annotation=str),
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=Optional[int]
+                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None
             )
             for param in _KIND_ID_PARAMS
         ],
