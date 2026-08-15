@@ -48,7 +48,6 @@ colosseum_equipment = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration"]
-pythonpath = ["."]
 markers = [
     "visa_sim: exercises the PyVISA-sim backend",
     "plot: exercises matplotlib plot generation (slower)",
