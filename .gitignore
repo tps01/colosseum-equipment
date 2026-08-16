@@ -82,7 +82,8 @@ Desktop.ini
 # Local notes and agent scratch (normative docs: docs/, examples/)
 scratchpad/
 
-# Offline packaging (see scripts/package_offline.py)
+# Offline packaging (scripts/ci/build_offline_wheelhouse.py)
 wheelhouse/
 offline-bundle/
+*-offline-*.zip
 colosseum-*-offline-*.tar.gz
