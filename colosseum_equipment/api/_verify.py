@@ -8,7 +8,6 @@ from typing import cast
 
 from colosseum.context import require_context
 from colosseum.decorators import (
-    MeasurementSource,
     VerificationResult,
     missing_measurement_result,
     verification,
@@ -84,5 +83,5 @@ def tolerance_verifier(
     verify.__doc__ = tolerance_verify_doc(source_command, unit=unit)
     return cast(
         Callable[..., VerificationResult],
-        verification(sources=[MeasurementSource(domain=domain, command=source_command)])(verify),
+        verification(verify),
     )

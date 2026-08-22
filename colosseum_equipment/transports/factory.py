@@ -14,7 +14,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def default_driver_for_kind(kind: str) -> str:
-    """Default bench ``driver`` when omitted (documented by docgen config reference)."""
+    """Default bench ``driver`` when omitted (documented by the config reference)."""
     if kind == "serial":
         return "serial"
     return "visa"

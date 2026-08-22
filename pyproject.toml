@@ -36,9 +36,6 @@ static = [
 [project.entry-points."colosseum.plugins"]
 equipment = "colosseum_equipment:register"
 
-[project.entry-points."colosseum.docgen"]
-equipment = "colosseum_equipment.docgen_entry:spec"
-
 [tool.setuptools.packages.find]
 include = ["colosseum_equipment*"]
 
