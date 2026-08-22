@@ -2,7 +2,7 @@
 
 __colosseum_domain__ = "equipment"
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.logging import get_logger
