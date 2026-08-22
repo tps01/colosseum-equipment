@@ -4,7 +4,6 @@ from __future__ import annotations
 def _smooth(values: list[float], order: int) -> list[float]:
     if order <= 0 or len(values) < 2:
         return list(values)
-    order * 2 + 1
     smoothed: list[float] = []
     for index in range(len(values)):
         start = max(0, index - order)

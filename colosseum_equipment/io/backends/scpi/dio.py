@@ -40,7 +40,7 @@ class ScpiDioBackend:
         resource = str(config.get("resource") or "").strip()
         port = str(config.get("port") or "").strip()
         driver = str(config.get("driver") or "visa").lower()
-        if driver in ("stub", "generic", "scpi", ""):
+        if driver in ("generic", "scpi", ""):
             driver = "serial" if port and not resource else "visa"
         if driver == "serial":
             if not port and not resource:

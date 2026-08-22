@@ -59,12 +59,6 @@ frequency_unit = "GHz"
 
 Use `frequency_unit = "MHz"` for 54107A/54109A/54111A per the GPIB guide.
 
-## Still generic-only
-
-| Kind | Please provide |
-|------|----------------|
-| `col.io` `ni-6501` | 6501/6502 DIO programming reference |
-
 ## Implemented IO drivers
 
 | `driver` slug | Kind | Dependency | Notes |

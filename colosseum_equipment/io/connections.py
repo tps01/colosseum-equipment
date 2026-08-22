@@ -25,7 +25,7 @@ def get_backend(kind: str, resource_id: int) -> Any:  # noqa: ANN401
     ctx = require_context()
     key = _cache_key(kind, resource_id)
     cfg = get_config(kind, resource_id)
-    driver = str(cfg.get("driver") or "stub").lower()
+    driver = str(cfg.get("driver") or "").lower() or "unspecified"
 
     def _open() -> Any:  # noqa: ANN401
         from colosseum_equipment.io.backends.factory import open_backend

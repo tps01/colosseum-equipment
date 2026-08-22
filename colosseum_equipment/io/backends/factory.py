@@ -4,16 +4,15 @@ from typing import Any
 
 from colosseum_equipment.io.backends.scpi.dio import ScpiDioBackend
 from colosseum_equipment.io.backends.sim.dio import SimDioBackend
-from colosseum_equipment.io.exceptions import IoConfigError, IoNotImplementedError
+from colosseum_equipment.io.exceptions import IoConfigError
 
-_DIO_VENDOR_DOC = "NI 6501/6502 DIO"
-_GENERIC_DIO_DRIVERS = frozenset({"stub", "generic", "visa", "serial", "scpi"})
+_GENERIC_DIO_DRIVERS = frozenset({"", "generic", "visa", "serial", "scpi"})
 
 
 def _driver_name(config: dict[str, Any]) -> str:
     driver = config.get("driver")
     if driver in (None, ""):
-        return "stub"
+        return ""
     return str(driver).lower()
 
 
@@ -45,14 +44,9 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             port_lines=_port_lines(config),
             direction=_direction(config),
         )
-    if driver == "ni-6501":
-        raise IoNotImplementedError(
-            f"col.io dio: driver `{driver}` is reserved; provide NI programming "
-            f"documentation to implement ({_DIO_VENDOR_DOC})."
-        )
     if driver in _GENERIC_DIO_DRIVERS:
         return ScpiDioBackend.from_config(dio_id, config)
-    raise IoNotImplementedError(f"col.io dio: unsupported driver `{driver}`")
+    raise IoConfigError(f"col.io dio: unsupported driver `{driver}`")
 
 
 def open_backend(kind: str, resource_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401

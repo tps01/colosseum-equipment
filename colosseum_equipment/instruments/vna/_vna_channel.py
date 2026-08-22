@@ -15,7 +15,3 @@ def calc_prefix(channel: int) -> str:
 
 def disp_prefix(channel: int) -> str:
     return f"DISP:WIND{int(channel)}"
-
-
-def sour_prefix(port: int) -> str:
-    return f"SOUR{int(port)}"

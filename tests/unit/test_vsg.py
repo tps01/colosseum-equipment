@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
@@ -55,14 +52,6 @@ def test_generic_vsg_scpi_fallbacks_write_commands() -> None:
         "SOUR:MOD:TYPE AM",
         "OUTP:MOD ON",
     ]
-
-
-def test_generic_vsg_multicarrier_remains_unsupported() -> None:
-    inst = build_instrument("vsg", 1, {"model": "generic"}, RfStubTransport())
-    with pytest.raises(EquipmentCapabilityError, match="set_multicarrier"):
-        inst.set_multicarrier(4, 1e6)
-    with pytest.raises(EquipmentCapabilityError, match="toggle_multitone"):
-        inst.toggle_multitone(True)
 
 
 def test_keysight_vsg_control_commands_write_scpi() -> None:

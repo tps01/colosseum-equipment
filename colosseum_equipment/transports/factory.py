@@ -6,7 +6,6 @@ from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.base import Transport
-from colosseum_equipment.transports.null_transport import NullTransport
 from colosseum_equipment.transports.serial_transport import SerialTransport
 from colosseum_equipment.transports.sim import SimTransport
 from colosseum_equipment.transports.visa import VISATransport
@@ -54,8 +53,6 @@ def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Tran
             raise EquipmentConnectionError(f"equipment.{kind} id {equipment_id} missing `port`")
         baudrate = int(config.get("baudrate", 115200))
         return SerialTransport(str(port), baudrate=baudrate, timeout=timeout)
-    if driver in ("stub", "none"):
-        return NullTransport()
     raise EquipmentConnectionError(
         f"Unsupported driver `{driver}` for equipment.{kind} id {equipment_id}"
     )

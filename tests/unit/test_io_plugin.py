@@ -14,7 +14,7 @@ def test_io_write_pin_without_config_records_command_error(io_runtime_context: R
     assert ctx.result_aggregator.overall_pass() is False
 
 
-def test_io_write_pin_stub_driver_records_command_error(
+def test_io_write_pin_without_resource_records_command_error(
     io_runtime_context: RuntimeContext,
     io_bench,
 ) -> None:
@@ -117,24 +117,3 @@ def test_io_dio_scpi_fallback_write_read(
     assert col.io.dio.read_port(dio_id=1, key="scpi_port") == 10
     assert "DIG:DIR 255" in transport.written
     assert "SOUR:DIG:DATA 10" in transport.written
-
-
-def test_io_dio_ni_6501_still_reserved(
-    io_runtime_context: RuntimeContext,
-    io_bench,
-) -> None:
-    ctx = io_runtime_context
-    load_config(
-        io_bench(
-            """
-            [[io.dio]]
-            dio_id = 1
-            driver = ni-6501
-            resource = "Dev1"
-            """,
-        )
-    )
-    assert col.io.dio.write_port(dio_id=1, value=1) is None
-    row = ctx.db.fetch_table_rows("commands")[-1]
-    assert row["status"] == "ERROR"
-    assert "NI 6501" in (row["message"] or "")
