@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
+
+from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.base import Transport
@@ -10,7 +11,7 @@ from colosseum_equipment.transports.serial_transport import SerialTransport
 from colosseum_equipment.transports.sim import SimTransport
 from colosseum_equipment.transports.visa import VISATransport
 
-_logger = logging.getLogger("colosseum.equipment")
+_logger = get_logger("colosseum.equipment")
 
 
 def default_driver_for_kind(kind: str) -> str:

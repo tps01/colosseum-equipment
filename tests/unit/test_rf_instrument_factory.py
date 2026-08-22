@@ -37,11 +37,15 @@ def test_tektronix_rsa5100b_rtsa_model() -> None:
     assert isinstance(inst, TektronixRSA5100BRtsa)
 
 
-def test_generic_vsg_upload_waveform_raises() -> None:
-    inst = build_instrument("vsg", 1, {"model": "generic"}, RfStubTransport())
+def test_generic_vsg_upload_waveform_writes_binary(tmp_path: Path) -> None:
+    waveform = tmp_path / "iq.bin"
+    waveform.write_bytes(b"deadbeef")
+    transport = RfStubTransport({"*OPC?": "1"})
+    inst = build_instrument("vsg", 1, {"model": "generic"}, transport)
     assert isinstance(inst, GenericVSG)
-    with pytest.raises(EquipmentCapabilityError, match="upload_waveform"):
-        inst.upload_waveform("local.bin", "remote.bin")
+    inst.upload_waveform(str(waveform), "WFM1:IQ.bin")
+    assert transport.raw_written
+    assert b"MMEM:DATA" in transport.raw_written[0]
 
 
 def test_e4438c_upload_waveform_writes_binary(tmp_path: Path) -> None:

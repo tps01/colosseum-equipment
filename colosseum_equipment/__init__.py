@@ -2,13 +2,16 @@
 
 __colosseum_domain__ = "equipment"
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 from colosseum.config.sections import ConfigSectionSpec
+from colosseum.logging import get_logger
 from colosseum.plugins.registry import PluginRegistry
 
 from colosseum_equipment.connections import close_all, register_atexit_cleanup
 from colosseum_equipment.instruments._config_keys import VISA_OPTIONAL_KEYS
+
+_logger = get_logger("colosseum.equipment")
 
 _IO_CONFIG_SPECS = (
     ConfigSectionSpec(
@@ -26,6 +29,7 @@ def register(registry: PluginRegistry) -> None:
 
     registry.register_namespace("equipment", api)
     registry.register_namespace("io", io_api)
+    _logger.debug("Registered col.equipment and col.io namespaces")
     registry.register_shutdown(close_all)
     register_atexit_cleanup()
     for spec in (*_CONFIG_SPECS, *_IO_CONFIG_SPECS):

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from colosseum.output.artifacts import register_artifact, resolve_artifact_path
+
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
-from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 from colosseum_equipment.transports.base import Transport
 
@@ -32,5 +33,9 @@ class GenericOscope(ScpiInstrumentMixin):
     def measure_vpp(self, channel: int = 1) -> float:
         return self._scpi.query_float(f"MEAS:VPP? CH{channel}")
 
-    def save_screenshot(self, _path: str) -> None:
-        unsupported(self._model, "save_screenshot")
+    def save_screenshot(self, path: str) -> None:
+        payload = self._scpi.read_binary_block("HCOP:SDUM:DATA?")
+        artifact_path = resolve_artifact_path(path)
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(payload)
+        register_artifact("oscope_screenshot", artifact_path, description="instrument screenshot")

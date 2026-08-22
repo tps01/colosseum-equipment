@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from colosseum.config.loader import ConfigError
 from colosseum.context import require_context
+from colosseum.logging import get_logger
 from colosseum.resource_cache import cached_resource, close_cached_resources
 
-_logger = logging.getLogger("colosseum.io")
+_logger = get_logger("colosseum.io")
 
 
 def _cache_key(kind: str, resource_id: int) -> str:

@@ -5,6 +5,7 @@ from typing import Any
 
 from colosseum.output.artifacts import register_artifact, resolve_artifact_path
 
+from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.vna.trace_export import (
@@ -202,7 +203,12 @@ class GenericVna(ScpiInstrumentMixin):
 
         return artifact_path
 
-    def measure_s11_magnitude(self, _trace: int = 1) -> float:
-        unsupported(
-            self._model, "measure_s11_magnitude", detail="phase-2; needs vendor driver docs"
-        )
+    def measure_s11_magnitude(self, trace: int = 1) -> float:
+        self._ensure_scpi_vna("measure_s11_magnitude")
+        self.set_trace_parameters(trace, "S11", "MLOG")
+        self.single_sweep()
+        raw = self._scpi.query(f"{self._calc()}:PAR{trace}:DATA:FDATA?")
+        values = parse_vna_trace_values(raw)
+        if not values:
+            raise EquipmentResponseError("empty S11 magnitude trace")
+        return max(values)

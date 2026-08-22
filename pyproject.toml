@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.1.4"
+version = "0.1.5"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"

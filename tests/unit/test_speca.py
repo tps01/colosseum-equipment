@@ -124,3 +124,13 @@ def test_save_trace_data_with_plot(unit_runtime_context) -> None:
     assert len(rows) == 3
     assert rows[0]["frequency_hz"] == "1400000000.000000"
     assert rows[0]["amplitude_dbm"] == "-10.000000"
+
+
+def test_generic_speca_save_screenshot(unit_runtime_context) -> None:
+    _ = unit_runtime_context
+    transport = RfStubTransport({"__raw__": b"#14PNG!"})
+    inst = build_instrument("speca", 1, {"model": "generic"}, transport)
+    path = inst.save_screenshot("captures/screen.png")
+    assert path.exists()
+    assert path.read_bytes() == b"PNG!"
+    assert "HCOP:SDUM:DATA?" in transport.written

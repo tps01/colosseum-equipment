@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import logging
 import re
+
+from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.transports.base import Transport
 
-_logger = logging.getLogger("colosseum.equipment")
+_logger = get_logger("colosseum.equipment")
 
 
 def strip_response(text: str) -> str:

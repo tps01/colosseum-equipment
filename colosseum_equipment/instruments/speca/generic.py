@@ -6,7 +6,6 @@ from typing import Any
 
 from colosseum.output.artifacts import register_artifact, resolve_artifact_path
 
-from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.speca.bandwidth import measure_bandwidth_hz
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
@@ -202,8 +201,13 @@ class GenericSpecA:
         self._scpi.write("INIT:IMM")
         wait_opc(self._scpi)
 
-    def save_screenshot(self, _path: str) -> Path:
-        unsupported(self._model, "save_screenshot")
+    def save_screenshot(self, path: str) -> Path:
+        payload = self._scpi.read_binary_block("HCOP:SDUM:DATA?")
+        artifact_path = resolve_artifact_path(path)
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(payload)
+        register_artifact("speca_screenshot", artifact_path, description="instrument screenshot")
+        return artifact_path
 
     def close(self) -> None:
         with contextlib.suppress(Exception):

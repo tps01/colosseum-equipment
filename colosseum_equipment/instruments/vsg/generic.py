@@ -4,11 +4,14 @@ from typing import Any
 
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
+from colosseum_equipment.instruments.vsg.waveform_upload import upload_waveform_file
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 from colosseum_equipment.transports.base import Transport
 
 
 class GenericVSG(ScpiInstrumentMixin):
+    """Generic SCPI vector/signal generator (IEEE 488.2 + SCPI-99 mnemonics)."""
+
     _model = "generic"
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
@@ -32,22 +35,23 @@ class GenericVSG(ScpiInstrumentMixin):
         self._scpi.write("OUTP ON" if enabled else "OUTP OFF")
 
     def preset(self) -> None:
-        unsupported(self._model, "preset")
+        self._scpi.write("*RST")
+        wait_opc(self._scpi)
 
     def wait_complete(self) -> None:
         wait_opc(self._scpi)
 
-    def set_alc(self, _enabled: bool) -> None:
-        unsupported(self._model, "set_alc")
+    def set_alc(self, enabled: bool) -> None:
+        self._scpi.write("POW:ALC ON" if enabled else "POW:ALC OFF")
 
-    def set_attenuation(self, _attenuation_db: float) -> None:
-        unsupported(self._model, "set_attenuation")
+    def set_attenuation(self, attenuation_db: float) -> None:
+        self._scpi.write(f"POW:ATT {attenuation_db:.3f}")
 
-    def set_phase(self, _phase_deg: float) -> None:
-        unsupported(self._model, "set_phase")
+    def set_phase(self, phase_deg: float) -> None:
+        self._scpi.write(f"PHAS {phase_deg:.3f}")
 
-    def set_output_blanking(self, _enabled: bool) -> None:
-        unsupported(self._model, "set_output_blanking")
+    def set_output_blanking(self, enabled: bool) -> None:
+        self._scpi.write("OUTP:BLAN ON" if enabled else "OUTP:BLAN OFF")
 
     def upload_waveform(
         self,
@@ -56,14 +60,22 @@ class GenericVSG(ScpiInstrumentMixin):
         *,
         first_last_blanking: bool = False,
     ) -> None:
-        _ = local_path, remote_name, first_last_blanking
-        unsupported(self._model, "upload_waveform")
+        upload_waveform_file(
+            self._scpi,
+            self._scpi._transport,
+            self._config,
+            local_path,
+            remote_name,
+            first_last_blanking=first_last_blanking,
+        )
 
-    def delete_waveform(self, _remote_name: str) -> None:
-        unsupported(self._model, "delete_waveform")
+    def delete_waveform(self, remote_name: str) -> None:
+        self._scpi.write(f'MMEM:DEL "{remote_name}"')
+        wait_opc(self._scpi)
 
     def delete_all_waveforms(self) -> None:
-        unsupported(self._model, "delete_all_waveforms")
+        self._scpi.write("MMEM:DEL:WFM1")
+        wait_opc(self._scpi)
 
     def set_multicarrier(self, _num_tones: int, _spacing_hz: float) -> None:
         unsupported(self._model, "set_multicarrier")
@@ -73,66 +85,111 @@ class GenericVSG(ScpiInstrumentMixin):
 
     def play_iq(
         self,
-        _filename: str,
-        _center_freq_hz: float,
-        _amplitude_dbm: float,
-        _sample_clock_hz: float,
+        filename: str,
+        center_freq_hz: float,
+        amplitude_dbm: float,
+        sample_clock_hz: float,
     ) -> None:
-        unsupported(self._model, "play_iq")
+        self.select_waveform(filename)
+        self.set_frequency(center_freq_hz)
+        self.set_power(amplitude_dbm)
+        self._scpi.write(f"RAD:ARB:SCLock:RATE {sample_clock_hz:.6f}")
+        self.set_arb_state(True)
+        self._scpi.write("OUTP:MOD ON")
 
-    def set_pulsegen_output(self, _enabled: bool) -> None:
-        unsupported(self._model, "set_pulsegen_output")
+    def set_pulsegen_output(self, enabled: bool) -> None:
+        self._scpi.write("PULM:STAT ON" if enabled else "PULM:STAT OFF")
 
-    def set_pulsemod_output(self, _enabled: bool) -> None:
-        unsupported(self._model, "set_pulsemod_output")
+    def set_pulsemod_output(self, enabled: bool) -> None:
+        self._scpi.write("PULM:STAT ON" if enabled else "PULM:STAT OFF")
 
-    def set_pulse_period(self, _period_s: float) -> None:
-        unsupported(self._model, "set_pulse_period")
+    def set_pulse_period(self, period_s: float) -> None:
+        self._scpi.write(f"PULM:INT:PER {period_s:.9f}")
 
-    def set_pulse_width(self, _width_s: float) -> None:
-        unsupported(self._model, "set_pulse_width")
+    def set_pulse_width(self, width_s: float) -> None:
+        self._scpi.write(f"PULM:INT:PWID {width_s:.9f}")
 
-    def pulse_source(self, _source: str) -> None:
-        unsupported(self._model, "pulse_source")
+    def pulse_source(self, source: str) -> None:
+        normalized = source.upper()
+        if normalized == "PULSE":
+            self._scpi.write("PULM:SOUR INT")
+            self._scpi.write("PULM:INT:FUNC SHAP PULS")
+        elif normalized == "SQUARE":
+            self._scpi.write("PULM:SOUR INT")
+            self._scpi.write("PULM:INT:FUNC SHAP SQU")
+        elif normalized == "EXT1":
+            self._scpi.write("PULM:SOUR EXT1")
+        elif normalized == "EXT2":
+            self._scpi.write("PULM:SOUR EXT2")
+        else:
+            raise ValueError(f"unsupported pulse source: {source}")
 
     def step_power(
         self,
-        _start_dbm: float,
-        _stop_dbm: float,
-        _step_db: float,
-        _interval_s: float,
+        start_dbm: float,
+        stop_dbm: float,
+        step_db: float,
+        interval_s: float,
     ) -> None:
-        unsupported(self._model, "step_power")
+        if step_db <= 0:
+            raise ValueError("step_db must be positive")
+        points = max(2, int(abs(stop_dbm - start_dbm) / step_db) + 1)
+        self._scpi.write("LIST:TYPE STEP")
+        self._scpi.write(f"POW:STAR {start_dbm:.3f}")
+        self._scpi.write(f"POW:STOP {stop_dbm:.3f}")
+        self._scpi.write(f"SWE:POIN {points}")
+        self._scpi.write(f"SWE:DWEL {interval_s:.9f}")
+        self._scpi.write("LIST:TRIG:SOUR IMM")
+        self._scpi.write("INIT:CONT ON")
 
     def freq_sweep(
         self,
-        _start_hz: float,
-        _stop_hz: float,
-        _points: int,
-        _dwell_s: float,
+        start_hz: float,
+        stop_hz: float,
+        points: int,
+        dwell_s: float,
     ) -> None:
-        unsupported(self._model, "freq_sweep")
+        self._scpi.write("LIST:TYPE STEP")
+        self._scpi.write(f"FREQ:STAR {start_hz:.6f}")
+        self._scpi.write(f"FREQ:STOP {stop_hz:.6f}")
+        self._scpi.write(f"SWE:POIN {int(points)}")
+        self._scpi.write(f"SWE:DWEL {dwell_s:.9f}")
+        self._scpi.write("INIT:CONT ON")
 
     def amplitude_sweep(
         self,
-        _start_dbm: float,
-        _stop_dbm: float,
-        _points: int,
-        _dwell_s: float,
+        start_dbm: float,
+        stop_dbm: float,
+        points: int,
+        dwell_s: float,
     ) -> None:
-        unsupported(self._model, "amplitude_sweep")
+        self._scpi.write("LIST:TYPE STEP")
+        self._scpi.write(f"POW:STAR {start_dbm:.3f}")
+        self._scpi.write(f"POW:STOP {stop_dbm:.3f}")
+        self._scpi.write(f"SWE:POIN {int(points)}")
+        self._scpi.write(f"SWE:DWEL {dwell_s:.9f}")
+        self._scpi.write("INIT:CONT ON")
 
-    def select_waveform(self, _remote_name: str) -> None:
-        unsupported(self._model, "select_waveform")
+    def select_waveform(self, remote_name: str) -> None:
+        self._scpi.write(f'RAD:ARB:WAV "{remote_name}"')
 
-    def set_arb_state(self, _enabled: bool) -> None:
-        unsupported(self._model, "set_arb_state")
+    def set_arb_state(self, enabled: bool) -> None:
+        self._scpi.write("RAD:ARB:STAT ON" if enabled else "RAD:ARB:STAT OFF")
 
-    def configure_list(self, _frequencies: list[float], _powers: list[float] | None = None) -> None:
-        unsupported(self._model, "configure_list")
+    def configure_list(self, frequencies: list[float], powers: list[float] | None = None) -> None:
+        self._scpi.write("LIST:MODE LIST")
+        freq_values = ",".join(str(value) for value in frequencies)
+        self._scpi.write(f"LIST:FREQ {freq_values}")
+        if powers is not None:
+            power_values = ",".join(str(value) for value in powers)
+            self._scpi.write(f"LIST:POW {power_values}")
 
-    def set_modulation(self, _enabled: bool, _modulation_type: str = "none") -> None:
-        unsupported(self._model, "set_modulation")
+    def set_modulation(self, enabled: bool, modulation_type: str = "none") -> None:
+        if enabled and modulation_type.lower() != "none":
+            self._scpi.write(f"SOUR:MOD:TYPE {modulation_type.upper()}")
+            self._scpi.write("OUTP:MOD ON")
+            return
+        self._scpi.write("OUTP:MOD ON" if enabled else "OUTP:MOD OFF")
 
     def measure_output_state(self) -> bool:
         return bool(int(float(self._scpi.query("OUTP:STAT?"))))

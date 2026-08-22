@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import atexit
-import logging
 from typing import Any
 
 from colosseum.config.loader import ConfigError
 from colosseum.context import get_context, require_context
+from colosseum.logging import get_logger
 from colosseum.resource_cache import cached_resource, close_cached_resources
 
 from colosseum_equipment.transports.base import Transport
 
-_logger = logging.getLogger("colosseum.equipment")
+_logger = get_logger("colosseum.equipment")
 _atexit_registered = False
 
 
