@@ -1,8 +1,6 @@
 """Colosseum equipment plugin (PSU, DMM, RF, SCPI, transports)."""
 
-__colosseum_domain__ = "equipment"
-
-__version__ = "0.1.6"
+from importlib import metadata
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.logging import get_logger
@@ -10,6 +8,13 @@ from colosseum.plugins.registry import PluginRegistry
 
 from colosseum_equipment.connections import close_all, register_atexit_cleanup
 from colosseum_equipment.instruments._config_keys import VISA_OPTIONAL_KEYS
+
+__colosseum_domain__ = "equipment"
+
+try:
+    __version__ = metadata.version("colosseum-equipment")
+except metadata.PackageNotFoundError:  # pragma: no cover
+    __version__ = "0.0.0"
 
 _logger = get_logger("colosseum.equipment")
 

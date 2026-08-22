@@ -31,7 +31,7 @@ jobs:
         run: pytest -q
       - name: Package metadata
         run: |
-          python -c "from importlib.metadata import entry_points; import colosseum_equipment; assert colosseum_equipment.__version__ == '0.1.6'; assert any(ep.name == 'equipment' for ep in entry_points(group='colosseum.plugins'))"
+          python -c "from importlib.metadata import entry_points; import colosseum_equipment; assert colosseum_equipment.__version__; assert any(ep.name == 'equipment' for ep in entry_points(group='colosseum.plugins'))"
       - name: Static
         run: |
           ruff check colosseum_equipment
