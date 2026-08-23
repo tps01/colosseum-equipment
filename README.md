@@ -26,7 +26,7 @@ col.endex()
 
 ```bash
 pip install -e ../colosseum-core
-pip install -e ".[test,static]"
+pip install -e .
 pytest
 ruff check colosseum_equipment
 mypy
