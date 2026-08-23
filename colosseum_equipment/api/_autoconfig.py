@@ -51,15 +51,15 @@ def autoconfig(
     """
     _ = visa_backend
 
-    existing_ctx = get_context()
-    if existing_ctx is None:
+    try:
+        ctx = get_context()
+    except RuntimeError:
         ctx = init_context(
             test_case_name=default_test_name(),
             config_path="(autoconfig)",
             no_artifacts=no_artifacts,
         )
     else:
-        ctx = existing_ctx
         apply_no_artifacts(ctx, no_artifacts=no_artifacts)
 
     result = discover_equipment_config(

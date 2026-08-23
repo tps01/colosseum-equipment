@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from colosseum.context import require_context
+from colosseum.context import get_context
 
 from colosseum_equipment.transports.base import Transport
 
 
 def _state_map() -> dict[str, dict[str, Any]]:
-    ctx = require_context()
+    ctx = get_context()
     key = "sim:state"
     if key not in ctx.resource_cache:
         ctx.resource_cache[key] = {}

@@ -4,7 +4,7 @@ import atexit
 from typing import Any
 
 from colosseum.config.loader import ConfigError
-from colosseum.context import get_context, require_context
+from colosseum.context import get_context
 from colosseum.logging import get_logger
 from colosseum.resource_cache import cached_resource, close_cached_resources
 
@@ -19,14 +19,14 @@ def _cache_key(kind: str, equipment_id: int) -> str:
 
 
 def get_config(kind: str, equipment_id: int) -> dict[str, Any]:
-    ctx = require_context()
+    ctx = get_context()
     if ctx.config is None:
         raise ConfigError("Configuration is not loaded. Call col.config.load_config(path).")
     return ctx.config.require_item(f"equipment.{kind}", equipment_id)
 
 
 def get_transport(kind: str, equipment_id: int) -> Transport:
-    ctx = require_context()
+    ctx = get_context()
     key = _cache_key(kind, equipment_id)
     cfg = get_config(kind, equipment_id)
     driver = str(cfg.get("driver", "visa")).lower()
@@ -50,7 +50,7 @@ def get_transport(kind: str, equipment_id: int) -> Transport:
 
 
 def get_cached_instrument(kind: str, equipment_id: int) -> Any:  # noqa: ANN401
-    ctx = require_context()
+    ctx = get_context()
     key = f"instrument:{kind}:{equipment_id}"
     cfg = get_config(kind, equipment_id)
     model = str(cfg.get("model", "generic")).lower()
@@ -75,7 +75,7 @@ def get_cached_instrument(kind: str, equipment_id: int) -> Any:  # noqa: ANN401
 
 
 def close_all() -> None:
-    ctx = require_context()
+    ctx = get_context()
     close_cached_resources(ctx.resource_cache, (("instrument:",),), logger=_logger)
     from colosseum_equipment.io.connections import close_all as close_io_backends
 
@@ -84,8 +84,11 @@ def close_all() -> None:
 
 
 def _atexit_close_equipment() -> None:
-    ctx = get_context()
-    if ctx is None or ctx.finalized:
+    try:
+        ctx = get_context()
+    except RuntimeError:
+        return
+    if ctx.finalized:
         return
     try:
         close_all()

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from colosseum.config import load_config
-from colosseum.context import require_context
+from colosseum.context import get_context
 
 pytestmark = pytest.mark.visa_sim
 
@@ -60,10 +60,10 @@ def test_speca_shutdown_hook_succeeds_after_use(bench_rf, isolated_cwd, caplog) 
     with caplog.at_level(logging.ERROR, logger="colosseum.plugins"):
         load_config(bench_rf)
         get_cached_instrument("speca", 1)
-        require_context().plugin_registry.run_shutdown()
+        get_context().plugin_registry.run_shutdown()
 
     assert "Plugin shutdown hook failed" not in caplog.text
-    assert require_context().resource_cache == {}
+    assert get_context().resource_cache == {}
 
 
 def test_speca_marker_at_frequency_and_verify(bench_rf, isolated_cwd) -> None:

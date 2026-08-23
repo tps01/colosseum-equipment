@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from colosseum.context import require_context
+from colosseum.context import get_context
 
 from colosseum_equipment.io.exceptions import IoConfigError
 
@@ -29,7 +29,7 @@ class SimDioBackend:
         self._input = 0
 
     def _persist(self) -> None:
-        ctx = require_context()
+        ctx = get_context()
         state = ctx.resource_cache.setdefault(_SIM_STATE_KEY, {})
         state[_state_key(self._dio_id)] = {
             "direction": self._direction,
@@ -40,7 +40,7 @@ class SimDioBackend:
 
     @classmethod
     def from_cache(cls, *, dio_id: int, port_lines: int, direction: int) -> SimDioBackend:
-        ctx = require_context()
+        ctx = get_context()
         state = ctx.resource_cache.setdefault(_SIM_STATE_KEY, {})
         key = _state_key(dio_id)
         mask = _line_mask(port_lines)
