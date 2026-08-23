@@ -25,7 +25,7 @@ jobs:
         run: |
           python -m pip install -U pip
           python -m pip install -e .deps/colosseum-core
-          python -m pip install -e ".[test,static]"
+          python -m pip install -e .
           python -m pip check
       - name: Test
         run: pytest -q
