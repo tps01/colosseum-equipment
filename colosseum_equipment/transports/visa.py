@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import contextlib
-import logging
 from pathlib import Path
 from typing import Any
+
+from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.base import Transport
 from colosseum_equipment.transports.visa_errors import map_visa_exception, raise_mapped_visa_error
 
-_logger = logging.getLogger("colosseum.equipment")
+_logger = get_logger("colosseum.equipment")
 
 
 def _find_checkout_root() -> Path | None:

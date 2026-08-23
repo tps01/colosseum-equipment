@@ -3,14 +3,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from colosseum.output.artifacts import register_artifact, resolve_artifact_path
+
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
-from colosseum_equipment.instruments._capabilities import unsupported
-from colosseum_equipment.protocols.scpi import SCPIHelper
+from colosseum_equipment.instruments.rtsa.iq_export import (
+    normalize_iq_format,
+    write_iq_bin,
+    write_iq_mat,
+    write_iq_tar,
+)
+from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 from colosseum_equipment.transports.base import Transport
 
 
 class GenericRtsa(ScpiInstrumentMixin):
-    """Generic RTSA placeholder; vendor models required for IQ acquisition."""
+    """Generic SCPI real-time spectrum analyzer (spectrum setup + IQ block download)."""
 
     _model = "generic"
 
@@ -26,42 +33,58 @@ class GenericRtsa(ScpiInstrumentMixin):
             self.set_bandwidth(float(config["rbw"]))
 
     def preset(self) -> None:
-        unsupported(self._model, "preset")
+        self._scpi.write("*RST")
+        wait_opc(self._scpi)
 
-    def set_center_freq(self, _frequency_hz: float) -> None:
-        unsupported(self._model, "set_center_freq")
+    def set_center_freq(self, frequency_hz: float) -> None:
+        self._scpi.write(f"FREQ:CENT {frequency_hz:.6f}")
 
-    def set_span(self, _span_hz: float) -> None:
-        unsupported(self._model, "set_span")
+    def set_span(self, span_hz: float) -> None:
+        self._scpi.write(f"FREQ:SPAN {span_hz:.6f}")
 
-    def set_bandwidth(self, _bandwidth_hz: float) -> None:
-        unsupported(self._model, "set_bandwidth")
+    def set_bandwidth(self, bandwidth_hz: float) -> None:
+        self._scpi.write(f"BAND:RES {bandwidth_hz:.6f}")
 
-    def set_acq_time(self, _seconds: float) -> None:
-        unsupported(self._model, "set_acq_time")
+    def set_acq_time(self, seconds: float) -> None:
+        self._scpi.write(f"SWE:TIME {seconds:.9f}")
 
-    def set_continuous_run(self, _enabled: bool) -> None:
-        unsupported(self._model, "set_continuous_run")
+    def set_continuous_run(self, enabled: bool) -> None:
+        self._scpi.write("INIT:CONT ON" if enabled else "INIT:CONT OFF")
 
-    def set_num_samples(self, _count: int) -> None:
-        unsupported(self._model, "set_num_samples")
+    def set_num_samples(self, count: int) -> None:
+        self._scpi.write(f"TRAC:IQ:POIN {int(count)}")
 
     def get_num_samples(self) -> int:
-        unsupported(self._model, "get_num_samples")
-        return 0
+        return int(self._scpi.query_float("TRAC:IQ:POIN?"))
 
-    def set_trigger_source(self, _source: str) -> None:
-        unsupported(self._model, "set_trigger_source")
+    def set_trigger_source(self, source: str) -> None:
+        self._scpi.write(f"TRIG:SOUR {source}")
 
-    def set_trigger_level(self, _level_dbm: float) -> None:
-        unsupported(self._model, "set_trigger_level")
+    def set_trigger_level(self, level_dbm: float) -> None:
+        self._scpi.write(f"TRIG:LEV {level_dbm:.3f}")
 
-    def set_trigger_position(self, _position_dbm: float) -> None:
-        unsupported(self._model, "set_trigger_position")
+    def set_trigger_position(self, position_dbm: float) -> None:
+        self._scpi.write(f"TRIG:POS {position_dbm:.3f}")
 
     def run(self) -> None:
-        unsupported(self._model, "run")
+        self._scpi.write("INIT:IMM")
+        wait_opc(self._scpi)
 
     def save_IQ_data(self, path: str, *, file_format: str = "bin") -> Path:
-        _ = path, file_format
-        unsupported(self._model, "save_IQ_data")
+        payload = self._scpi.read_binary_block("TRAC:IQ:DATA?")
+        export_format = normalize_iq_format(file_format, path)
+        artifact_path = resolve_artifact_path(path)
+        metadata = {
+            "center_freq_hz": self._scpi.query_float("FREQ:CENT?"),
+            "span_hz": self._scpi.query_float("FREQ:SPAN?"),
+            "num_samples": self.get_num_samples(),
+            "format": export_format,
+        }
+        if export_format == "mat":
+            write_iq_mat(artifact_path, payload, metadata=metadata)
+        elif export_format == "iq.tar":
+            write_iq_tar(artifact_path, payload, metadata=metadata)
+        else:
+            write_iq_bin(artifact_path, payload)
+        register_artifact("rtsa_iq", artifact_path, description=f"IQ capture ({export_format})")
+        return artifact_path

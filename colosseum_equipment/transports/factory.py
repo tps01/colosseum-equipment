@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
+
+from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.base import Transport
-from colosseum_equipment.transports.null_transport import NullTransport
 from colosseum_equipment.transports.serial_transport import SerialTransport
 from colosseum_equipment.transports.sim import SimTransport
 from colosseum_equipment.transports.visa import VISATransport
 
-_logger = logging.getLogger("colosseum.equipment")
+_logger = get_logger("colosseum.equipment")
 
 
 def default_driver_for_kind(kind: str) -> str:
-    """Default bench ``driver`` when omitted (documented by docgen config reference)."""
+    """Default bench ``driver`` when omitted (documented by the config reference)."""
     if kind == "serial":
         return "serial"
     return "visa"
@@ -53,8 +53,6 @@ def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Tran
             raise EquipmentConnectionError(f"equipment.{kind} id {equipment_id} missing `port`")
         baudrate = int(config.get("baudrate", 115200))
         return SerialTransport(str(port), baudrate=baudrate, timeout=timeout)
-    if driver in ("stub", "none"):
-        return NullTransport()
     raise EquipmentConnectionError(
         f"Unsupported driver `{driver}` for equipment.{kind} id {equipment_id}"
     )

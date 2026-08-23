@@ -6,8 +6,8 @@ Colosseum exposes RF bench instruments through ``col.equipment.vsg`` (vector/sig
 ``col.equipment.rtsa`` (real-time spectrum analyzer / IQ acquisition), and ``col.equipment.vna``.
 
 Configure instruments in TOML (see :doc:`configuration` and the generated **Bench configuration reference**).
-Select vendor behavior with ``model``. Per-function parameters and return types are documented in Python
-docstrings and the generated API reference (``colosseum_equipment.api.vsg``, ``asg``, ``speca``, ``rtsa``, ``vna``).
+Select vendor behavior with ``model``. Per-function parameters and return types are documented in the
+Python docstrings on ``colosseum_equipment.api`` modules (``vsg``, ``asg``, ``speca``, ``rtsa``, ``vna``).
 
 Supported vendor models
 -----------------------
@@ -45,5 +45,5 @@ If a function is not implemented for the configured ``model``, the driver raises
 API reference
 -------------
 
-Generated pages under **API reference → Colosseum Equipment** list module docstrings for all public
-``col.equipment.*`` RF APIs.
+Public ``col.equipment.*`` RF APIs are documented in Python docstrings on the
+``colosseum_equipment.api`` modules (``vsg``, ``asg``, ``speca``, ``rtsa``, ``vna``).

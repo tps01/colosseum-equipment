@@ -125,12 +125,12 @@ def test_autoconfig_export_writes_toml(
     import colosseum_equipment.api._autoconfig as autoconfig_module
 
     from colosseum.config.toml_relaxed import read_relaxed_toml
-    from colosseum.context import init_context, require_context
+    from colosseum.context import init_context, get_context
     from colosseum.output import ensure_output_dir
 
     context_module._ACTIVE_CONTEXT = None
     init_context(test_case_name="export_test")
-    ensure_output_dir(require_context())
+    ensure_output_dir(get_context())
     rm = _FakeResourceManager(
         {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"}
     )
@@ -145,7 +145,7 @@ def test_autoconfig_export_writes_toml(
     monkeypatch.setattr(autoconfig_module, "discover_equipment_config", _fake_discover)
     export_path = tmp_path / "bench.generated.toml"
     autoconfig(timeout=1.0, export_path=export_path)
-    ctx = require_context()
+    ctx = get_context()
     assert export_path.is_file()
     loaded = read_relaxed_toml(export_path)
     dmm_section = loaded["equipment"]["dmm"]

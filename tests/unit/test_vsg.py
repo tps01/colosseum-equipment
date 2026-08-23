@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
@@ -14,13 +11,47 @@ from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
 from tests.support.stubs import RfStubTransport
 
 
-def test_generic_vsg_new_methods_raise() -> None:
-    inst = build_instrument("vsg", 1, {"model": "generic"}, RfStubTransport())
+def test_generic_vsg_scpi_fallbacks_write_commands() -> None:
+    transport = RfStubTransport({"*OPC?": "1"})
+    inst = build_instrument("vsg", 1, {"model": "generic"}, transport)
     assert isinstance(inst, GenericVSG)
-    with pytest.raises(EquipmentCapabilityError, match="delete_waveform"):
-        inst.delete_waveform("WFM1:test.bin")
-    with pytest.raises(EquipmentCapabilityError, match="play_iq"):
-        inst.play_iq("WFM1:test.bin", 1e9, -10.0, 100e6)
+
+    inst.preset()
+    inst.set_alc(True)
+    inst.set_attenuation(10.0)
+    inst.set_phase(45.0)
+    inst.set_output_blanking(False)
+    inst.delete_waveform("WFM1:test.bin")
+    inst.play_iq("WFM1:test.bin", 1e9, -10.0, 100e6)
+    inst.set_pulsegen_output(True)
+    inst.pulse_source("EXT1")
+    inst.freq_sweep(1e9, 2e9, 11, 0.5)
+    inst.set_modulation(True, "AM")
+
+    assert transport.written == [
+        "*RST",
+        "POW:ALC ON",
+        "POW:ATT 10.000",
+        "PHAS 45.000",
+        "OUTP:BLAN OFF",
+        'MMEM:DEL "WFM1:test.bin"',
+        'RAD:ARB:WAV "WFM1:test.bin"',
+        "FREQ:CW 1000000000.000000",
+        "POW:AMPL -10.000",
+        "RAD:ARB:SCLock:RATE 100000000.000000",
+        "RAD:ARB:STAT ON",
+        "OUTP:MOD ON",
+        "PULM:STAT ON",
+        "PULM:SOUR EXT1",
+        "LIST:TYPE STEP",
+        "FREQ:STAR 1000000000.000000",
+        "FREQ:STOP 2000000000.000000",
+        "SWE:POIN 11",
+        "SWE:DWEL 0.500000000",
+        "INIT:CONT ON",
+        "SOUR:MOD:TYPE AM",
+        "OUTP:MOD ON",
+    ]
 
 
 def test_keysight_vsg_control_commands_write_scpi() -> None:

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from colosseum.config.loader import ConfigError
-from colosseum.context import require_context
+from colosseum.context import get_context
+from colosseum.logging import get_logger
 from colosseum.resource_cache import cached_resource, close_cached_resources
 
-_logger = logging.getLogger("colosseum.io")
+_logger = get_logger("colosseum.io")
 
 
 def _cache_key(kind: str, resource_id: int) -> str:
@@ -15,17 +15,17 @@ def _cache_key(kind: str, resource_id: int) -> str:
 
 
 def get_config(kind: str, resource_id: int) -> dict[str, Any]:
-    ctx = require_context()
+    ctx = get_context()
     if ctx.config is None:
         raise ConfigError("Configuration is not loaded. Call col.config.load_config(path).")
     return ctx.config.require_item(f"io.{kind}", resource_id)
 
 
 def get_backend(kind: str, resource_id: int) -> Any:  # noqa: ANN401
-    ctx = require_context()
+    ctx = get_context()
     key = _cache_key(kind, resource_id)
     cfg = get_config(kind, resource_id)
-    driver = str(cfg.get("driver") or "stub").lower()
+    driver = str(cfg.get("driver") or "").lower() or "unspecified"
 
     def _open() -> Any:  # noqa: ANN401
         from colosseum_equipment.io.backends.factory import open_backend
@@ -44,5 +44,5 @@ def get_backend(kind: str, resource_id: int) -> Any:  # noqa: ANN401
 
 
 def close_all() -> None:
-    ctx = require_context()
+    ctx = get_context()
     close_cached_resources(ctx.resource_cache, (("io:backend:",),), logger=_logger)

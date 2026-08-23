@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import csv
 
-import pytest
-
-from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.vna.generic import GenericVna
 from colosseum_equipment.instruments.vna.rohde_znb import RohdeZnbVna
@@ -47,10 +44,20 @@ def test_rohde_vna_channel_prefixed_if_bw() -> None:
     assert transport.written == ["SENS1:BWID:RES 1000.000000"]
 
 
-def test_anritsu_vna_new_methods_raise() -> None:
-    inst = build_instrument("vna", 1, {"model": "anritsu-541xx", "frequency_unit": "GHz"}, RfStubTransport())
-    with pytest.raises(EquipmentCapabilityError, match="toggle_display"):
-        inst.toggle_display(True)
+def test_generic_vna_measure_s11_magnitude() -> None:
+    transport = RfStubTransport(
+        {
+            "*OPC?": "1",
+            "CALC:PAR1:DATA:FDATA?": "-20.0,-12.5,-18.0",
+        }
+    )
+    inst = build_instrument("vna", 1, {"model": "generic"}, transport)
+    assert inst.measure_s11_magnitude(trace=1) == -12.5
+    assert transport.written == [
+        "CALC:PAR1:DEF S11",
+        "CALC:PAR1:FORM MLOG",
+        "INIT:IMM",
+    ]
 
 
 def test_save_trace_data_csv(unit_runtime_context) -> None:

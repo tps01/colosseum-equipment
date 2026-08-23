@@ -6,7 +6,6 @@ from colosseum_equipment.instruments._text_protocol import parse_adaura_status_c
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.oscope.tek_t3dso2000 import _seconds_to_tdiv
 from colosseum_equipment.transports.base import Transport
-from colosseum_equipment.transports.null_transport import NullTransport
 
 
 class _MockTransport(Transport):
@@ -73,25 +72,4 @@ def test_anritsu_frequency_commands() -> None:
     inst.set_stop_frequency(12.0e9)
     assert any("ST 8.4" in w for w in transport.writes)
     assert any("SP 12" in w for w in transport.writes)
-    inst.close()
-
-
-@pytest.mark.parametrize(
-    "kind,model",
-    [
-        ("eload", "itech-it8600"),
-        ("eload", "chroma-8600"),
-        ("eload", "agilent-6050"),
-        ("freqcounter", "keysight-53220a"),
-        ("freqcounter", "tektronix-fca3000"),
-        ("oscope", "tektronix-mdo4000"),
-        ("pwrmeter", "keysight-u2001a"),
-        ("rfswitch", "minicircuits-rc"),
-        ("vna", "tektronix-ttr500"),
-        ("vna", "rohde-znb"),
-        ("vna", "anritsu-541xx"),
-    ],
-)
-def test_vendor_model_builds(kind: str, model: str) -> None:
-    inst = build_instrument(kind, 1, {"model": model}, NullTransport())
     inst.close()

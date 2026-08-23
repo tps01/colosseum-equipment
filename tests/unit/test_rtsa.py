@@ -9,10 +9,62 @@ import numpy as np
 from scipy.io import loadmat
 
 from colosseum_equipment.instruments.factory import build_instrument
+from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
 from colosseum_equipment.instruments.rtsa.iq_export import write_iq_mat
 from colosseum_equipment.instruments.rtsa.tektronix_rsa5100b import TektronixRSA5100BRtsa
 
 from tests.support.stubs import RfStubTransport
+
+
+def test_generic_rtsa_control_commands_write_scpi() -> None:
+    transport = RfStubTransport({"*OPC?": "1", "TRAC:IQ:POIN?": "1024"})
+    inst = build_instrument(
+        "rtsa",
+        1,
+        {"model": "generic", "center_freq": 2.5e9, "span": 20e6, "rbw": 100e3},
+        transport,
+    )
+    assert isinstance(inst, GenericRtsa)
+
+    inst.set_acq_time(0.001)
+    inst.set_continuous_run(False)
+    inst.set_num_samples(1024)
+    inst.set_trigger_source("EXT")
+    inst.set_trigger_level(-20.0)
+    inst.set_trigger_position(0.0)
+    inst.run()
+    assert inst.get_num_samples() == 1024
+
+    assert transport.written == [
+        "FREQ:CENT 2500000000.000000",
+        "FREQ:SPAN 20000000.000000",
+        "BAND:RES 100000.000000",
+        "SWE:TIME 0.001000000",
+        "INIT:CONT OFF",
+        "TRAC:IQ:POIN 1024",
+        "TRIG:SOUR EXT",
+        "TRIG:LEV -20.000",
+        "TRIG:POS 0.000",
+        "INIT:IMM",
+    ]
+
+
+def test_generic_rtsa_save_iq_data(unit_runtime_context) -> None:
+    _ = unit_runtime_context
+    transport = RfStubTransport(
+        {
+            "*OPC?": "1",
+            "FREQ:CENT?": "1000000000.0",
+            "FREQ:SPAN?": "10000000.0",
+            "TRAC:IQ:POIN?": "512",
+            "__raw__": b"#14dead",
+        }
+    )
+    inst = build_instrument("rtsa", 1, {"model": "generic"}, transport)
+    path = inst.save_IQ_data("captures/generic_iq.bin", file_format="bin")
+    assert path.exists()
+    assert path.read_bytes() == b"dead"
+    assert "TRAC:IQ:DATA?" in transport.written
 
 
 def test_tek_rtsa_setters_write_scpi() -> None:

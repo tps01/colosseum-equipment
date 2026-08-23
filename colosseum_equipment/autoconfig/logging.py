@@ -7,13 +7,20 @@ from colosseum.logging import get_logger
 
 from .discovery import AutoconfigResult
 
-_logger = get_logger("colosseum.config")
+_logger = get_logger("colosseum.equipment")
 
 
 def log_autoconfig(ctx: RuntimeContext, result: AutoconfigResult) -> None:
     """Emit INFO/WARNING lines describing autoconfig assignments and skips."""
     if ctx.logger is None:
         return
+    _logger.debug(
+        "Autoconfig scanned=%s assigned=%s blacklisted=%s skipped=%s",
+        result.scanned_count,
+        len(result.assignments),
+        len(result.blacklisted),
+        len(result.skipped),
+    )
     logger = ctx.logger
     logger.info("Autoconfig source: %s", ctx.config_path or "(autoconfig)")
     logger.info("Autoconfig scanned %d VISA INSTR resource(s)", result.scanned_count)

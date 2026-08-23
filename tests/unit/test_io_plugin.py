@@ -14,7 +14,7 @@ def test_io_write_pin_without_config_records_command_error(io_runtime_context: R
     assert ctx.result_aggregator.overall_pass() is False
 
 
-def test_io_write_pin_stub_driver_records_command_error(
+def test_io_write_pin_without_resource_records_command_error(
     io_runtime_context: RuntimeContext,
     io_bench,
 ) -> None:
@@ -30,7 +30,7 @@ def test_io_write_pin_stub_driver_records_command_error(
     assert col.io.dio.write_pin(dio_id=1, line=0, value=True) is None
     row = ctx.db.fetch_table_rows("commands")[-1]
     assert row["status"] == "ERROR"
-    assert "NI 6501" in (row["message"] or "")
+    assert "requires resource=" in (row["message"] or "")
 
 
 def test_io_dio_sim_read_write_port(io_runtime_context: RuntimeContext, io_bench) -> None:
@@ -88,3 +88,32 @@ def test_io_connections_close_all(io_runtime_context: RuntimeContext, io_bench) 
     assert "io:backend:dio:1" in ctx.resource_cache
     close_all()
     assert "io:backend:dio:1" not in ctx.resource_cache
+
+
+def test_io_dio_scpi_fallback_write_read(
+    io_runtime_context: RuntimeContext,
+    io_bench,
+    monkeypatch,
+) -> None:
+    from tests.support.stubs import RfStubTransport
+
+    _ = io_runtime_context
+    transport = RfStubTransport({"SENS:DIG:DATA?": "10"})
+    monkeypatch.setattr(
+        "colosseum_equipment.io.backends.scpi.dio.open_transport",
+        lambda *_args, **_kwargs: transport,
+    )
+    load_config(
+        io_bench(
+            """
+            [[io.dio]]
+            dio_id = 1
+            resource = "TCPIP0::127.0.0.1::inst0::INSTR"
+            direction = 255
+            """,
+        )
+    )
+    col.io.dio.write_port(dio_id=1, value=0b1010)
+    assert col.io.dio.read_port(dio_id=1, key="scpi_port") == 10
+    assert "DIG:DIR 255" in transport.written
+    assert "SOUR:DIG:DATA 10" in transport.written
