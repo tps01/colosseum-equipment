@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import pytest
+
 import colosseum as col
-from colosseum.config import load_config
+from colosseum.config import ConfigError, load_config
 from colosseum.context import RuntimeContext
 from colosseum_equipment.connections import close_all
+from colosseum_equipment.io.exceptions import IoConfigError
 
 
 def test_io_write_pin_without_config_records_command_error(io_runtime_context: RuntimeContext) -> None:
     ctx = io_runtime_context
-    assert col.io.dio.write_pin(dio_id=1, line=0, value=True) is None
+    with pytest.raises(ConfigError, match="Configuration is not loaded"):
+        col.io.dio.write_pin(dio_id=1, line=0, value=True)
     row = ctx.db.fetch_table_rows("commands")[-1]
     assert row["status"] == "ERROR"
     assert ctx.result_aggregator.overall_pass() is False
@@ -27,7 +31,8 @@ def test_io_write_pin_without_resource_records_command_error(
             """,
         )
     )
-    assert col.io.dio.write_pin(dio_id=1, line=0, value=True) is None
+    with pytest.raises(IoConfigError, match="requires resource="):
+        col.io.dio.write_pin(dio_id=1, line=0, value=True)
     row = ctx.db.fetch_table_rows("commands")[-1]
     assert row["status"] == "ERROR"
     assert "requires resource=" in (row["message"] or "")
