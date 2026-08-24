@@ -9,7 +9,9 @@ from colosseum.docstrings import sphinx_param as _sphinx_param
 def _equipment_raises() -> str:
     return (
         ":raises EquipmentConnectionError: Transport or instrument connection failed.\n"
-        ":raises EquipmentCapabilityError: Operation not supported by the configured model."
+        ":raises EquipmentCapabilityError: Operation not supported by the configured model.\n\n"
+        "A raised exception is recorded as a command ERROR and aborts remaining script "
+        "steps unless ``optional=True``."
     )
 
 
