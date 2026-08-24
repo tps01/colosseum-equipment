@@ -1,1 +1,83 @@
-[build-system]requires = ["setuptools>=77", "wheel"]build-backend = "setuptools.build_meta"[project]name = "colosseum-equipment"version = "0.1.9"description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"readme = "README.md"requires-python = ">=3.10"license = "MIT"license-files = ["LICENSE"]dependencies = [  "colosseum-core>=0.15,<0.16",  "matplotlib>=3.7,<4",  "numpy>=1.24,<3",  "pyftdi>=0.55,<1",  "pyserial>=3.5,<4",  "pyvisa>=1.15,<2",  "pyvisa-sim>=0.7,<0.8",  "scipy>=1.10,<2",  "pytest>=8.0",  "bandit[toml]>=1.7",  "vulture>=2.11",  "ruff>=0.8",  "mypy>=1.11",  "types-pyserial",][project.entry-points."colosseum.plugins"]equipment = "colosseum_equipment:register"[tool.setuptools.packages.find]include = ["colosseum_equipment*"][tool.setuptools.package-data]colosseum_equipment = ["py.typed"][tool.pytest.ini_options]testpaths = ["tests/unit", "tests/integration"]pythonpath = ["."]markers = [    "visa_sim: exercises the PyVISA-sim backend",    "plot: exercises matplotlib plot generation (slower)",][tool.ruff]target-version = "py310"line-length = 100src = ["colosseum_equipment"][tool.ruff.lint]select = ["E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"][tool.mypy]python_version = "3.12"packages = ["colosseum_equipment"]exclude = ["tests/", "build/", "examples/"]mypy_path = [  ".deps/colosseum-core",  "../colosseum-core",]strict = truewarn_unused_ignores = trueshow_error_codes = true[[tool.mypy.overrides]]module = [  "pyftdi.*",  "scipy.*",  "numpy.*",  "matplotlib.*",  "pyvisa.*",  "pyvisa_sim.*",  "serial.*",  "tomli",  "tomllib",  "pytest",]ignore_missing_imports = true[tool.bandit]exclude_dirs = ["tests", "build", "examples", "docs"]
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "colosseum-equipment"
+version = "0.1.9"
+description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+  "colosseum-core>=0.15,<0.16",
+  "matplotlib>=3.7,<4",
+  "numpy>=1.24,<3",
+  "pyftdi>=0.55,<1",
+  "pyserial>=3.5,<4",
+  "pyvisa>=1.15,<2",
+  "pyvisa-sim>=0.7,<0.8",
+  "scipy>=1.10,<2",
+  "pytest>=8.0",
+  "bandit[toml]>=1.7",
+  "vulture>=2.11",
+  "ruff>=0.8",
+  "mypy>=1.11",
+  "types-pyserial",
+]
+
+[project.entry-points."colosseum.plugins"]
+equipment = "colosseum_equipment:register"
+
+[tool.setuptools.packages.find]
+include = ["colosseum_equipment*"]
+
+[tool.setuptools.package-data]
+colosseum_equipment = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit", "tests/integration"]
+pythonpath = ["."]
+markers = [
+    "visa_sim: exercises the PyVISA-sim backend",
+    "plot: exercises matplotlib plot generation (slower)",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["colosseum_equipment"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["colosseum_equipment"]
+exclude = ["tests/", "build/", "examples/"]
+mypy_path = [
+  ".deps/colosseum-core",
+  "../colosseum-core",
+]
+strict = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+  "pyftdi.*",
+  "scipy.*",
+  "numpy.*",
+  "matplotlib.*",
+  "pyvisa.*",
+  "pyvisa_sim.*",
+  "serial.*",
+  "tomli",
+  "tomllib",
+  "pytest",
+]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "examples", "docs"]
