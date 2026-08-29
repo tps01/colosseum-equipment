@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum.context import init_context
 from colosseum_equipment.transports.sim import SimTransport
 

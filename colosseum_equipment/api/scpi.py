@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from colosseum.decorators import command
 
 from colosseum_equipment.connections import get_transport
 from colosseum_equipment.protocols.scpi import SCPIHelper
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _KIND_ID_PARAMS: dict[str, str] = {
     "psu_id": "psu",
@@ -41,7 +43,7 @@ def _resolve_kind(**kwargs: object) -> tuple[str, int]:
         names = ", ".join(f"{name}=" for name in _KIND_ID_PARAMS)
         raise ValueError(f"Specify exactly one of {names}")
     value, kind = selected[0]
-    return kind, int(cast(int, value))
+    return kind, int(cast("int", value))
 
 
 def _scpi_helper(**instrument_ids: object) -> SCPIHelper:
@@ -50,7 +52,7 @@ def _scpi_helper(**instrument_ids: object) -> SCPIHelper:
             key: instrument_ids[key]
             for key in _KIND_ID_PARAMS
             if instrument_ids.get(key) is not None
-        }
+        },
     )
     return for_instrument(kind, equipment_id)
 
@@ -60,7 +62,7 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
         inspect.Parameter("command", inspect.Parameter.KEYWORD_ONLY, annotation=str),
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None
+                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],

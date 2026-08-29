@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from colosseum.context import RuntimeContext
+from typing import TYPE_CHECKING
+
 from colosseum.logging import get_logger
 
-from .discovery import AutoconfigResult
+if TYPE_CHECKING:
+    from colosseum.context import RuntimeContext
+
+    from .discovery import AutoconfigResult
 
 _logger = get_logger("colosseum.equipment")
 

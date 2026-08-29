@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from colosseum_equipment.instruments.dmm.generic import GenericDMM
+
 from tests.support.stubs import StubTransport
 
 

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from colosseum.output.artifacts import register_artifact, resolve_artifact_path
-
+from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
@@ -16,7 +14,11 @@ from colosseum_equipment.instruments.vna.trace_export import (
     write_trace_csv,
 )
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericVna(ScpiInstrumentMixin):
@@ -193,10 +195,6 @@ class GenericVna(ScpiInstrumentMixin):
                     len(values),
                 )
             write_trace_csv(artifact_path, frequencies, values)
-
-        register_artifact(
-            "vna_trace", artifact_path, description=f"trace {trace} ({export_format})"
-        )
 
         if display_was_enabled:
             self.toggle_display(True)

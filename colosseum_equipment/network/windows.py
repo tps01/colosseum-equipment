@@ -129,7 +129,7 @@ def list_ipv4_network_bindings() -> list[IPv4NetworkBinding]:
                                 address=str(iface.ip),
                                 network=str(iface.network.network_address),
                                 prefix=iface.network.prefixlen,
-                            )
+                            ),
                         )
                 next_unicast = addr_struct.Next
                 unicast_ptr = next_unicast if next_unicast else None

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum_equipment.api import scpi
 
 

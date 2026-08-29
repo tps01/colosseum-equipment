@@ -73,7 +73,7 @@ def measurement_doc(
     rtype: str = "float",
 ) -> str:
     params = _format_params(
-        id_param, kind, extra_params or [], include_key=True, key_domain="equipment"
+        id_param, kind, extra_params or [], include_key=True, key_domain="equipment",
     )
     return (
         f"{summary}\n\n{params}\n\n:returns: Measured {quantity}.\n"

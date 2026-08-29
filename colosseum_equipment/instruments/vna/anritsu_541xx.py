@@ -6,10 +6,12 @@ Operation context: 10410-00141 Operation Manual.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.vna.generic import GenericVna
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 # GPIB DP code -> approximate point count (541XXA display resolution)
 _DP_BY_POINTS = {

@@ -7,6 +7,7 @@ from colosseum_equipment.instruments.dmm.keysight_edu34450a import KeysightEDU34
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.psu.tdk_genesys import TdkGenesysPSU
 from colosseum_equipment.instruments.registry import registered_kinds
+
 from tests.support.stubs import StubTransport
 
 

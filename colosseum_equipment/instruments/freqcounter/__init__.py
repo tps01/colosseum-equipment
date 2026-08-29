@@ -19,5 +19,5 @@ def register_instruments() -> None:
         lambda transport, config: TekFca3000FreqCounter(transport, config),
     )
     register(
-        "freqcounter", "generic", lambda transport, config: GenericFreqCounter(transport, config)
+        "freqcounter", "generic", lambda transport, config: GenericFreqCounter(transport, config),
     )

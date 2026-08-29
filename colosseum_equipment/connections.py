@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import atexit
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum.config.loader import ConfigError
 from colosseum.context import get_context
 from colosseum.logging import get_logger
-from colosseum.resource_cache import cached_resource, close_cached_resources
 
-from colosseum_equipment.transports.base import Transport
+from colosseum_equipment._cache import cached_resource, close_cached_resources
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.equipment")
 _atexit_registered = False
@@ -41,10 +43,10 @@ def get_transport(kind: str, equipment_id: int) -> Transport:
         key,
         _open,
         on_reuse=lambda: _logger.debug(
-            "Reusing cached transport equipment.%s id=%s", kind, equipment_id
+            "Reusing cached transport equipment.%s id=%s", kind, equipment_id,
         ),
         on_open=lambda: _logger.debug(
-            "Opening transport equipment.%s id=%s driver=%s", kind, equipment_id, driver
+            "Opening transport equipment.%s id=%s driver=%s", kind, equipment_id, driver,
         ),
     )
 
@@ -66,10 +68,10 @@ def get_cached_instrument(kind: str, equipment_id: int) -> Any:  # noqa: ANN401
         key,
         _open,
         on_reuse=lambda: _logger.debug(
-            "Reusing cached instrument equipment.%s id=%s", kind, equipment_id
+            "Reusing cached instrument equipment.%s id=%s", kind, equipment_id,
         ),
         on_open=lambda: _logger.debug(
-            "Building instrument equipment.%s id=%s model=%s", kind, equipment_id, model
+            "Building instrument equipment.%s id=%s model=%s", kind, equipment_id, model,
         ),
     )
 

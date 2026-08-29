@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from colosseum_equipment.transports.factory import open_transport
 from colosseum_equipment.transports.sim import SimTransport
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from colosseum.config import load_config
 
 pytestmark = pytest.mark.visa_sim

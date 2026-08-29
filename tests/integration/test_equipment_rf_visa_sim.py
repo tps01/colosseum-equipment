@@ -6,7 +6,6 @@ import logging
 from pathlib import Path
 
 import pytest
-
 from colosseum.config import load_config
 from colosseum.context import get_context
 

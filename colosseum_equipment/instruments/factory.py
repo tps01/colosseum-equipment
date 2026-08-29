@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.registry import build_registered
-from colosseum_equipment.transports.base import Transport
 
 from . import (
     asg,
@@ -20,6 +19,9 @@ from . import (
     vna,
     vsg,
 )
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 _REGISTRATION_MODULES = (
     dmm,
@@ -44,7 +46,7 @@ def _populate_registry() -> None:
 
 
 def build_instrument(
-    kind: str, equipment_id: int, config: dict[str, Any], transport: Transport
+    kind: str, equipment_id: int, config: dict[str, Any], transport: Transport,
 ) -> object:
     model = str(config.get("model", "generic")).lower()
     try:
@@ -52,7 +54,7 @@ def build_instrument(
     except RuntimeError as exc:
         if "Unsupported equipment model" in str(exc):
             raise RuntimeError(
-                f"Unsupported equipment model `{model}` for {kind} id {equipment_id}"
+                f"Unsupported equipment model `{model}` for {kind} id {equipment_id}",
             ) from exc
         raise
 

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
 import colosseum as col
+import pytest
 from colosseum.config import ConfigError, load_config
-from colosseum.context import RuntimeContext
 from colosseum_equipment.connections import close_all
 from colosseum_equipment.io.exceptions import IoConfigError
+
+if TYPE_CHECKING:
+    from colosseum.context import RuntimeContext
 
 
 def test_io_write_pin_without_config_records_command_error(io_runtime_context: RuntimeContext) -> None:
@@ -29,7 +32,7 @@ def test_io_write_pin_without_resource_records_command_error(
             [[io.dio]]
             dio_id = 1
             """,
-        )
+        ),
     )
     with pytest.raises(IoConfigError, match="requires resource="):
         col.io.dio.write_pin(dio_id=1, line=0, value=True)
@@ -48,7 +51,7 @@ def test_io_dio_sim_read_write_port(io_runtime_context: RuntimeContext, io_bench
             port_lines = 8
             direction = 0xFF
             """,
-        )
+        ),
     )
     col.io.dio.write_port(dio_id=1, value=0b1010)
     assert col.io.dio.read_port(dio_id=1, key="port_a") == 0b1010
@@ -67,7 +70,7 @@ def test_io_dio_sim_measurement_domain_equipment(io_runtime_context: RuntimeCont
             port_lines = 8
             direction = 0xFF
             """,
-        )
+        ),
     )
     col.io.dio.write_port(dio_id=1, value=3)
     col.io.dio.read_port(dio_id=1, key="p1")
@@ -87,7 +90,7 @@ def test_io_connections_close_all(io_runtime_context: RuntimeContext, io_bench) 
             port_lines = 8
             direction = 0xFF
             """,
-        )
+        ),
     )
     col.io.dio.write_port(dio_id=1, value=1)
     assert "io:backend:dio:1" in ctx.resource_cache
@@ -116,7 +119,7 @@ def test_io_dio_scpi_fallback_write_read(
             resource = "TCPIP0::127.0.0.1::inst0::INSTR"
             direction = 255
             """,
-        )
+        ),
     )
     col.io.dio.write_port(dio_id=1, value=0b1010)
     assert col.io.dio.read_port(dio_id=1, key="scpi_port") == 10

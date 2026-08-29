@@ -6,10 +6,12 @@ Manual: T3DSO1000/2000 Programming Guide — ``TDIV``, ``PACU``, ``PAVA?``, ``AR
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.oscope.generic import GenericOscope
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 def _seconds_to_tdiv(seconds_per_div: float) -> str:

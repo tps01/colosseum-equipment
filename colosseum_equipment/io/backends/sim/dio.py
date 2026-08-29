@@ -70,7 +70,7 @@ class SimDioBackend:
         bit = 1 << line
         if line < 0 or line >= self._mask.bit_length():
             raise IoConfigError(
-                f"line {line} out of range for port_lines={self._mask.bit_length()}"
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
             )
         if not (self._direction & bit):
             raise IoConfigError(f"line {line} is not configured as output")
@@ -85,7 +85,7 @@ class SimDioBackend:
         bit = 1 << line
         if line < 0 or line >= self._mask.bit_length():
             raise IoConfigError(
-                f"line {line} out of range for port_lines={self._mask.bit_length()}"
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
             )
         return bool(self.read_port() & bit)
 

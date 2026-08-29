@@ -93,5 +93,5 @@ def measure_power(*, pwrmeter_id: int, key: str) -> float:
 
 
 verify_power = tolerance_verifier(
-    "measure_power", name="verify_power", default_tolerance=0.5, unit="dBm"
+    "measure_power", name="verify_power", default_tolerance=0.5, unit="dBm",
 )

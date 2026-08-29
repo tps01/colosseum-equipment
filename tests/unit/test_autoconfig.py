@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import colosseum.context as context_module
 import pytest
@@ -11,6 +11,9 @@ from colosseum.context import get_context
 from colosseum_equipment.api._autoconfig import autoconfig
 from colosseum_equipment.autoconfig.discovery import discover_equipment_config
 from colosseum_equipment.network import IPv4NetworkBinding
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class _FakeInstrument:
@@ -51,7 +54,7 @@ def test_discover_assigns_ids_by_connection_order() -> None:
             "GPIB0::1::INSTR": "TDK-Lambda,GENESYS-28-80,1,1",
             "TCPIP0::192.168.1.29::INSTR": "TDK-Lambda,GENESYS-28-80,2,1",
             "GPIB0::2::INSTR": "Keysight Technologies,EDU34450A,1,1",
-        }
+        },
     )
     result = discover_equipment_config(resource_manager=rm, timeout=1.0)
     psu_rows = result.raw["equipment"]["psu"]
@@ -69,7 +72,7 @@ def test_discover_blacklist_excludes_tcpip_subnet() -> None:
         {
             "TCPIP0::10.0.0.42::INSTR": "TDK-Lambda,GENESYS-28-80,1,1",
             "GPIB0::1::INSTR": "TDK-Lambda,GENESYS-28-80,2,1",
-        }
+        },
     )
     bindings = [
         IPv4NetworkBinding(
@@ -77,7 +80,7 @@ def test_discover_blacklist_excludes_tcpip_subnet() -> None:
             address="10.0.0.5",
             network="10.0.0.0",
             prefix=24,
-        )
+        ),
     ]
     result = discover_equipment_config(
         resource_manager=rm,
@@ -101,7 +104,7 @@ def test_autoconfig_populates_config_store(monkeypatch: pytest.MonkeyPatch) -> N
 
     context_module._ACTIVE_CONTEXT = None
     rm = _FakeResourceManager(
-        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"}
+        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"},
     )
 
     def _fake_discover(**kwargs: object) -> object:
@@ -120,19 +123,18 @@ def test_autoconfig_populates_config_store(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_autoconfig_export_writes_toml(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import colosseum_equipment.api._autoconfig as autoconfig_module
-
     from colosseum.config.toml_relaxed import read_relaxed_toml
-    from colosseum.context import init_context, get_context
-    from colosseum.output import ensure_output_dir
+    from colosseum.context import get_context, init_context
+    from colosseum.runner.paths import ensure_output_dir
 
     context_module._ACTIVE_CONTEXT = None
     init_context(test_case_name="export_test")
     ensure_output_dir(get_context())
     rm = _FakeResourceManager(
-        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"}
+        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"},
     )
 
     def _fake_discover(**kwargs: object) -> object:

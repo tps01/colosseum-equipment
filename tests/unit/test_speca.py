@@ -5,12 +5,11 @@ from __future__ import annotations
 import csv
 
 import pytest
-
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.speca.bandwidth import measure_bandwidth_hz
 from colosseum_equipment.instruments.speca.generic import GenericSpecA
 from colosseum_equipment.instruments.speca.keysight_e4407b import KeysightE4407BSpecA
-from colosseum_equipment.instruments.speca.trace_csv import frequency_axis, write_trace_csv
+from colosseum_equipment.instruments.speca.trace_csv import frequency_axis
 
 from tests.support.stubs import RfStubTransport
 
@@ -89,7 +88,7 @@ def test_save_trace_data_csv_only(unit_runtime_context) -> None:
             "FREQ:CENT?": "1500000000.0",
             "FREQ:SPAN?": "200000000.0",
             "TRAC:DATA? TRACE1": "-10.0,-20.0,-30.0",
-        }
+        },
     )
     inst = build_instrument("speca", 1, {"model": "generic"}, transport)
     csv_path = inst.save_trace_data("traces/speca.csv", save_plot=False)
@@ -111,7 +110,7 @@ def test_save_trace_data_with_plot(unit_runtime_context) -> None:
             "FREQ:CENT?": "1500000000.0",
             "FREQ:SPAN?": "200000000.0",
             "TRAC:DATA? TRACE1": "-10.0,-20.0,-30.0",
-        }
+        },
     )
     inst = build_instrument("speca", 1, {"model": "generic"}, transport)
     csv_path = inst.save_trace_data("traces/speca.csv", save_plot=True)

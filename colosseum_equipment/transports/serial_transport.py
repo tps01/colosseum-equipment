@@ -20,7 +20,8 @@ class SerialTransport(Transport):
     def read(self) -> str:
         try:
             raw = self._ser.readline()
-            return raw.decode("ascii", errors="replace").strip()
+            decoded = raw.decode("ascii", errors="replace").strip()
+            return str(decoded)
         except Exception as exc:
             raise EquipmentTimeoutError(str(exc)) from exc
 

@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import tarfile
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.io import loadmat
-
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
 from colosseum_equipment.instruments.rtsa.iq_export import write_iq_mat
 from colosseum_equipment.instruments.rtsa.tektronix_rsa5100b import TektronixRSA5100BRtsa
+from scipy.io import loadmat
 
 from tests.support.stubs import RfStubTransport
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_generic_rtsa_control_commands_write_scpi() -> None:
@@ -58,7 +60,7 @@ def test_generic_rtsa_save_iq_data(unit_runtime_context) -> None:
             "FREQ:SPAN?": "10000000.0",
             "TRAC:IQ:POIN?": "512",
             "__raw__": b"#14dead",
-        }
+        },
     )
     inst = build_instrument("rtsa", 1, {"model": "generic"}, transport)
     path = inst.save_IQ_data("captures/generic_iq.bin", file_format="bin")
@@ -92,7 +94,7 @@ def test_tek_save_iq_data_iq_tar(unit_runtime_context) -> None:
             "DISP:SPEC:FREQ:SCAL?": "10000000.0",
             "SENS:SPEC:ACQ:POIN?": "512",
             "__raw__": b"#14dead",
-        }
+        },
     )
     inst = build_instrument("rtsa", 1, {"model": "tektronix-rsa5100b"}, transport)
     path = inst.save_IQ_data("captures/iq.iq.tar", file_format="iq.tar")

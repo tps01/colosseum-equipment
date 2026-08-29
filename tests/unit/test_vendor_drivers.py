@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum_equipment.instruments._text_protocol import parse_adaura_status_channel
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.oscope.tek_t3dso2000 import _seconds_to_tdiv
