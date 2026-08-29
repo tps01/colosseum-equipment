@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Union
+from typing import TYPE_CHECKING
 
-from colosseum.database.manager import DatabaseManager
+if TYPE_CHECKING:
+    from colosseum.database.manager import DatabaseManager
 
 UNIT_TEST_DB_URI = "file:colosseum_unit_tests?mode=memory&cache=shared"
 _UNIT_DB_TABLES = ("measurements", "verifications", "events", "artifacts", "run_metadata")
@@ -18,14 +19,14 @@ def connect_unit_test_db(manager: DatabaseManager, uri: str = UNIT_TEST_DB_URI) 
     manager.defer_commits = True
 
 
-def truncate_unit_test_db(db: Union[sqlite3.Connection, str] = UNIT_TEST_DB_URI) -> None:
+def truncate_unit_test_db(db: sqlite3.Connection | str = UNIT_TEST_DB_URI) -> None:
     close_when_done = isinstance(db, str)
     conn = sqlite3.connect(db, uri=True) if close_when_done else db
     try:
         tables = {
             row[0]
             for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
+                "SELECT name FROM sqlite_master WHERE type='table'",
             ).fetchall()
         }
         for table in _UNIT_DB_TABLES:

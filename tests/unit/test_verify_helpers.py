@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum.decorators import measurement
 from colosseum_equipment.api._verify import tolerance_verifier, verify_tolerance
 

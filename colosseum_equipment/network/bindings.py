@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass(frozen=True)
@@ -29,7 +32,7 @@ def list_ipv4_network_bindings() -> list[IPv4NetworkBinding]:
 
 
 def bindings_for_blacklist_entry(
-    entry: str, bindings: Sequence[IPv4NetworkBinding]
+    entry: str, bindings: Sequence[IPv4NetworkBinding],
 ) -> list[IPv4NetworkBinding]:
     """Resolve a blacklist entry (interface name or local IPv4) to matching bindings."""
     entry = entry.strip()

@@ -19,7 +19,7 @@ class FtdiFt232hDioBackend:
     def __init__(self, *, resource: str, port_lines: int, direction: int) -> None:
         if not resource:
             raise IoConfigError(
-                "ftdi-ft232h requires resource= (pyftdi URL, e.g. ftdi://ftdi:232h/1)"
+                "ftdi-ft232h requires resource= (pyftdi URL, e.g. ftdi://ftdi:232h/1)",
             )
         self._mask = _line_mask(port_lines)
         self._direction = direction & self._mask

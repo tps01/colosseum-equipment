@@ -1,6 +1,7 @@
 # Colosseum Equipment
 
-First-party Colosseum plugin providing `col.equipment.*` and `col.io.*` (instruments, transports, DIO).
+First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
+(instruments, transports, DIO).
 
 ## Install
 
@@ -8,7 +9,8 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*` (instrum
 pip install colosseum-equipment
 ```
 
-The default installation includes VISA, serial, FTDI, plotting, PyVISA-sim, and IQ MAT export support.
+The default installation includes VISA, serial, FTDI, plotting, PyVISA-sim, and
+IQ MAT export support.
 
 ## Usage
 

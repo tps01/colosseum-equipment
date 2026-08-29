@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from colosseum.context import get_context
 from colosseum.decorators import (
@@ -15,6 +14,9 @@ from colosseum.decorators import (
 from colosseum.decorators._common import command_id_for_module
 
 from colosseum_equipment.api._docstrings import tolerance_verify_doc
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def verify_tolerance(
@@ -82,6 +84,6 @@ def tolerance_verifier(
     verify.__module__ = str(caller_module)
     verify.__doc__ = tolerance_verify_doc(source_command, unit=unit)
     return cast(
-        Callable[..., VerificationResult],
+        "Callable[..., VerificationResult]",
         verification(verify),
     )

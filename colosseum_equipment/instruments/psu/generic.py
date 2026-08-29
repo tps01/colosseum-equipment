@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentTimeoutError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.protocols.scpi import SCPIHelper
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericPSU(ScpiInstrumentMixin):
@@ -37,7 +39,7 @@ class GenericPSU(ScpiInstrumentMixin):
         return bool(int(float(self._scpi.query("OUTP?"))))
 
     def wait_for_current(
-        self, current: float, *, timeout_s: float, tolerance: float = 0.01
+        self, current: float, *, timeout_s: float, tolerance: float = 0.01,
     ) -> None:
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
@@ -46,5 +48,5 @@ class GenericPSU(ScpiInstrumentMixin):
                 return
             time.sleep(0.05)
         raise EquipmentTimeoutError(
-            f"PSU did not reach {current} A within {timeout_s}s (last reading {measured} A)"
+            f"PSU did not reach {current} A within {timeout_s}s (last reading {measured} A)",
         )

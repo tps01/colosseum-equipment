@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import ipaddress
-from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from colosseum_equipment.network import (
     IPv4NetworkBinding,
@@ -13,6 +13,9 @@ from colosseum_equipment.network import (
 )
 
 from .sort import is_tcpip_resource, parse_tcpip_host_ip
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass(frozen=True)
@@ -63,7 +66,7 @@ def resolve_blacklist(
                     address=binding.address,
                     network=network,
                     label=entry,
-                )
+                ),
             )
     return BlacklistResolution(blocked=tuple(blocked), unresolved_entries=tuple(unresolved))
 

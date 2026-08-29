@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.protocols.scpi import SCPIHelper
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericDMM(ScpiInstrumentMixin):

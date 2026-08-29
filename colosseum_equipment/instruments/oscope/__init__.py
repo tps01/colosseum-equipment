@@ -9,7 +9,7 @@ from .tek_t3dso2000 import TekT3dso2000Oscope
 
 def register_instruments() -> None:
     register(
-        "oscope", "tektronix-mdo4000", lambda transport, config: TekMdo4000Oscope(transport, config)
+        "oscope", "tektronix-mdo4000", lambda transport, config: TekMdo4000Oscope(transport, config),
     )
     register(
         "oscope",

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum_equipment.instruments.registry import build_registered, registered_kinds
+
 from tests.support.stubs import StubTransport
 
 

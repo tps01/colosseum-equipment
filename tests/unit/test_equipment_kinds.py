@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from colosseum_equipment.instruments.factory import build_instrument
+
 from tests.support.stubs import RfStubTransport
 
 

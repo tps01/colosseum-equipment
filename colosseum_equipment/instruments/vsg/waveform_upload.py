@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import ftplib  # nosec B402  # lab VSG waveform upload; bench config supplies FTP host
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 _FTP_WAVEFORM_DIR = "/USER/BBG1/WAVEFORM"
 
@@ -31,14 +33,14 @@ def _resolve_ftp_host(config: dict[str, Any]) -> str:
     if host:
         return host
     raise EquipmentResponseError(
-        "FTP waveform upload requires TCPIP resource or equipment.vsg ftp_host in bench config"
+        "FTP waveform upload requires TCPIP resource or equipment.vsg ftp_host in bench config",
     )
 
 
 def _iq_sample_count(payload: bytes) -> int:
     if len(payload) < 4 or len(payload) % 4 != 0:
         raise EquipmentResponseError(
-            "IQ waveform .bin payload must contain whole 16-bit I/Q sample pairs"
+            "IQ waveform .bin payload must contain whole 16-bit I/Q sample pairs",
         )
     return len(payload) // 4
 
@@ -59,7 +61,7 @@ def _remote_basename(remote_name: str, local_path: Path) -> str:
 
 
 def _upload_via_ftp(
-    config: dict[str, Any], local_path: Path, remote_name: str, payload: bytes
+    config: dict[str, Any], local_path: Path, remote_name: str, payload: bytes,
 ) -> None:
     host = _resolve_ftp_host(config)
     user = str(config.get("ftp_user", "anonymous"))

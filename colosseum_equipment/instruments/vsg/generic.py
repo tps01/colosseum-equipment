@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.vsg.waveform_upload import upload_waveform_file
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericVSG(ScpiInstrumentMixin):

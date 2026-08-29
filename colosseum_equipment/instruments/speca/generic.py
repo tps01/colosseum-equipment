@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from colosseum.output.artifacts import register_artifact, resolve_artifact_path
-
+from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.instruments.speca.bandwidth import measure_bandwidth_hz
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
@@ -15,7 +14,9 @@ from colosseum_equipment.instruments.speca.trace_csv import (
 )
 from colosseum_equipment.instruments.speca.trace_plot import read_trace_csv, write_trace_plot
 from colosseum_equipment.protocols.scpi import SCPIHelper, prepare_fast_sweep, wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericSpecA:
@@ -125,13 +126,11 @@ class GenericSpecA:
             span_hz=span if include_frequency else None,
             include_frequency=include_frequency,
         )
-        register_artifact("speca_trace", artifact_path, description=f"trace {trace}")
         self._last_trace_path = artifact_path
 
         if save_plot or plot_path is not None:
             png_path = resolve_artifact_path(plot_path or str(Path(path).with_suffix(".png")))
             write_trace_plot(artifact_path, png_path)
-            register_artifact("speca_trace_plot", png_path, description=f"trace {trace} plot")
 
         return artifact_path
 
@@ -206,7 +205,6 @@ class GenericSpecA:
         artifact_path = resolve_artifact_path(path)
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         artifact_path.write_bytes(payload)
-        register_artifact("speca_screenshot", artifact_path, description="instrument screenshot")
         return artifact_path
 
     def close(self) -> None:

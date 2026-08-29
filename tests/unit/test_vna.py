@@ -49,7 +49,7 @@ def test_generic_vna_measure_s11_magnitude() -> None:
         {
             "*OPC?": "1",
             "CALC:PAR1:DATA:FDATA?": "-20.0,-12.5,-18.0",
-        }
+        },
     )
     inst = build_instrument("vna", 1, {"model": "generic"}, transport)
     assert inst.measure_s11_magnitude(trace=1) == -12.5
@@ -66,7 +66,7 @@ def test_save_trace_data_csv(unit_runtime_context) -> None:
             "*OPC?": "1",
             "SENS:FREQ:DATA?": "1000000000,2000000000",
             "CALC:PAR1:DATA:FDATA?": "-10.5,-12.0",
-        }
+        },
     )
     inst = build_instrument("vna", 1, {"model": "generic"}, transport)
     path = inst.save_trace_data("traces/vna.csv", trace=1, file_format="csv")
@@ -84,7 +84,7 @@ def test_save_trace_data_s2p(unit_runtime_context) -> None:
             "*OPC?": "1",
             "SENS:FREQ:DATA?": "1000000000,2000000000",
             "CALC:PAR1:DATA:SDATA?": "1.0,0.0,0.5,0.1",
-        }
+        },
     )
     inst = build_instrument("vna", 1, {"model": "generic"}, transport)
     path = inst.save_trace_data("traces/vna.s2p", trace=1, file_format="s2p", parameter="S11")

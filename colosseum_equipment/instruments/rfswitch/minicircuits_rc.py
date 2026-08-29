@@ -5,9 +5,10 @@ Manual: Prog_Manual-2-Switch — ``SET[switch]=[state]``, ``SETP=[states]``, ``S
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from colosseum_equipment.transports.base import Transport
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class MiniCircuitsRcSwitch:

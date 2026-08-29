@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.waveform_upload import upload_waveform_file
 from colosseum_equipment.protocols.scpi import wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class KeysightESGVSG(GenericVSG):
@@ -68,7 +70,7 @@ class KeysightESGVSG(GenericVSG):
     def set_multicarrier(self, num_tones: int, spacing_hz: float) -> None:
         self._require_vector("set_multicarrier")
         self._scpi.write(
-            f"RAD:DMOD:ARB:SETup:MCARrier:TABLe INIT,CUSTom,{int(num_tones)},{spacing_hz:.6f}"
+            f"RAD:DMOD:ARB:SETup:MCARrier:TABLe INIT,CUSTom,{int(num_tones)},{spacing_hz:.6f}",
         )
 
     def toggle_multitone(self, enabled: bool) -> None:

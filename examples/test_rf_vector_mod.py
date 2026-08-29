@@ -15,7 +15,7 @@ from pathlib import Path
 import colosseum as col
 
 _CONFIG = Path(__file__).resolve().parent / "configs" / os.environ.get(
-    "COLOSSEUM_BENCH_CONFIG", "bench.rf.visa-sim.toml"
+    "COLOSSEUM_BENCH_CONFIG", "bench.rf.visa-sim.toml",
 )
 _WAVEFORM = Path(__file__).resolve().parent / "fixtures" / "rf" / "stub_iq.bin"
 

@@ -57,6 +57,6 @@ def list_ipv4_network_bindings() -> list[IPv4NetworkBinding]:
                 address=str(iface.ip),
                 network=str(iface.network.network_address),
                 prefix=iface.network.prefixlen,
-            )
+            ),
         )
     return bindings

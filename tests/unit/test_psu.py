@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum_equipment.exceptions import EquipmentTimeoutError
 from colosseum_equipment.instruments.factory import build_instrument
 

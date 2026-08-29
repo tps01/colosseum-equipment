@@ -293,7 +293,7 @@ def measure_trace_power_at_frequency(
     """
     _ = key
     power_dbm, _actual_hz = get_cached_instrument(
-        "speca", speca_id
+        "speca", speca_id,
     ).measure_trace_power_at_frequency(
         frequency_hz,
         trace_path=trace_path,
@@ -395,7 +395,7 @@ def measure_bw(
             smoothing_order=smoothing_order,
             trace=trace,
             trace_path=trace_path,
-        )
+        ),
     )
 
 

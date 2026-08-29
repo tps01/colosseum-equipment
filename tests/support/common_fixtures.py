@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 import colosseum.context as context_module
+import pytest
 
 from tests.support.helpers import BENCH_SIM, FIXTURES, REPO_ROOT
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(autouse=True)

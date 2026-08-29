@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentResponseError
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.equipment")
 

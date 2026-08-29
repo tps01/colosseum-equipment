@@ -18,21 +18,21 @@ def map_visa_exception(exc: BaseException, *, resource: str) -> EquipmentError:
     """Return the equipment exception to raise for a PyVISA (or wrapper) failure."""
     if isinstance(exc, pyvisa.errors.InvalidSession):
         return EquipmentConnectionError(
-            f"VISA session for `{resource}` is not open (already closed or never opened): {exc}"
+            f"VISA session for `{resource}` is not open (already closed or never opened): {exc}",
         )
 
     if isinstance(exc, pyvisa.errors.VisaIOError):
         code = getattr(exc, "error_code", None)
         if code == constants.VI_ERROR_RSRC_LOCKED:
             return EquipmentConnectionError(
-                f"VISA resource `{resource}` is locked by another session: {exc}"
+                f"VISA resource `{resource}` is locked by another session: {exc}",
             )
         if code == constants.VI_ERROR_TMO:
             return EquipmentTimeoutError(f"VISA timeout on `{resource}`: {exc}")
         message = str(exc).lower()
         if "locked" in message or "resource busy" in message:
             return EquipmentConnectionError(
-                f"VISA resource `{resource}` is in use or locked: {exc}"
+                f"VISA resource `{resource}` is in use or locked: {exc}",
             )
         return EquipmentConnectionError(f"VISA I/O error on `{resource}`: {exc}")
 

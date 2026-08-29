@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import csv
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def parse_vna_trace_values(response: str) -> list[float]:
