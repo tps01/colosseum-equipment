@@ -42,7 +42,7 @@ def register(registry: PluginRegistry) -> None:
 
 
 def _visa_section(
-    section: str, id_field: str, *, extra_optional: tuple[str, ...] = ()
+    section: str, id_field: str, *, extra_optional: tuple[str, ...] = (),
 ) -> ConfigSectionSpec:
     return ConfigSectionSpec(
         section,

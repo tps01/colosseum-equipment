@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from colosseum.context import RuntimeContext
 from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.rtsa.tektronix_rsa5100b import TektronixRSA5100BRtsa
@@ -13,7 +12,13 @@ from colosseum_equipment.instruments.speca.keysight_e4407b import KeysightE4407B
 from colosseum_equipment.instruments.vna.anritsu_541xx import Anritsu541xxVna
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
+
 from tests.support.stubs import RfStubTransport
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from colosseum.context import RuntimeContext
 
 
 def test_keysight_vsg_model() -> None:
@@ -69,7 +74,7 @@ def test_tek_save_iq_data_writes_artifact(unit_runtime_context: RuntimeContext) 
             "DISP:SPEC:FREQ:SCAL?": "10000000.0",
             "SENS:SPEC:ACQ:POIN?": "1024",
             "__raw__": b"#14abcd",
-        }
+        },
     )
     inst = build_instrument("rtsa", 1, {"model": "tektronix-rsa5100b"}, transport)
     path = inst.save_IQ_data("captures/iq.bin", file_format="bin")

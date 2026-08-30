@@ -62,7 +62,7 @@ class VISATransport(Transport):
             if backend == "sim":
                 if not sim_definition:
                     raise EquipmentConnectionError(
-                        "visa_backend=sim requires `sim_definition` in bench config"
+                        "visa_backend=sim requires `sim_definition` in bench config",
                     )
                 sim_path = resolve_sim_definition(sim_definition)
                 self._rm = pyvisa.ResourceManager(f"{sim_path}@sim")
@@ -86,7 +86,7 @@ class VISATransport(Transport):
         except Exception as exc:
             mapped = map_visa_exception(exc, resource=resource)
             raise EquipmentConnectionError(
-                f"Failed to open VISA resource `{resource}`: {mapped}"
+                f"Failed to open VISA resource `{resource}`: {mapped}",
             ) from exc
         _logger.debug(
             "VISA resource open: %s backend=%s timeout=%ss",

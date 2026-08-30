@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from colosseum_equipment.protocols.scpi import SCPIHelper
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from colosseum_equipment.protocols.scpi import SCPIHelper
 
 
 class ScpiInstrumentMixin:

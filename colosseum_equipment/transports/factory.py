@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
-from colosseum_equipment.transports.base import Transport
 from colosseum_equipment.transports.serial_transport import SerialTransport
 from colosseum_equipment.transports.sim import SimTransport
 from colosseum_equipment.transports.visa import VISATransport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.equipment")
 
@@ -54,5 +56,5 @@ def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Tran
         baudrate = int(config.get("baudrate", 115200))
         return SerialTransport(str(port), baudrate=baudrate, timeout=timeout)
     raise EquipmentConnectionError(
-        f"Unsupported driver `{driver}` for equipment.{kind} id {equipment_id}"
+        f"Unsupported driver `{driver}` for equipment.{kind} id {equipment_id}",
     )

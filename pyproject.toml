@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.1.9"
+version = "0.1.11"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-  "colosseum-core>=0.15,<0.16",
+  "colosseum-core>=0.16.1,<0.17",
   "matplotlib>=3.7,<4",
   "numpy>=1.24,<3",
   "pyftdi>=0.55,<1",
@@ -50,7 +50,18 @@ line-length = 100
 src = ["colosseum_equipment"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
+select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "ARG", "FBT", "E501"]
+"colosseum_equipment/instruments/**" = ["N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501"]
+"colosseum_equipment/api/**" = ["N802", "A002", "FBT001"]
+"colosseum_equipment/io/**" = ["FBT001", "A002", "A005"]
+"colosseum_equipment/network/windows.py" = ["N801"]
+"examples/**" = ["E501"]
+"colosseum_equipment/autoconfig/**" = ["BLE001"]
+"colosseum_equipment/transports/**" = ["BLE001", "ICN001"]
+"colosseum_equipment/network/**" = ["BLE001"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from colosseum.output.artifacts import register_artifact, resolve_artifact_path
-
+from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments.rtsa.iq_export import (
     normalize_iq_format,
@@ -13,7 +11,11 @@ from colosseum_equipment.instruments.rtsa.iq_export import (
     write_iq_tar,
 )
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericRtsa(ScpiInstrumentMixin):
@@ -86,5 +88,4 @@ class GenericRtsa(ScpiInstrumentMixin):
             write_iq_tar(artifact_path, payload, metadata=metadata)
         else:
             write_iq_bin(artifact_path, payload)
-        register_artifact("rtsa_iq", artifact_path, description=f"IQ capture ({export_format})")
         return artifact_path

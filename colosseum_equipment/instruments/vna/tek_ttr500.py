@@ -5,7 +5,7 @@ Manual: 077-1257-00 Programmer Manual — ``SENS<n>:FREQ:STAR/STOP``, ``SWE:POIN
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.vna._vna_channel import (
     calc_prefix,
@@ -15,7 +15,9 @@ from colosseum_equipment.instruments.vna._vna_channel import (
 )
 from colosseum_equipment.instruments.vna.generic import GenericVna
 from colosseum_equipment.protocols.scpi import wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class TekTtr500Vna(GenericVna):

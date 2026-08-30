@@ -2,7 +2,7 @@
 Example: RF sweep with VSG stimulus and spectrum analyzer trace capture.
 
 Run:
-  colosseum run examples/test_rf_sweep.py --config examples/configs/bench.rf.visa-sim.toml
+  colosseum run examples/test_rf_sweep.py --config examples/configs/config.rf.visa-sim.toml
 """
 
 from __future__ import annotations
@@ -12,9 +12,14 @@ from pathlib import Path
 
 import colosseum as col
 
-_CONFIG = Path(__file__).resolve().parent / "configs" / os.environ.get(
-    "COLOSSEUM_BENCH_CONFIG", "bench.rf.visa-sim.toml"
-)
+
+def _config_filename() -> str:
+    return os.environ.get("COLOSSEUM_CONFIG") or os.environ.get(
+        "COLOSSEUM_BENCH_CONFIG", "config.rf.visa-sim.toml",
+    )
+
+
+_CONFIG = Path(__file__).resolve().parent / "configs" / _config_filename()
 
 
 def main() -> None:

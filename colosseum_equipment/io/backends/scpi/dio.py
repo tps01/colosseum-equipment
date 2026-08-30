@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
 from colosseum_equipment.protocols.scpi import SCPIHelper
-from colosseum_equipment.transports.base import Transport
 from colosseum_equipment.transports.factory import open_transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.io")
 
@@ -46,7 +48,7 @@ class ScpiDioBackend:
             if not port and not resource:
                 raise IoConfigError(
                     f"col.io dio id {dio_id} generic SCPI backend requires port= (serial) "
-                    "or resource= (VISA)"
+                    "or resource= (VISA)",
                 )
             transport_config = {**config, "driver": "serial"}
             if not transport_config.get("port"):
@@ -54,7 +56,7 @@ class ScpiDioBackend:
         elif driver == "visa":
             if not resource:
                 raise IoConfigError(
-                    f"col.io dio id {dio_id} generic SCPI backend requires resource= (VISA)"
+                    f"col.io dio id {dio_id} generic SCPI backend requires resource= (VISA)",
                 )
             transport_config = {**config, "driver": "visa"}
         else:
@@ -86,7 +88,7 @@ class ScpiDioBackend:
         bit = 1 << line
         if line < 0 or line >= self._mask.bit_length():
             raise IoConfigError(
-                f"line {line} out of range for port_lines={self._mask.bit_length()}"
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
             )
         if not (self._direction & bit):
             raise IoConfigError(f"line {line} is not configured as output")
@@ -101,7 +103,7 @@ class ScpiDioBackend:
         bit = 1 << line
         if line < 0 or line >= self._mask.bit_length():
             raise IoConfigError(
-                f"line {line} out of range for port_lines={self._mask.bit_length()}"
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
             )
         return bool(self.read_port() & bit)
 

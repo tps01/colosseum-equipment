@@ -1,4 +1,4 @@
-# Copy to examples/configs/bench.local.toml (gitignored) and fill in real bench resources.
+# Copy to examples/configs/config.local.toml (gitignored) and fill in real resources.
 
 [[equipment.psu]]
 psu_id = 1

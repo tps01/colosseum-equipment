@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from colosseum.output.artifacts import register_artifact, resolve_artifact_path
-
+from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
-from colosseum_equipment.transports.base import Transport
+
+if TYPE_CHECKING:
+    from colosseum_equipment.transports.base import Transport
 
 
 class GenericOscope(ScpiInstrumentMixin):
@@ -38,4 +39,3 @@ class GenericOscope(ScpiInstrumentMixin):
         artifact_path = resolve_artifact_path(path)
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         artifact_path.write_bytes(payload)
-        register_artifact("oscope_screenshot", artifact_path, description="instrument screenshot")

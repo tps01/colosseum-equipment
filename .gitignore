@@ -75,9 +75,9 @@ Desktop.ini
 .env.*
 !.env.example
 
-# Optional local bench overrides (keep examples/configs/ tracked)
-**/bench.local.toml
-**/bench.*.local.toml
+# Optional local config overrides (keep examples/configs/ tracked)
+**/config.local.toml
+**/config.*.local.toml
 
 # Local notes and agent scratch (normative docs: docs/, examples/)
 scratchpad/

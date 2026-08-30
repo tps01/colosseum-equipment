@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import csv
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def read_trace_csv(path: Path) -> tuple[list[float], list[float]]:
@@ -22,9 +25,9 @@ def read_trace_csv(path: Path) -> tuple[list[float], list[float]]:
 
 
 def write_trace_plot(csv_path: Path, plot_path: Path) -> None:
-    import matplotlib
+    import matplotlib as mpl
 
-    matplotlib.use("Agg")
+    mpl.use("Agg")
     import matplotlib.pyplot as plt
 
     frequencies, amplitudes = read_trace_csv(csv_path)

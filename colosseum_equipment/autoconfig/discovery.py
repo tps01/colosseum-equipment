@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum.config.loader import ConfigError
-
-from colosseum_equipment.network import IPv4NetworkBinding
 
 from .idn_registry import KIND_SECTIONS, classify_idn
 from .network_filter import BlockedSubnet, filter_resources, resolve_blacklist
 from .sort import sort_resources
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from colosseum_equipment.network import IPv4NetworkBinding
 
 
 @dataclass(frozen=True)
@@ -152,7 +154,7 @@ def discover_equipment_config(
                 resource=resource,
                 model=match.model,
                 idn=idn,
-            )
+            ),
         )
 
     if not assignments:

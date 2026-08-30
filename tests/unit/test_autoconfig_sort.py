@@ -36,7 +36,7 @@ def test_mixed_kinds_keep_global_order() -> None:
             "TCPIP0::192.168.1.10::INSTR",
             "USB0::0x2A8D::0x8F01::INSTR",
             "GPIB0::1::INSTR",
-        ]
+        ],
     )
     assert ordered[0].startswith("TCPIP")
     assert ordered[1].startswith("USB")

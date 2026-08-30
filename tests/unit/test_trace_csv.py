@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
     nearest_trace_bin,

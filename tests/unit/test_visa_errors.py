@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from colosseum_equipment.exceptions import EquipmentConnectionError, EquipmentTimeoutError
 from colosseum_equipment.transports.visa import VISATransport
 from colosseum_equipment.transports.visa_errors import map_visa_exception

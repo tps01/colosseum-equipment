@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import colosseum as col
 from colosseum.config import load_config
-
 from tests.support.helpers import run_endex_expect_code
 
 

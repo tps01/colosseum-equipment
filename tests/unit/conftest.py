@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import sqlite3
-
-import pytest
+from typing import TYPE_CHECKING
 
 import colosseum.context as context_module
+import pytest
 from colosseum.database.manager import DatabaseManager
 from colosseum.database.schema import SCHEMA_SQL
 
 from tests.unit.db_unit import UNIT_TEST_DB_URI, connect_unit_test_db, truncate_unit_test_db
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytest_plugins = ["tests.support.common_fixtures"]
 
@@ -83,10 +84,10 @@ def io_runtime_context(
 
 @pytest.fixture
 def io_bench(tmp_path: Path):
-    """Write a bench TOML snippet under ``tmp_path`` and return its path."""
+    """Write a config TOML snippet under ``tmp_path`` and return its path."""
 
     def _write(body: str) -> Path:
-        path = tmp_path / "bench.toml"
+        path = tmp_path / "config.toml"
         path.write_text(body.strip() + "\n", encoding="utf-8")
         return path
 

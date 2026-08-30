@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from colosseum_equipment.protocols.scpi import format_definite_length_block, parse_definite_length_block
+from colosseum_equipment.protocols.scpi import (
+    format_definite_length_block,
+    parse_definite_length_block,
+)
 
 
 def test_format_definite_length_block() -> None:

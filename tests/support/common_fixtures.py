@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 import colosseum.context as context_module
+import pytest
 
 from tests.support.helpers import BENCH_SIM, FIXTURES, REPO_ROOT
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +34,7 @@ def repo_root() -> Path:
 
 @pytest.fixture
 def bench_sim() -> Path:
-    assert BENCH_SIM.is_file(), f"missing bench sim config: {BENCH_SIM}"
+    assert BENCH_SIM.is_file(), f"missing sim config: {BENCH_SIM}"
     return BENCH_SIM
 
 
@@ -52,5 +54,5 @@ def subprocess_env(repo_root: Path) -> dict[str, str]:
     env = os.environ.copy()
     env.pop("COLOSSEUM_DEFER_DB_COMMITS", None)
     env["PYTHONPATH"] = str(repo_root)
-    env["COLOSSEUM_BENCH_CONFIG"] = "bench.sim.toml"
+    env["COLOSSEUM_CONFIG"] = "config.sim.toml"
     return env

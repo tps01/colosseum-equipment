@@ -61,5 +61,5 @@ def measure_attenuation_db(*, attn_id: int, key: str) -> float:
 
 
 verify_attenuation_db = tolerance_verifier(
-    "measure_attenuation_db", name="verify_attenuation_db", unit="dB"
+    "measure_attenuation_db", name="verify_attenuation_db", unit="dB",
 )
