@@ -2,7 +2,7 @@
 
 Colosseum supports two offline instrument simulation layers:
 
-| Layer | Bench config | Use |
+| Layer | Config | Use |
 | --- | --- | --- |
 | **SimTransport** | `driver = "sim"` | Fast CI/e2e; cooperative sim |
 | **PyVISA-sim** | `visa_backend = "sim"` | SCPI from YAML definitions |
@@ -34,9 +34,9 @@ tests/fixtures/pyvisa_sim/
   tektronix_rsa5100b_sa.yaml
 ```
 
-Example bench files:
-[`examples/configs/bench.visa-sim.toml`](../../examples/configs/bench.visa-sim.toml),
-[`examples/configs/bench.rf.visa-sim.toml`](../../examples/configs/bench.rf.visa-sim.toml).
+Example config files:
+[`examples/configs/config.visa-sim.toml`](../../examples/configs/config.visa-sim.toml),
+[`examples/configs/config.rf.visa-sim.toml`](../../examples/configs/config.rf.visa-sim.toml).
 
 The `resource` string in TOML must match a key under `resources:` in the YAML
 (PyVISA normalizes addresses, e.g. `GPIB::1::INSTR` → `GPIB0::1::INSTR`).
@@ -51,7 +51,7 @@ The `resource` string in TOML must match a key under `resources:` in the YAML
    - `dialogues` for `*IDN?` and fixed responses,
    - `properties` with `getter`/`setter` pairs for stateful commands (use
      `specs: type: float` for numeric state).
-3. Map `resources:` to bench `resource` values.
+3. Map `resources:` to config `resource` values.
 4. Run `pytest -m visa_sim` and adjust command strings until queries pass.
 
 Reference workflow: [QCoDeS simulated PyVISA
@@ -68,5 +68,5 @@ instruments](https://microsoft.github.io/Qcodes/examples/writing_drivers/Creatin
 
 Provide programmer-manual SCPI tables and `*IDN?` strings before adding YAML and
 `model = "..."` factory entries. Use
-[`examples/configs/bench.local.toml.example`](../../examples/configs/bench.local.toml.example)
+[`examples/configs/config.local.toml.example`](../../examples/configs/config.local.toml.example)
 for hardware sign-off.

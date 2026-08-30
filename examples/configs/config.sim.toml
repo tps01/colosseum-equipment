@@ -1,4 +1,4 @@
-# Simulated bench for offline runs and CI (driver=sim). Mirrors bench.toml layout.
+# Simulated config for offline runs and CI (driver=sim). Mirrors config.toml layout.
 
 [[equipment.psu]]
 psu_id = 1

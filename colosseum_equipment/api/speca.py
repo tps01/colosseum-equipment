@@ -1,6 +1,6 @@
 """High-level spectrum analyzer APIs exposed as ``col.equipment.speca``.
 
-Configure instruments with ``[[equipment.speca]]`` in bench TOML (``speca_id``,
+Configure instruments with ``[[equipment.speca]]`` in config TOML (``speca_id``,
 ``resource``, optional ``model`` and ``driver``; default driver is VISA/SCPI).
 Trace and capture files are written under the active run output directory and
 registered as artifacts. Unsupported operations raise
@@ -19,7 +19,7 @@ from colosseum_equipment.connections import get_cached_instrument
 def set_center_frequency(*, speca_id: int, frequency: float) -> None:
     """Set spectrum center frequency in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param frequency: Center frequency in hertz.
     :type frequency: float
@@ -36,7 +36,7 @@ def set_center_frequency(*, speca_id: int, frequency: float) -> None:
 def set_span(*, speca_id: int, span: float) -> None:
     """Set frequency span in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param span: Frequency span in hertz.
     :type span: float
@@ -53,7 +53,7 @@ def set_span(*, speca_id: int, span: float) -> None:
 def set_start_frequency(*, speca_id: int, frequency_hz: float) -> None:
     """Set the start frequency of the span in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param frequency_hz: Start frequency in hertz.
     :type frequency_hz: float
@@ -70,7 +70,7 @@ def set_start_frequency(*, speca_id: int, frequency_hz: float) -> None:
 def set_stop_frequency(*, speca_id: int, frequency_hz: float) -> None:
     """Set the stop frequency of the span in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param frequency_hz: Stop frequency in hertz.
     :type frequency_hz: float
@@ -87,7 +87,7 @@ def set_stop_frequency(*, speca_id: int, frequency_hz: float) -> None:
 def set_rbw(*, speca_id: int, rbw: float) -> None:
     """Set resolution bandwidth in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param rbw: Resolution bandwidth in hertz.
     :type rbw: float
@@ -104,7 +104,7 @@ def set_rbw(*, speca_id: int, rbw: float) -> None:
 def peak_search(*, speca_id: int, marker: int = 1) -> None:
     """Run a peak search and move the given marker to the peak.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int, optional
@@ -121,7 +121,7 @@ def peak_search(*, speca_id: int, marker: int = 1) -> None:
 def toggle_marker(*, speca_id: int, marker: int, enabled: bool) -> None:
     """Enable or disable a marker by id.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int
@@ -140,7 +140,7 @@ def toggle_marker(*, speca_id: int, marker: int, enabled: bool) -> None:
 def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
     """Move the marker to the next peak to the right.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int, optional
@@ -157,7 +157,7 @@ def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
 def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
     """Move the marker to the next peak to the left.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int, optional
@@ -174,7 +174,7 @@ def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
 def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
     """Move the marker to the highest peak in the current span.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int, optional
@@ -191,7 +191,7 @@ def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
 def set_marker_frequency(*, speca_id: int, marker: int, frequency_hz: float) -> None:
     """Place a marker at the given frequency in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int
@@ -210,7 +210,7 @@ def set_marker_frequency(*, speca_id: int, marker: int, frequency_hz: float) -> 
 def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
     """Read marker amplitude in dBm and persist a measurement row.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int, optional
@@ -232,7 +232,7 @@ def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
 def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
     """Read marker frequency in hertz and persist a measurement row.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param marker: Marker number (1-based).
     :type marker: int, optional
@@ -275,7 +275,7 @@ def measure_trace_power_at_frequency(
 ) -> float:
     """Read trace power (dBm) at ``frequency_hz`` using the nearest CSV frequency bin.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param frequency_hz: Query frequency in hertz.
     :type frequency_hz: float
@@ -321,7 +321,7 @@ def save_trace_data(
 ) -> None:
     """Export trace data to a CSV under the run directory and register an artifact.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param path: Relative path under the output directory (for example ``traces/sweep.csv``).
     :type path: str
@@ -362,7 +362,7 @@ def measure_bw(
 ) -> float:
     """Measure occupied bandwidth in hertz from a trace CSV or live sweep.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param start_hz: Lower frequency bound for bandwidth analysis in hertz.
     :type start_hz: float
@@ -410,7 +410,7 @@ verify_bandwidth = tolerance_verifier(
 def preset(*, speca_id: int) -> None:
     """Return the instrument to a default preset state.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
 
     :returns: None
@@ -425,7 +425,7 @@ def preset(*, speca_id: int) -> None:
 def set_reference_level(*, speca_id: int, level_dbm: float) -> None:
     """Set display reference level in dBm.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param level_dbm: Reference level in dBm.
     :type level_dbm: float
@@ -442,7 +442,7 @@ def set_reference_level(*, speca_id: int, level_dbm: float) -> None:
 def set_vbw(*, speca_id: int, vbw: float) -> None:
     """Set video bandwidth in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param vbw: Video bandwidth in hertz.
     :type vbw: float
@@ -459,7 +459,7 @@ def set_vbw(*, speca_id: int, vbw: float) -> None:
 def set_sweep_time(*, speca_id: int, seconds: float) -> None:
     """Set sweep time in seconds.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param seconds: Sweep time in seconds.
     :type seconds: float
@@ -476,7 +476,7 @@ def set_sweep_time(*, speca_id: int, seconds: float) -> None:
 def set_sweep_points(*, speca_id: int, count: int) -> None:
     """Set the number of sweep points.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param count: Number of sweep points.
     :type count: int
@@ -493,7 +493,7 @@ def set_sweep_points(*, speca_id: int, count: int) -> None:
 def toggle_trigger_delay(*, speca_id: int, enabled: bool) -> None:
     """Enable or disable trigger delay.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param enabled: ``True`` to enable trigger delay, ``False`` to disable.
     :type enabled: bool
@@ -510,7 +510,7 @@ def toggle_trigger_delay(*, speca_id: int, enabled: bool) -> None:
 def set_trigger_delay(*, speca_id: int, delay_s: float) -> None:
     """Set trigger delay in seconds.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param delay_s: Trigger delay in seconds.
     :type delay_s: float
@@ -527,7 +527,7 @@ def set_trigger_delay(*, speca_id: int, delay_s: float) -> None:
 def set_trigger_source(*, speca_id: int, source: str) -> None:
     """Set trigger source (for example ``IMM``, ``VID``, ``LINE``, ``EXT``, ``RFB``, ``TV``).
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param source: Trigger source string accepted by the configured model.
     :type source: str
@@ -544,7 +544,7 @@ def set_trigger_source(*, speca_id: int, source: str) -> None:
 def user_preset(*, speca_id: int) -> None:
     """Recall user preset 1.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
 
     :returns: None
@@ -559,7 +559,7 @@ def user_preset(*, speca_id: int) -> None:
 def set_detector(*, speca_id: int, detector: str) -> None:
     """Set trace detector mode (model-specific, for example ``APEak``).
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param detector: Detector mode string accepted by the configured model.
     :type detector: str
@@ -576,7 +576,7 @@ def set_detector(*, speca_id: int, detector: str) -> None:
 def set_trace_mode(*, speca_id: int, trace: int, mode: str) -> None:
     """Set trace mode (for example ``WRIT``, ``MAXH``, ``AVER``).
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param trace: Trace number (1-based).
     :type trace: int
@@ -595,7 +595,7 @@ def set_trace_mode(*, speca_id: int, trace: int, mode: str) -> None:
 def set_continuous_sweep(*, speca_id: int, enabled: bool) -> None:
     """Enable or disable continuous sweep.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param enabled: ``True`` for continuous sweep, ``False`` for single-sweep mode.
     :type enabled: bool
@@ -612,7 +612,7 @@ def set_continuous_sweep(*, speca_id: int, enabled: bool) -> None:
 def single_sweep(*, speca_id: int) -> None:
     """Trigger a single sweep and wait for completion.
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
 
     :returns: None
@@ -627,7 +627,7 @@ def single_sweep(*, speca_id: int) -> None:
 def save_screenshot(*, speca_id: int, path: str) -> None:
     """Save a display screenshot and register an artifact (vendor-specific).
 
-    :param speca_id: Configured ``equipment.speca`` id from bench TOML.
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param path: Relative path under the output directory for the screenshot file.
     :type path: str

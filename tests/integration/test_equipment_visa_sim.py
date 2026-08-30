@@ -10,7 +10,7 @@ from colosseum.config import load_config
 pytestmark = pytest.mark.visa_sim
 
 REPO = Path(__file__).resolve().parents[2]
-BENCH_VISA_SIM = REPO / "examples" / "configs" / "bench.visa-sim.toml"
+BENCH_VISA_SIM = REPO / "examples" / "configs" / "config.visa-sim.toml"
 
 
 @pytest.fixture

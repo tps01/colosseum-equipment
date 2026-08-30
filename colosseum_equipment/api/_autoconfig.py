@@ -14,7 +14,7 @@ from colosseum.context import apply_no_artifacts, get_context, init_context
 
 from colosseum_equipment.autoconfig.discovery import discover_equipment_config
 from colosseum_equipment.autoconfig.logging import log_autoconfig
-from colosseum_equipment.autoconfig.toml_write import TomlWriteError, write_bench_toml
+from colosseum_equipment.autoconfig.toml_write import TomlWriteError, write_config_toml
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -75,7 +75,7 @@ def autoconfig(
         log_autoconfig(ctx, result)
     if export_path is not None:
         try:
-            exported = write_bench_toml(result.raw, export_path)
+            exported = write_config_toml(result.raw, export_path)
         except TomlWriteError as exc:
             raise ConfigError(str(exc)) from exc
         if ctx.logger is not None:

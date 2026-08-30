@@ -1,4 +1,4 @@
-"""Transport factory defaults when bench TOML omits driver."""
+"""Transport factory defaults when config TOML omits driver."""
 
 from __future__ import annotations
 

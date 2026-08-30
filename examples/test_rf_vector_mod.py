@@ -4,7 +4,7 @@ Example: vector waveform upload and RTSA capture.
 Requires E4438C PyVISA-sim IDN and tektronix-rsa5100b on rtsa_id=1.
 
 Run:
-  colosseum run examples/test_rf_vector_mod.py --config examples/configs/bench.rf.visa-sim.toml
+  colosseum run examples/test_rf_vector_mod.py --config examples/configs/config.rf.visa-sim.toml
 """
 
 from __future__ import annotations
@@ -14,9 +14,14 @@ from pathlib import Path
 
 import colosseum as col
 
-_CONFIG = Path(__file__).resolve().parent / "configs" / os.environ.get(
-    "COLOSSEUM_BENCH_CONFIG", "bench.rf.visa-sim.toml",
-)
+
+def _config_filename() -> str:
+    return os.environ.get("COLOSSEUM_CONFIG") or os.environ.get(
+        "COLOSSEUM_BENCH_CONFIG", "config.rf.visa-sim.toml",
+    )
+
+
+_CONFIG = Path(__file__).resolve().parent / "configs" / _config_filename()
 _WAVEFORM = Path(__file__).resolve().parent / "fixtures" / "rf" / "stub_iq.bin"
 
 
