@@ -28,7 +28,7 @@ def equipment_id_param(param: str, kind: str, *, type_name: str = "int") -> str:
     return _sphinx_param(
         param,
         type_name,
-        f"Configured ``equipment.{kind}`` id from bench TOML.",
+        f"Configured ``equipment.{kind}`` id from config TOML.",
     )
 
 

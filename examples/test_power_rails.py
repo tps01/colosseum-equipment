@@ -1,5 +1,5 @@
 """
-Example: bench power-rail acceptance test.
+Example: power-rail acceptance test.
 
 Exercises:
   - col.config.load_config initializes runtime
@@ -8,9 +8,9 @@ Exercises:
   - Raw SCPI escape hatch available alongside decorated APIs
 
 Run:
-  set COLOSSEUM_BENCH_CONFIG=bench.sim.toml
+  set COLOSSEUM_CONFIG=config.sim.toml
   python examples/test_power_rails.py
-  colosseum run examples/test_power_rails.py --config examples/configs/bench.sim.toml
+  colosseum run examples/test_power_rails.py --config examples/configs/config.sim.toml
 
 Expected artifacts (under outputs/<timestamp>_test_power_rails/):
   debug.log, execution.sqlite, summary.txt
@@ -23,7 +23,14 @@ from pathlib import Path
 
 import colosseum as col
 
-_CONFIG = Path(__file__).resolve().parent / "configs" / os.environ.get("COLOSSEUM_BENCH_CONFIG", "bench.toml")
+
+def _config_filename() -> str:
+    return os.environ.get("COLOSSEUM_CONFIG") or os.environ.get(
+        "COLOSSEUM_BENCH_CONFIG", "config.toml",
+    )
+
+
+_CONFIG = Path(__file__).resolve().parent / "configs" / _config_filename()
 
 
 def main() -> None:

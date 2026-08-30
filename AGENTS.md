@@ -5,9 +5,10 @@ Baseline expectations for AI agents in this plugin repository.
 ## Purpose
 
 - This is a first-party Colosseum plugin. Development, packaging, and usage
-  follow the same entry-point contract as third-party plugins.
+  follow the same entry-point specification as third-party plugins.
 - Depends only on `colosseum-core` as declared in `pyproject.toml` (plugins must
-  not depend on each other).
+  not depend on each other). Requires `colosseum-core` 0.16.1+ (config TOML
+  naming and metadata artifacts align with core 0.16).
 - Registers `equipment` and `io` namespaces; public API includes
   `col.equipment.autoconfig()`.
 

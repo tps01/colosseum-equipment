@@ -54,6 +54,8 @@ Only the following licenses are allowed:
 
 ## Packaging
 
+- Requires `colosseum-core` 0.16.1+; example configs use `config*.toml` naming
+  per the core 0.16 specification.
 - Provide exactly one simple pip install that gets everything needed to develop
   and run tests (for example `pip install -e .` or `pip install
 <this-package>`).

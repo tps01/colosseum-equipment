@@ -20,12 +20,12 @@ Supported vendor models
 Example workflows
 -----------------
 
-* CW stimulus and swept spectrum: ``examples/test_rf_sweep.py`` (uses ``bench.rf.visa-sim.toml`` or hardware config)
+* CW stimulus and swept spectrum: ``examples/test_rf_sweep.py`` (uses ``config.rf.visa-sim.toml`` or hardware config)
 * Vector arb and RTSA capture: ``examples/test_rf_vector_mod.py``
 * Offline trace plot: ``python examples/plot_trace.py outputs/<run>/traces/carrier.csv``
 
-Offline CI without hardware uses ``examples/configs/bench.rf.visa-sim.toml`` and ``pytest -m visa_sim``.
-Hardware template: ``examples/configs/bench.rf.hardware.toml.example``.
+Offline CI without hardware uses ``examples/configs/config.rf.visa-sim.toml`` and ``pytest -m visa_sim``.
+Hardware template: ``examples/configs/config.rf.hardware.toml.example``.
 
 Trace and capture artifacts
 ---------------------------

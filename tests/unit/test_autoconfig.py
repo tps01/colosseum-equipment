@@ -145,7 +145,7 @@ def test_autoconfig_export_writes_toml(
         )
 
     monkeypatch.setattr(autoconfig_module, "discover_equipment_config", _fake_discover)
-    export_path = tmp_path / "bench.generated.toml"
+    export_path = tmp_path / "config.generated.toml"
     autoconfig(timeout=1.0, export_path=export_path)
     ctx = get_context()
     assert export_path.is_file()

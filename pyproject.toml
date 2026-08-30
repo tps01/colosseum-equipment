@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.1.10"
+version = "0.1.11"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-  "colosseum-core>=0.16,<0.17",
+  "colosseum-core>=0.16.1,<0.17",
   "matplotlib>=3.7,<4",
   "numpy>=1.24,<3",
   "pyftdi>=0.55,<1",

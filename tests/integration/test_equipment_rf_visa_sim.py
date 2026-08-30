@@ -12,7 +12,7 @@ from colosseum.context import get_context
 pytestmark = pytest.mark.visa_sim
 
 REPO = Path(__file__).resolve().parents[2]
-BENCH_RF = REPO / "examples" / "configs" / "bench.rf.visa-sim.toml"
+BENCH_RF = REPO / "examples" / "configs" / "config.rf.visa-sim.toml"
 
 
 @pytest.fixture

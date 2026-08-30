@@ -1,8 +1,9 @@
-"""Write bench configuration dicts as relaxed TOML."""
+"""Write configuration dicts as relaxed TOML."""
 
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,7 @@ _BARE_WORD = re.compile(r"^[\w.:-]+$")
 
 
 class TomlWriteError(OSError):
-    """Raised when a bench TOML file cannot be written."""
+    """Raised when a config TOML file cannot be written."""
 
 
 def _format_toml_value(value: object) -> str:
@@ -48,7 +49,7 @@ def _section_rows(value: object) -> list[dict[str, Any]]:
 
 
 def render_bench_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFAULT_HEADER) -> str:
-    """Render ``raw`` config dict as relaxed bench TOML text."""
+    """Render ``raw`` config dict as relaxed config TOML text."""
     lines: list[str] = []
     if header_comment:
         lines.append(header_comment)
@@ -79,13 +80,13 @@ def render_bench_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFA
     return text
 
 
-def write_bench_toml(
+def write_config_toml(
     raw: dict[str, Any],
     path: Path | str,
     *,
     header_comment: str | None = _DEFAULT_HEADER,
 ) -> Path:
-    """Write ``raw`` bench config to ``path`` as UTF-8 relaxed TOML."""
+    """Write ``raw`` config to ``path`` as UTF-8 relaxed TOML."""
     destination = Path(path).resolve()
     if destination.exists() and destination.is_dir():
         raise TomlWriteError(f"Config export path is a directory: {destination}")
@@ -98,3 +99,18 @@ def write_bench_toml(
     except OSError as exc:
         raise TomlWriteError(f"Failed to write config TOML to {destination}: {exc}") from exc
     return destination
+
+
+def write_bench_toml(
+    raw: dict[str, Any],
+    path: Path | str,
+    *,
+    header_comment: str | None = _DEFAULT_HEADER,
+) -> Path:
+    """Deprecated alias for :func:`write_config_toml`."""
+    warnings.warn(
+        "write_bench_toml is deprecated; use write_config_toml instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return write_config_toml(raw, path, header_comment=header_comment)

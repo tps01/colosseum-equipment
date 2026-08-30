@@ -26,7 +26,7 @@ drivers** below are wired when a programming manual was supplied.
 | **`keysig... | pwrmeter | U2001A op... | `SENS:FRE... |
 | **`minici... | rfswitch | Mini-Circ... | `SETA=1`, `SETP=…`, `SWPORT?` |
 
-### Bench TOML examples
+### Config TOML examples
 
 **Keysight U2001A (USB VISA):**
 
@@ -67,7 +67,7 @@ Use `frequency_unit = "MHz"` for 54107A/54109A/54111A per the GPIB guide.
 | `sim` | dio | (core) | In-memory GPIO for CI/offline |
 | `ftdi-ft232h` | dio | pyftdi (installed by default) | FT232H AD... |
 
-### IO bench TOML examples
+### IO config TOML examples
 
 **Simulated DIO:**
 
