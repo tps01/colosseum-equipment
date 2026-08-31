@@ -59,7 +59,7 @@ _CONFIG_SPECS = (
         "equipment.serial",
         "serial_id",
         required_keys=("port",),
-        optional_keys=("driver", "baudrate", "timeout"),
+        optional_keys=("driver", "baudrate", "timeout", "sim_read"),
     ),
     _visa_section(
         "equipment.vsg",

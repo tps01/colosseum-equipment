@@ -12,10 +12,10 @@ Python docstrings on ``colosseum_equipment.api`` modules (``vsg``, ``asg``, ``sp
 Supported vendor models
 -----------------------
 
-* ``keysight-esg`` — Agilent/Keysight E4428C (analog) and E4438C (vector arb)
-* ``keysight-e4407b`` — Agilent/Keysight E4407B ESA-E spectrum analyzer
-* ``tektronix-rsa5100b`` — Tektronix RSA5100B RTSA (configure under ``equipment.rtsa``)
-* ``generic`` — Keysight-style SCPI for offline PyVISA-sim or compatible lab gear
+* ``keysight-esg`` - Agilent/Keysight E4428C (analog) and E4438C (vector arb)
+* ``keysight-e4407b`` - Agilent/Keysight E4407B ESA-E spectrum analyzer
+* ``tektronix-rsa5100b`` - Tektronix RSA5100B RTSA (configure under ``equipment.rtsa``)
+* ``generic`` - Keysight-style SCPI for offline PyVISA-sim or compatible lab gear
 
 Example workflows
 -----------------

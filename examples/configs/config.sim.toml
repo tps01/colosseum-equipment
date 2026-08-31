@@ -34,6 +34,7 @@ driver = sim
 port = SIM4
 baudrate = 115200
 timeout = 2.0
+sim_read = "BOOT OK\r\nREADY\r\n"
 
 [[io.dio]]
 dio_id = 1
