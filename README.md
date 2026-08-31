@@ -27,6 +27,20 @@ col.equipment.psu.set_voltage(psu_id=1, voltage=3.3)
 col.endex()
 ```
 
+## Serial ports: raw I/O vs SCPI
+
+Each `[equipment.serial]` row is a COM/TTY port. Use `col.equipment.serial` for raw
+read/write (DUT console, debug UART, USB-serial). Use `col.equipment.scpi(...,
+serial_id=)` for SCPI dialog on the same port config, like ping vs SCPI-over-TCP on
+one network interface.
+
+```python
+col.equipment.serial.write(serial_id=1, data="AT", append_newline="\r\n")
+col.equipment.serial.read_until(serial_id=1, terminator="OK", key="boot")
+col.shared.regex.verify_match(key="boot", pattern=r"OK")
+col.equipment.scpi.query(serial_id=2, command="*IDN?")
+```
+
 ## Expected artifacts
 
 Normal CLI runs write `summary.json`, `summary.txt`, `execution.sqlite`, and

@@ -1,3 +1,9 @@
+"""SCPI escape hatch (``col.equipment.scpi``).
+
+Pass ``serial_id`` to run SCPI over a configured ``equipment.serial`` port (same as
+``psu_id`` for VISA). For raw COM/TTY I/O use ``col.equipment.serial`` instead.
+"""
+
 from __future__ import annotations
 
 import inspect
