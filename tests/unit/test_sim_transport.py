@@ -23,3 +23,12 @@ def test_dmm_reads_psu1_voltage_when_output_enabled(isolated_cwd) -> None:
     dmm = SimTransport("dmm", 1, {})
     reading = float(dmm.query("READ?"))
     assert reading == pytest.approx(3.3, rel=1e-3)
+
+
+def test_serial_sim_read_and_write_bytes(isolated_cwd) -> None:
+    init_context(test_case_name="sim")
+    port = SimTransport("serial", 1, {"sim_read": "BOOT OK\r\n"})
+    port.write_bytes(b"AT\r\n")
+    assert port._state["tx_log"] == ["AT\r\n"]
+    assert port.read_until("OK") == "BOOT OK"
+    assert port.read_line() == ""

@@ -13,17 +13,30 @@ class SerialTransport(Transport):
         except Exception as exc:
             raise EquipmentConnectionError(f"Failed to open serial port `{port}`: {exc}") from exc
 
-    def write(self, data: str) -> None:
-        payload = data if data.endswith("\n") else f"{data}\n"
-        self._ser.write(payload.encode("ascii"))
+    def write_bytes(self, payload: bytes) -> None:
+        self._ser.write(payload)
 
-    def read(self) -> str:
+    def read_line(self) -> str:
         try:
             raw = self._ser.readline()
-            decoded = raw.decode("ascii", errors="replace").strip()
-            return str(decoded)
+            return raw.decode("ascii", errors="replace").strip()
         except Exception as exc:
             raise EquipmentTimeoutError(str(exc)) from exc
+
+    def read_until(self, terminator: str | bytes) -> str:
+        try:
+            term_bytes = terminator.encode("ascii") if isinstance(terminator, str) else terminator
+            raw = self._ser.read_until(term_bytes)
+            return raw.decode("ascii", errors="replace")
+        except Exception as exc:
+            raise EquipmentTimeoutError(str(exc)) from exc
+
+    def write(self, data: str) -> None:
+        payload = data if data.endswith("\n") else f"{data}\n"
+        self.write_bytes(payload.encode("ascii"))
+
+    def read(self) -> str:
+        return self.read_line()
 
     def query(self, data: str) -> str:
         self.write(data)
