@@ -6,8 +6,10 @@ Manual: IT8600 Programming Guide — ``CURRent:LEVel``, ``FUNCtion``, ``INPut:ST
 from __future__ import annotations
 
 from colosseum_equipment.instruments.eload.generic import GenericEload
+from colosseum_equipment.instruments.registry import instrument_model
 
 
+@instrument_model("eload", "itech-it8600")
 class ItechIT8600Eload(GenericEload):
     _MODE_MAP = {
         "cc": "CURRent",

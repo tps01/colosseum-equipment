@@ -1,16 +1,20 @@
 """Mini-Circuits RC / ZTRC mechanical switch (ASCII SCPI).
 
 Manual: Prog_Manual-2-Switch — ``SET[switch]=[state]``, ``SETP=[states]``, ``SWPORT?``.
+Catalog: https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from colosseum_equipment.instruments.registry import instrument_model
+
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("rfswitch", "minicircuits-rc", "minicircuits-ztrc")
 class MiniCircuitsRcSwitch:
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         self._transport = transport

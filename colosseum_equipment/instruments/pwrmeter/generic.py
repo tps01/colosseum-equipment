@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.protocols.scpi import SCPIHelper
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("pwrmeter", "generic", extra_optional=("frequency",))
+@best_effort_commands
 class GenericPwrMeter(ScpiInstrumentMixin):
     """Generic SCPI RF power meter."""
 

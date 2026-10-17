@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.vna.generic import GenericVna
 
 if TYPE_CHECKING:
@@ -22,6 +23,7 @@ _DP_BY_POINTS = {
 }
 
 
+@instrument_model("vna", "anritsu-541xx")
 class Anritsu541xxVna(GenericVna):
     _model = "anritsu-541xx"
 

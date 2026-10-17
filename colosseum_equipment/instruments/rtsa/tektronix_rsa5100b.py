@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
+from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
 from colosseum_equipment.instruments.rtsa.iq_export import (
     normalize_iq_format,
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("rtsa", "tektronix-rsa5100b")
 class TektronixRSA5100BRtsa(GenericRtsa):
     """Tektronix RSA5100B real-time spectrum analyzer (IQ acquisition)."""
 

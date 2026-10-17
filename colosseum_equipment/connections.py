@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import atexit
 from typing import TYPE_CHECKING, Any
 
 from colosseum.config.loader import ConfigError
@@ -8,12 +7,12 @@ from colosseum.context import get_context
 from colosseum.logging import get_logger
 
 from colosseum_equipment._cache import cached_resource, close_cached_resources
+from colosseum_equipment.transports.factory import resolve_connection
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.equipment")
-_atexit_registered = False
 
 
 def _cache_key(kind: str, equipment_id: int) -> str:
@@ -31,7 +30,7 @@ def get_transport(kind: str, equipment_id: int) -> Transport:
     ctx = get_context()
     key = _cache_key(kind, equipment_id)
     cfg = get_config(kind, equipment_id)
-    driver = str(cfg.get("driver", "visa")).lower()
+    driver, _address = resolve_connection(kind, cfg)
 
     def _open() -> Transport:
         from colosseum_equipment.transports.factory import open_transport
@@ -83,24 +82,3 @@ def close_all() -> None:
 
     close_io_backends()
     close_cached_resources(ctx.resource_cache, (("equipment:",),), logger=_logger)
-
-
-def _atexit_close_equipment() -> None:
-    try:
-        ctx = get_context()
-    except RuntimeError:
-        return
-    if ctx.finalized:
-        return
-    try:
-        close_all()
-    except Exception:
-        _logger.exception("atexit equipment close failed")
-
-
-def register_atexit_cleanup() -> None:
-    global _atexit_registered
-    if _atexit_registered:
-        return
-    atexit.register(_atexit_close_equipment)
-    _atexit_registered = True

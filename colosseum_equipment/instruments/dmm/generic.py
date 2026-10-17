@@ -1,17 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.protocols.scpi import SCPIHelper
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("dmm", "generic")
+@best_effort_commands
 class GenericDMM(ScpiInstrumentMixin):
-    def __init__(self, transport: Transport) -> None:
+    def __init__(self, transport: Transport, config: dict[str, Any] | None = None) -> None:
         self._scpi = SCPIHelper(transport)
+        self._config = config or {}
 
     def measure_voltage(self, channel: int) -> float:
         _ = channel

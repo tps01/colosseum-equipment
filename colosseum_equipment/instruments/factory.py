@@ -1,48 +1,13 @@
+"""Build a cached instrument from its registered model."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.registry import build_registered
 
-from . import (
-    asg,
-    attn,
-    dmm,
-    eload,
-    freqcounter,
-    oscope,
-    psu,
-    pwrmeter,
-    rfswitch,
-    rtsa,
-    speca,
-    vna,
-    vsg,
-)
-
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
-
-_REGISTRATION_MODULES = (
-    dmm,
-    psu,
-    vsg,
-    asg,
-    speca,
-    rtsa,
-    attn,
-    pwrmeter,
-    rfswitch,
-    oscope,
-    eload,
-    freqcounter,
-    vna,
-)
-
-
-def _populate_registry() -> None:
-    for module in _REGISTRATION_MODULES:
-        module.register_instruments()
 
 
 def build_instrument(
@@ -57,6 +22,3 @@ def build_instrument(
                 f"Unsupported equipment model `{model}` for {kind} id {equipment_id}",
             ) from exc
         raise
-
-
-_populate_registry()

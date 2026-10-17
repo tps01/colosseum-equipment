@@ -30,7 +30,9 @@ def autoconfig(
     export_path: str | Path | None = None,
     no_artifacts: bool = False,
 ) -> ConfigStore:
-    """Scan VISA resources and build bench equipment config without a TOML file.
+    """Scan VISA ``?*INSTR`` resources and build equipment config without a TOML file.
+
+    Serial ports and FTDI adapters are not part of this scan.
 
     :param timeout: Probe timeout in seconds for each VISA resource.
     :type timeout: float, optional

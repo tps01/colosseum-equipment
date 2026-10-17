@@ -1,4 +1,7 @@
-"""VISA scan, probe, classify, and bench config construction for autoconfig."""
+"""VISA INSTR scan, probe, classify, and config construction for autoconfig.
+
+Serial ports and FTDI adapters are not discovered here.
+"""
 
 from __future__ import annotations
 
@@ -94,7 +97,10 @@ def discover_equipment_config(
     network_bindings: Sequence[IPv4NetworkBinding] | None = None,
     resource_manager: object | None = None,
 ) -> AutoconfigResult:
-    """Scan VISA resources and build a normalized-ready raw equipment config dict."""
+    """Scan VISA ``?*INSTR`` resources and build a raw equipment config dict.
+
+    This scan does not discover serial ports or FTDI adapters.
+    """
     import pyvisa
 
     blacklist_resolution = resolve_blacklist(blacklist, bindings=network_bindings)

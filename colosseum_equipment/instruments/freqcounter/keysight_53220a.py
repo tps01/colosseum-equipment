@@ -6,8 +6,10 @@ Manual: Keysight 53220A/53230A User's Guide — ``MEASure:FREQuency?``, gate tim
 from __future__ import annotations
 
 from colosseum_equipment.instruments.freqcounter.generic import GenericFreqCounter
+from colosseum_equipment.instruments.registry import instrument_model
 
 
+@instrument_model("freqcounter", "keysight-53220a", "keysight-53230a")
 class Keysight53220AFreqCounter(GenericFreqCounter):
     def set_gate_time(self, seconds: float) -> None:
         self._scpi.write(f"SENSe:FREQuency:GATE:TIME {seconds}")

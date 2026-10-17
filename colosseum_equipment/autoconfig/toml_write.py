@@ -48,7 +48,7 @@ def _section_rows(value: object) -> list[dict[str, Any]]:
     return []
 
 
-def render_bench_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFAULT_HEADER) -> str:
+def render_config_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFAULT_HEADER) -> str:
     """Render ``raw`` config dict as relaxed config TOML text."""
     lines: list[str] = []
     if header_comment:
@@ -93,12 +93,22 @@ def write_config_toml(
     try:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(
-            render_bench_toml(raw, header_comment=header_comment),
+            render_config_toml(raw, header_comment=header_comment),
             encoding="utf-8",
         )
     except OSError as exc:
         raise TomlWriteError(f"Failed to write config TOML to {destination}: {exc}") from exc
     return destination
+
+
+def render_bench_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFAULT_HEADER) -> str:
+    """Deprecated alias for :func:`render_config_toml`."""
+    warnings.warn(
+        "render_bench_toml is deprecated; use render_config_toml instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return render_config_toml(raw, header_comment=header_comment)
 
 
 def write_bench_toml(
