@@ -30,7 +30,7 @@ def test_io_write_pin_without_resource_records_command_error(
     load_config(
         io_bench(
             """
-            [[io.dio]]
+            [io.dio]
             dio_id = 1
             """,
         ),
@@ -46,7 +46,7 @@ def test_io_dio_sim_read_write_port(io_runtime_context: RuntimeContext, io_bench
     load_config(
         io_bench(
             """
-            [[io.dio]]
+            [io.dio]
             dio_id = 1
             driver = sim
             port_lines = 8
@@ -65,7 +65,7 @@ def test_io_dio_sim_measurement_domain_equipment(io_runtime_context: RuntimeCont
     load_config(
         io_bench(
             """
-            [[io.dio]]
+            [io.dio]
             dio_id = 1
             driver = sim
             port_lines = 8
@@ -85,7 +85,7 @@ def test_io_connections_close_all(io_runtime_context: RuntimeContext, io_bench) 
     load_config(
         io_bench(
             """
-            [[io.dio]]
+            [io.dio]
             dio_id = 1
             driver = sim
             port_lines = 8
@@ -115,7 +115,7 @@ def test_io_dio_scpi_fallback_write_read(
     load_config(
         io_bench(
             """
-            [[io.dio]]
+            [io.dio]
             dio_id = 1
             resource = "TCPIP0::127.0.0.1::inst0::INSTR"
             direction = 255

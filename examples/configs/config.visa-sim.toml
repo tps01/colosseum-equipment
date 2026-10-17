@@ -3,7 +3,7 @@
 # Run tests: pytest -m visa_sim
 # Paths are relative to the repository root when running from a checkout.
 
-[[equipment.psu]]
+[equipment.psu]
 psu_id = 1
 visa_backend = sim
 sim_definition = tests/fixtures/pyvisa_sim/generic_psu.yaml

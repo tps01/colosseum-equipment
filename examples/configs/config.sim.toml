@@ -36,13 +36,13 @@ baudrate = 115200
 timeout = 2.0
 sim_read = "BOOT OK\r\nREADY\r\n"
 
-[[io.dio]]
+[io.dio]
 dio_id = 1
 driver = sim
 port_lines = 8
 direction = 0xFF
 
-[[equipment.asg]]
+[equipment.asg]
 asg_id = 1
 driver = sim
 resource = SIM::ASG1

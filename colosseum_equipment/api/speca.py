@@ -1,6 +1,6 @@
 """High-level spectrum analyzer APIs exposed as ``col.equipment.speca``.
 
-Configure instruments with ``[[equipment.speca]]`` in config TOML (``speca_id``,
+Configure instruments with ``[equipment.speca]`` in config TOML (``speca_id``,
 ``resource``, optional ``model`` and ``driver``; default driver is VISA/SCPI).
 Trace and capture files are written under the active run output directory and
 registered as artifacts. Unsupported operations raise

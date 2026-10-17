@@ -82,7 +82,7 @@ SMW200A (high-end VSG) documented for a later pass.
 **u-blox GNSS (USB serial):**
 
 ```toml
-[[equipment.gnss]]
+[equipment.gnss]
 gnss_id = 1
 port = "COM7"
 baudrate = 9600
@@ -92,7 +92,7 @@ model = "ublox-f9"
 **Septentrio AsteRx-U3 (USB/RS-232 serial):**
 
 ```toml
-[[equipment.gnss]]
+[equipment.gnss]
 gnss_id = 2
 port = "COM5"
 baudrate = 19200
@@ -108,7 +108,7 @@ Guide / pysbf2 reading list.
 **Septentrio AsteRx-U3 (Ethernet TCP data socket via VISA):**
 
 ```toml
-[[equipment.gnss]]
+[equipment.gnss]
 gnss_id = 3
 resource = "TCPIP0::192.168.3.1::28785::SOCKET"
 model = "septentrio-asterx-u3"
@@ -121,7 +121,7 @@ Port **28784** is reserved for commands on the U3; use a configured data port
 **NovAtel OEM7 (serial):**
 
 ```toml
-[[equipment.gnss]]
+[equipment.gnss]
 gnss_id = 4
 port = "COM6"
 baudrate = 115200
@@ -131,7 +131,7 @@ model = "novatel-oem7"
 **R&S SMBV100B (VISA):**
 
 ```toml
-[[equipment.vsg]]
+[equipment.vsg]
 vsg_id = 1
 resource = "TCPIP0::192.168.1.50::inst0::INSTR"
 model = "rohde-smbv100b"
@@ -140,7 +140,7 @@ model = "rohde-smbv100b"
 **R&S FSW (VISA):**
 
 ```toml
-[[equipment.speca]]
+[equipment.speca]
 speca_id = 1
 resource = "TCPIP0::192.168.1.51::inst0::INSTR"
 model = "rohde-fsw"
@@ -149,7 +149,7 @@ model = "rohde-fsw"
 **R&S FSWP phase noise analyzer (VISA):**
 
 ```toml
-[[equipment.phasenoiseanalyzer]]
+[equipment.phasenoiseanalyzer]
 phasenoiseanalyzer_id = 1
 resource = "TCPIP0::192.168.1.52::inst0::INSTR"
 model = "rohde-fswp"
@@ -158,7 +158,7 @@ model = "rohde-fswp"
 **ControlByWeb X-410 (HTTP):**
 
 ```toml
-[[equipment.relay]]
+[equipment.relay]
 relay_id = 1
 resource = "http://192.168.1.2"
 model = "controlbyweb-x410"
@@ -169,7 +169,7 @@ password = "webrelay"
 **Keysight U2001A (USB VISA):**
 
 ```toml
-[[equipment.pwrmeter]]
+[equipment.pwrmeter]
 pwrmeter_id = 1
 resource = "USB0::0x2A8D::0x2D18::INSTR"
 model = "keysight-u2001a"
@@ -179,7 +179,7 @@ frequency = 1e9
 **Mini-Circuits RC switch (Ethernet/TCP VISA or serial):**
 
 ```toml
-[[equipment.rfswitch]]
+[equipment.rfswitch]
 rfswitch_id = 1
 resource = "TCPIP0::192.168.100.100::inst0::INSTR"
 model = "minicircuits-rc"
@@ -189,7 +189,7 @@ path = "A=1;B=0"
 **Anritsu 541XXA (GPIB):**
 
 ```toml
-[[equipment.vna]]
+[equipment.vna]
 vna_id = 1
 resource = "GPIB0::18::INSTR"
 model = "anritsu-541xx"
@@ -415,7 +415,7 @@ docstring records the manual link.
 **Simulated DIO:**
 
 ```toml
-[[io.dio]]
+[io.dio]
 dio_id = 1
 driver = sim
 port_lines = 8
@@ -425,7 +425,7 @@ direction = 0xFF
 **FT232H GPIO:**
 
 ```toml
-[[io.dio]]
+[io.dio]
 dio_id = 1
 driver = ftdi-ft232h
 resource = ftdi://ftdi:232h/1
