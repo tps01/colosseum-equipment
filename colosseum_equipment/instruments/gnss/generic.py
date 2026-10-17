@@ -9,7 +9,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TextIO
 
 from colosseum_equipment._paths import resolve_artifact_path
-from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentTimeoutError
+from colosseum_equipment.exceptions import (
+    EquipmentCapabilityError,
+    EquipmentError,
+    EquipmentTimeoutError,
+)
 from colosseum_equipment.instruments.gnss.listener import GnssListener
 from colosseum_equipment.instruments.gnss.nmea import (
     NmeaFix,
@@ -178,8 +182,8 @@ class GenericGnss:
         while time.monotonic() < deadline:
             try:
                 line = self._read_line()
-            except Exception:
-                continue
+            except (EquipmentError, TimeoutError, OSError):
+                line = ""
             if not line:
                 continue
             self._ingest_line(line)

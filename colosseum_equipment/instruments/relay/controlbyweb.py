@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import re
-from xml.etree import ElementTree as ET
 
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.instruments.registry import instrument_model
@@ -52,21 +51,8 @@ class ControlByWebWebRelay(ControlByWebRelay):
     _state_path = "state.xml"
 
     def _parse_relay_state(self, body: str, channel: int) -> bool:
-        text = body.strip()
-        try:
-            root = ET.fromstring(text)
-        except ET.ParseError as exc:
-            raise EquipmentResponseError(f"invalid WebRelay XML: {exc}") from exc
-        tag = f"relay{channel}"
-        node = root.find(tag)
-        if node is None:
-            node = root.find(f".//{tag}")
-        if node is None or node.text is None:
-            match = re.search(rf"<relay{channel}>([^<]+)</relay{channel}>", text, re.I)
-            if not match:
-                raise EquipmentResponseError(f"relay{channel} missing from state.xml")
-            return match.group(1).strip() not in ("0", "0.0", "")
-        return node.text.strip() not in ("0", "0.0", "")
+        text = _relay_element_text(body, channel)
+        return text not in ("0", "0.0", "")
 
 
 @instrument_model("relay", "controlbyweb-x410")
@@ -90,3 +76,20 @@ class ControlByWebX410(ControlByWebRelay):
             return int(value) != 0
         except (TypeError, ValueError) as exc:
             raise EquipmentResponseError(f"unexpected {key} value: {value!r}") from exc
+
+
+_FORBIDDEN_XML = re.compile(r"<!DOCTYPE|<!ENTITY", re.IGNORECASE)
+
+
+def _relay_element_text(body: str, channel: int) -> str:
+    """Read one ``relayN`` text node without expanding XML entities."""
+    if _FORBIDDEN_XML.search(body):
+        raise EquipmentResponseError("WebRelay XML contains a forbidden declaration")
+    match = re.search(
+        rf"<relay{int(channel)}\b[^>]*>([^<]*)</relay{int(channel)}>",
+        body,
+        re.IGNORECASE,
+    )
+    if match is None:
+        raise EquipmentResponseError(f"relay{channel} missing from state.xml")
+    return match.group(1).strip()
