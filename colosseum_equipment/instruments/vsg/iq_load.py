@@ -5,13 +5,15 @@ from __future__ import annotations
 import io
 import tarfile
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 
 from colosseum_equipment.exceptions import EquipmentResponseError
 
 
-def _float_to_i16_interleaved(i: np.ndarray, q: np.ndarray) -> bytes:
+def _float_to_i16_interleaved(i: npt.NDArray[Any], q: npt.NDArray[Any]) -> bytes:
     i = np.asarray(i, dtype=np.float64).reshape(-1)
     q = np.asarray(q, dtype=np.float64).reshape(-1)
     if i.size != q.size:
@@ -26,7 +28,7 @@ def _float_to_i16_interleaved(i: np.ndarray, q: np.ndarray) -> bytes:
     return interleaved.tobytes()
 
 
-def _array_to_i16_bytes(arr: np.ndarray) -> bytes:
+def _array_to_i16_bytes(arr: npt.NDArray[Any]) -> bytes:
     data = np.asarray(arr)
     if np.iscomplexobj(data):
         flat = data.reshape(-1)
