@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.instruments.speca.bandwidth import measure_bandwidth_hz
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("speca", "generic", extra_optional=("center_freq", "span", "rbw"))
+@best_effort_commands
 class GenericSpecA:
     _model = "generic"
 

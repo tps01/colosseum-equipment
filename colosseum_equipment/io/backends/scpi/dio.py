@@ -7,7 +7,7 @@ from colosseum.logging import get_logger
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
 from colosseum_equipment.protocols.scpi import SCPIHelper
-from colosseum_equipment.transports.factory import open_transport
+from colosseum_equipment.transports.factory import open_transport, resolve_connection
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -39,34 +39,30 @@ class ScpiDioBackend:
 
     @classmethod
     def from_config(cls, dio_id: int, config: dict[str, Any]) -> ScpiDioBackend:
-        resource = str(config.get("resource") or "").strip()
-        port = str(config.get("port") or "").strip()
-        driver = str(config.get("driver") or "visa").lower()
-        if driver in ("generic", "scpi", ""):
-            driver = "serial" if port and not resource else "visa"
-        if driver == "serial":
-            if not port and not resource:
-                raise IoConfigError(
-                    f"col.io dio id {dio_id} generic SCPI backend requires port= (serial) "
-                    "or resource= (VISA)",
-                )
-            transport_config = {**config, "driver": "serial"}
-            if not transport_config.get("port"):
-                transport_config["port"] = resource
-        elif driver == "visa":
-            if not resource:
-                raise IoConfigError(
-                    f"col.io dio id {dio_id} generic SCPI backend requires resource= (VISA)",
-                )
-            transport_config = {**config, "driver": "visa"}
+        transport_config = dict(config)
+        raw_driver = str(transport_config.get("driver") or "").strip().lower()
+        if raw_driver in ("", "generic", "scpi"):
+            transport_config.pop("driver", None)
+        resolved_driver, address = resolve_connection("dio", transport_config)
+        if resolved_driver not in ("visa", "serial"):
+            raise IoConfigError(
+                f"col.io dio id {dio_id}: unsupported SCPI transport `{resolved_driver}`",
+            )
+        if not address:
+            raise IoConfigError(
+                f"col.io dio id {dio_id} generic SCPI backend requires resource= (VISA) "
+                "or port= (serial)",
+            )
+        transport_config["driver"] = resolved_driver
+        if resolved_driver == "serial":
+            transport_config["port"] = address
         else:
-            raise IoConfigError(f"col.io dio id {dio_id}: unsupported SCPI transport `{driver}`")
-
+            transport_config["resource"] = address
         try:
             transport = open_transport("dio", dio_id, transport_config)
         except EquipmentConnectionError as exc:
             raise IoConnectionError(str(exc)) from exc
-        _logger.debug("Opened SCPI DIO backend id=%s driver=%s", dio_id, driver)
+        _logger.debug("Opened SCPI DIO backend id=%s driver=%s", dio_id, resolved_driver)
         return cls(
             transport=transport,
             port_lines=int(config.get("port_lines", 8)),

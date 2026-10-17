@@ -6,6 +6,7 @@ from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.instruments.vna.trace_export import (
     frequency_axis,
     parse_vna_sdata,
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("vna", "generic", extra_optional=("channel", "frequency_unit"))
+@best_effort_commands
 class GenericVna(ScpiInstrumentMixin):
     """Generic SCPI network analyzer."""
 

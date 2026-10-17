@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from colosseum_equipment.connections import _atexit_close_equipment, close_all
+from colosseum_equipment.connections import close_all
 
 
 class _RecordingClose:
@@ -108,24 +108,60 @@ def test_close_all_continues_after_close_failure(unit_runtime_context, caplog) -
     assert "Failed to close cached resource instrument:psu:1" in caplog.text
 
 
-def test_atexit_close_equipment_closes_open_cache(unit_runtime_context) -> None:
+def test_single_finalize_closes_transport_once(unit_runtime_context) -> None:
+    from colosseum.results.finalize import finalize_run
+    from colosseum.results.finalize_policy import policy_for_single
+    from colosseum_equipment import register
+
     ctx = unit_runtime_context
+    ctx.runtime_ready = True
+    register(ctx.plugin_registry)
     order: list[str] = []
     ctx.resource_cache["equipment:psu:1"] = _RecordingClose("psu", order)
 
-    _atexit_close_equipment()
+    finalize_run(ctx, policy=policy_for_single(run_shutdown=True))
+    assert order == ["psu"]
+    assert ctx.resource_cache == {}
 
+    ctx.plugin_registry.run_shutdown()
+    assert order == ["psu"]
+
+
+def test_suite_slot_finalize_skips_plugin_shutdown(unit_runtime_context) -> None:
+    from colosseum.results.finalize import finalize_run
+    from colosseum.results.finalize_policy import policy_for_suite_slot
+    from colosseum_equipment import register
+
+    ctx = unit_runtime_context
+    ctx.runtime_ready = True
+    register(ctx.plugin_registry)
+    order: list[str] = []
+    hooks: list[str] = []
+    ctx.plugin_registry.register_shutdown(lambda: hooks.append("shutdown"))
+    ctx.resource_cache["equipment:psu:1"] = _RecordingClose("psu", order)
+
+    finalize_run(ctx, policy=policy_for_suite_slot(affects_suite_result=False))
+
+    assert hooks == []
     assert order == ["psu"]
     assert ctx.resource_cache == {}
 
 
-def test_atexit_close_equipment_skips_when_finalized(unit_runtime_context) -> None:
+def test_process_exit_auto_finalize_closes_once(unit_runtime_context) -> None:
+    from colosseum.results.exit_policy import _auto_finalize_active_context
+    from colosseum_equipment import register
+
     ctx = unit_runtime_context
+    ctx.runtime_ready = True
+    ctx.auto_finalize = True
+    ctx.finalized = False
+    register(ctx.plugin_registry)
     order: list[str] = []
-    ctx.finalized = True
     ctx.resource_cache["equipment:psu:1"] = _RecordingClose("psu", order)
 
-    _atexit_close_equipment()
+    _auto_finalize_active_context()
+    assert order == ["psu"]
+    assert ctx.finalized is True
 
-    assert order == []
-    assert "equipment:psu:1" in ctx.resource_cache
+    _auto_finalize_active_context()
+    assert order == ["psu"]

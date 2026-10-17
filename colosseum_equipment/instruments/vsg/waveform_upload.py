@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-import ftplib  # nosec B402  # lab VSG waveform upload; bench config supplies FTP host
+import ftplib  # nosec B402  # lab VSG waveform upload; config supplies FTP host
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from colosseum.logging import get_logger
+
 from colosseum_equipment.exceptions import EquipmentResponseError
+from colosseum_equipment.instruments.vsg.iq_load import load_iq_interleaved_i16
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
+
+_logger = get_logger("colosseum.equipment")
+_ftp_host_warned = False
+_ftp_upload_warned = False
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -27,13 +34,20 @@ def _parse_visa_host(resource: str) -> str | None:
 
 
 def _resolve_ftp_host(config: dict[str, Any]) -> str:
+    global _ftp_host_warned
     if config.get("ftp_host"):
         return str(config["ftp_host"])
     host = _parse_visa_host(str(config.get("resource", "")))
     if host:
+        if not _ftp_host_warned:
+            _ftp_host_warned = True
+            _logger.warning(
+                "VSG waveform FTP host parsed from TCPIP resource `%s`; set ftp_host to confirm",
+                config.get("resource", ""),
+            )
         return host
     raise EquipmentResponseError(
-        "FTP waveform upload requires TCPIP resource or equipment.vsg ftp_host in bench config",
+        "FTP waveform upload requires TCPIP resource or equipment.vsg ftp_host in config",
     )
 
 
@@ -106,14 +120,16 @@ def upload_waveform_file(
     *,
     first_last_blanking: bool = False,
 ) -> None:
+    global _ftp_upload_warned
     path = Path(local_path)
-    if path.suffix.lower() != ".bin":
-        raise EquipmentResponseError(f"waveform upload expects a .bin file: {local_path}")
-    payload = path.read_bytes()
+    payload = load_iq_interleaved_i16(path)
 
     if _supports_scpi_binary_upload(transport):
         _upload_via_scpi(scpi, remote_name, payload)
     else:
+        if not _ftp_upload_warned:
+            _ftp_upload_warned = True
+            _logger.warning("VSG waveform upload using FTP; transport has no write_raw")
         _upload_via_ftp(config, path, remote_name, payload)
 
     if first_last_blanking:

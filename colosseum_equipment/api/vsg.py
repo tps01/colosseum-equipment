@@ -171,17 +171,18 @@ def upload_waveform(
     remote_name: str,
     first_last_blanking: bool = False,
 ) -> None:
-    """Upload an IQ or arb waveform ``.bin`` file to instrument memory.
+    """Upload an IQ waveform to instrument memory (``.bin``, ``.mat``, or ``.iq.tar``).
 
-    Uses SCPI binary block over TCPIP when available; otherwise FTP to the instrument.
+    Local files are converted to 16-bit interleaved I/Q before upload. Uses SCPI
+    binary block over TCPIP when available; otherwise FTP to the instrument.
     Set ``first_last_blanking=True`` to configure first/last-sample RF blanking
-    for IQ loop playback.
+    for IQ loop playback. Call ``play_iq`` with the remote filename after upload.
 
     Requires a capable ``model`` (for example ``keysight-esg`` with E4438C IDN).
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
-    :param local_path: Path to the local ``.bin`` waveform file.
+    :param local_path: Path to local ``.bin`` / ``.mat`` / ``.iq.tar`` waveform.
     :type local_path: str
     :param remote_name: Destination filename on the instrument.
     :type remote_name: str

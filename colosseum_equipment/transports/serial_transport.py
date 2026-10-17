@@ -16,6 +16,12 @@ class SerialTransport(Transport):
     def write_bytes(self, payload: bytes) -> None:
         self._ser.write(payload)
 
+    def read_bytes(self, size: int) -> bytes:
+        try:
+            return bytes(self._ser.read(size))
+        except Exception as exc:
+            raise EquipmentTimeoutError(str(exc)) from exc
+
     def read_line(self) -> str:
         try:
             raw = self._ser.readline()

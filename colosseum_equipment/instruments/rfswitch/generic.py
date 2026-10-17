@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.protocols.scpi import SCPIHelper
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("rfswitch", "generic", extra_optional=("path", "port"), address="either")
+@best_effort_commands
 class GenericRfSwitch(ScpiInstrumentMixin):
     _model = "generic"
     """Generic SCPI RF switch matrix (preset path names in bench config)."""

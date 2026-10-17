@@ -5,12 +5,15 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentTimeoutError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.protocols.scpi import SCPIHelper
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("psu", "generic", extra_optional=("voltage", "ovp", "ocp"))
+@best_effort_commands
 class GenericPSU(ScpiInstrumentMixin):
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         self._scpi = SCPIHelper(transport)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING
 
@@ -11,7 +12,18 @@ import pytest
 from tests.support.helpers import BENCH_SIM, FIXTURES, REPO_ROOT
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
+
+
+@pytest.fixture(autouse=True)
+def _colosseum_logs_reach_caplog() -> Iterator[None]:
+    """Let ``caplog`` see plugin logs after a run has turned propagation off."""
+    logger = logging.getLogger("colosseum")
+    previous = logger.propagate
+    logger.propagate = True
+    yield
+    logger.propagate = previous
 
 
 @pytest.fixture(autouse=True)

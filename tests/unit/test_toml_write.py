@@ -10,6 +10,7 @@ from colosseum.config.toml_relaxed import read_relaxed_toml
 from colosseum_equipment.autoconfig.toml_write import (
     TomlWriteError,
     render_bench_toml,
+    render_config_toml,
     write_bench_toml,
     write_config_toml,
 )
@@ -28,7 +29,7 @@ def test_render_single_table_section() -> None:
             },
         },
     }
-    text = render_bench_toml(raw, header_comment=None)
+    text = render_config_toml(raw, header_comment=None)
     assert "[equipment.dmm]" in text
     assert "[[equipment.dmm]]" not in text
     assert "model = generic" in text
@@ -44,7 +45,7 @@ def test_render_array_of_tables_for_multiple_rows() -> None:
             ],
         },
     }
-    text = render_bench_toml(raw, header_comment=None)
+    text = render_config_toml(raw, header_comment=None)
     assert text.count("[[equipment.psu]]") == 2
     assert "model = tdk-genesys" in text
 
@@ -69,6 +70,15 @@ def test_write_config_toml_rejects_directory(tmp_path: Path) -> None:
     target.mkdir()
     with pytest.raises(TomlWriteError, match="directory"):
         write_config_toml({"equipment": {}}, target)
+
+
+def test_render_bench_toml_warns() -> None:
+    raw = {"equipment": {"psu": [{"psu_id": 1, "resource": "GPIB0::5::INSTR"}]}}
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        text = render_bench_toml(raw, header_comment=None)
+    assert "[equipment.psu]" in text
+    assert any(issubclass(item.category, DeprecationWarning) for item in caught)
 
 
 def test_write_bench_toml_deprecated_alias(tmp_path: Path) -> None:

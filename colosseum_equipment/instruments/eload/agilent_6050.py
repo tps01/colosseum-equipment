@@ -6,8 +6,10 @@ Manual: Agilent 06060-90005 Programming Manual — ``CURR``, ``VOLT``, ``INPUT``
 from __future__ import annotations
 
 from colosseum_equipment.instruments.eload.generic import GenericEload
+from colosseum_equipment.instruments.registry import instrument_model
 
 
+@instrument_model("eload", "agilent-6050")
 class Agilent6050Eload(GenericEload):
     def set_mode(self, mode: str) -> None:
         self._scpi.write(f"MODE:{mode.upper()}")

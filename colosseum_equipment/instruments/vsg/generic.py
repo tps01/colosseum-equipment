@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.instruments.vsg.waveform_upload import upload_waveform_file
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("vsg", "generic", extra_optional=("frequency", "power_dbm", "output"))
+@best_effort_commands
 class GenericVSG(ScpiInstrumentMixin):
     """Generic SCPI vector/signal generator (IEEE 488.2 + SCPI-99 mnemonics)."""
 

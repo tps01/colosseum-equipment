@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
+from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.speca.generic import GenericSpecA
 from colosseum_equipment.instruments.speca.trace_csv import parse_trace_amplitudes, write_trace_csv
 from colosseum_equipment.instruments.speca.trace_plot import write_trace_plot
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("speca", "keysight-e4407b")
 class KeysightE4407BSpecA(GenericSpecA):
     """Agilent / Keysight E4407B ESA-E spectrum analyzer."""
 
