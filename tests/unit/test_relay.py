@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 
 import pytest
-from colosseum_equipment.exceptions import EquipmentCapabilityError
+from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.registry import registered_models
 from colosseum_equipment.transports.factory import open_transport, resolve_connection
@@ -84,27 +84,63 @@ def test_resolve_http_driver_for_relay_kind() -> None:
     assert address == "http://10.0.0.5"
 
 
+def test_webrelay_rejects_doctype() -> None:
+    stub = _HttpStub(
+        {
+            "state.xml": (
+                "<!DOCTYPE datavalues [<!ENTITY xxe SYSTEM 'file:///secret'>]>"
+                "<datavalues><relay1>&xxe;</relay1></datavalues>"
+            ),
+        },
+    )
+    instrument = build_instrument(
+        "relay",
+        1,
+        {"model": "controlbyweb-webrelay", "resource": "http://192.168.1.2"},
+        stub,
+    )
+    with pytest.raises(EquipmentResponseError, match="forbidden declaration"):
+        instrument.measure_relay(1)
+
+
 def test_http_transport_basic_auth_header(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, object] = {}
 
     class _Resp:
+        status = 200
+
         def read(self) -> bytes:
             return b'{"relay1":1}'
 
-        def __enter__(self) -> _Resp:
-            return self
+    class _FakeConnection:
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            timeout: float | None = None,
+        ) -> None:
+            seen["host"] = host
+            seen["timeout"] = timeout
 
-        def __exit__(self, *args: object) -> None:
+        def request(
+            self,
+            method: str,
+            target: str,
+            body: bytes | None = None,
+            headers: dict[str, str] | None = None,
+        ) -> None:
+            seen["header"] = (headers or {}).get("Authorization")
+            seen["target"] = target
+
+        def getresponse(self) -> _Resp:
+            return _Resp()
+
+        def close(self) -> None:
             return None
 
-    def fake_urlopen(request: object, timeout: float = 0) -> _Resp:
-        seen["header"] = request.get_header("Authorization")  # type: ignore[attr-defined]
-        seen["timeout"] = timeout
-        return _Resp()
-
     monkeypatch.setattr(
-        "colosseum_equipment.transports.http.urlopen",
-        fake_urlopen,
+        "colosseum_equipment.transports.http.HTTPConnection",
+        _FakeConnection,
     )
     transport = HttpTransport(
         "http://192.168.1.2",

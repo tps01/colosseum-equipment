@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import base64
-from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin
-from urllib.request import Request, urlopen
+from http.client import HTTPConnection, HTTPException, HTTPSConnection
+from urllib.parse import SplitResult, urljoin, urlsplit, urlunsplit
 
 from colosseum_equipment.exceptions import EquipmentConnectionError, EquipmentTimeoutError
 from colosseum_equipment.transports.base import Transport
@@ -28,11 +26,8 @@ class HttpTransport(Transport):
         password: str = "",
     ) -> None:
         base = base_url.strip().rstrip("/") + "/"
-        if not base.startswith(("http://", "https://")):
-            raise EquipmentConnectionError(
-                f"HTTP transport requires an http(s) URL, got `{base_url}`",
-            )
-        self._base = base
+        parsed = _require_http_url(base, purpose="HTTP transport base URL")
+        self._base = parsed
         self._timeout = timeout
         self._auth_header = ""
         if username or password:
@@ -40,26 +35,32 @@ class HttpTransport(Transport):
             self._auth_header = f"Basic {token}"
 
     def _get(self, path: str) -> str:
-        relative = path.lstrip("/")
-        url = urljoin(self._base, relative)
+        target = _instrument_url(self._base, path)
+        url = urlunsplit(target)
         headers: dict[str, str] = {}
         if self._auth_header:
             headers["Authorization"] = self._auth_header
-        request = Request(url, headers=headers, method="GET")
+        request_target = target.path or "/"
+        if target.query:
+            request_target = f"{request_target}?{target.query}"
+        connection_cls = HTTPSConnection if target.scheme == "https" else HTTPConnection
+        port = target.port or (443 if target.scheme == "https" else 80)
         try:
-            with urlopen(request, timeout=self._timeout) as response:  # noqa: S310
-                raw: Any = response.read()
+            connection = connection_cls(target.hostname or "", port, timeout=self._timeout)
+            try:
+                connection.request("GET", request_target, headers=headers)
+                response = connection.getresponse()
+                raw = response.read()
+                status = int(response.status)
+            finally:
+                connection.close()
         except TimeoutError as exc:
             raise EquipmentTimeoutError(f"HTTP GET timed out: {url}") from exc
-        except HTTPError as exc:
-            raise EquipmentConnectionError(
-                f"HTTP GET failed ({exc.code}): {url}",
-            ) from exc
-        except URLError as exc:
-            raise EquipmentConnectionError(f"HTTP GET failed: {url}: {exc.reason}") from exc
-        if isinstance(raw, bytes):
-            return raw.decode("utf-8", errors="replace")
-        return str(raw)
+        except (HTTPException, OSError) as exc:
+            raise EquipmentConnectionError(f"HTTP GET failed: {url}: {exc}") from exc
+        if status >= 400:
+            raise EquipmentConnectionError(f"HTTP GET failed ({status}): {url}")
+        return raw.decode("utf-8", errors="replace")
 
     def write(self, data: str) -> None:
         self._get(data)
@@ -72,3 +73,27 @@ class HttpTransport(Transport):
 
     def close(self) -> None:
         return None
+
+
+def _require_http_url(url: str, *, purpose: str) -> SplitResult:
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise EquipmentConnectionError(
+            f"{purpose} requires an http(s) URL, got `{url}`",
+        )
+    return parsed
+
+
+def _instrument_url(base: SplitResult, path: str) -> SplitResult:
+    """Resolve ``path`` on the instrument origin. Absolute URLs to other hosts fail."""
+    joined = urljoin(urlunsplit(base), path.lstrip("/"))
+    target = _require_http_url(joined, purpose="HTTP instrument URL")
+    if (
+        target.scheme != base.scheme
+        or target.hostname != base.hostname
+        or (target.port or 0) != (base.port or 0)
+    ):
+        raise EquipmentConnectionError(
+            f"HTTP path must stay on {base.hostname}, got `{path}`",
+        )
+    return target
