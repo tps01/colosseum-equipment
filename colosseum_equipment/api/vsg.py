@@ -1,6 +1,6 @@
 """High-level vector/signal generator APIs exposed as ``col.equipment.vsg``.
 
-Configure instruments with ``[[equipment.vsg]]`` in bench TOML (``vsg_id``,
+Configure instruments with ``[equipment.vsg]`` in bench TOML (``vsg_id``,
 ``resource``, optional ``model`` and ``driver``; default driver is VISA/SCPI).
 Unsupported operations on a given ``model`` raise
 :class:`~colosseum_equipment.exceptions.EquipmentCapabilityError`.

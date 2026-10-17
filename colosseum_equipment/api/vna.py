@@ -1,6 +1,6 @@
 """Vector network analyzer APIs exposed as ``col.equipment.vna``.
 
-Configure instruments with ``[[equipment.vna]]`` in bench TOML (``vna_id``, ``resource``,
+Configure instruments with ``[equipment.vna]`` in bench TOML (``vna_id``, ``resource``,
 optional ``model``, ``channel``, and ``driver``; default driver is VISA/SCPI). Trace exports are
 written under the active run output directory. Unsupported operations on ``anritsu-541xx`` raise
 :class:`~colosseum_equipment.exceptions.EquipmentCapabilityError`.

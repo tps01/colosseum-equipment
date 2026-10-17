@@ -8,7 +8,7 @@ Configuration
 
 Example simulated DIO for smoke tests::
 
-   [[io.dio]]
+   [io.dio]
    dio_id = 1
    driver = sim
    port_lines = 8
@@ -16,7 +16,7 @@ Example simulated DIO for smoke tests::
 
 Example FT232H on a lab bench::
 
-   [[io.dio]]
+   [io.dio]
    dio_id = 1
    driver = ftdi-ft232h
    resource = ftdi://ftdi:232h/1
