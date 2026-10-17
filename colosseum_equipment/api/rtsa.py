@@ -1,6 +1,6 @@
 """Real-time spectrum analyzer APIs exposed as ``col.equipment.rtsa``.
 
-Configure instruments with ``[[equipment.rtsa]]`` in bench TOML (``rtsa_id``, ``resource``,
+Configure instruments with ``[equipment.rtsa]`` in bench TOML (``rtsa_id``, ``resource``,
 optional ``model`` and ``driver``; default driver is VISA/SCPI). IQ capture files are written
 under the active run output directory and registered as artifacts.
 """

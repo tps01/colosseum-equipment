@@ -1,6 +1,6 @@
 """Analog signal generator APIs exposed as ``col.equipment.asg``.
 
-Configure instruments with ``[[equipment.asg]]`` in bench TOML (``asg_id``, ``resource``,
+Configure instruments with ``[equipment.asg]`` in bench TOML (``asg_id``, ``resource``,
 optional ``model`` and ``driver``; default driver is VISA/SCPI). Pulse generator and modulation
 commands use R&S-style SCPI on the ``generic`` model.
 """

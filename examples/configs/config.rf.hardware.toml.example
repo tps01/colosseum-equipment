@@ -18,7 +18,7 @@ voltage = 28.0
 ovp = 30.0
 ocp = 5.0
 
-[[equipment.speca]]
+[equipment.speca]
 speca_id = 1
 model = "keysight-e4407b"
 resource = "GPIB0::18::INSTR"

@@ -1,6 +1,6 @@
 # Copy to examples/configs/config.local.toml (gitignored) and fill in real resources.
 
-[[equipment.psu]]
+[equipment.psu]
 psu_id = 1
 model = "generic"  # or "tdk-genesys"
 interface = "usb"
@@ -17,7 +17,7 @@ resource = "USB0::0x2A8D::0x8F01::INSTR"
 timeout = 5.0
 
 # FT232H GPIO
-[[io.dio]]
+[io.dio]
 dio_id = 1
 driver = ftdi-ft232h
 resource = ftdi://ftdi:232h/1
