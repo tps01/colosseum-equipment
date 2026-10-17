@@ -9,6 +9,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.oscope.generic import GenericOscope
+from colosseum_equipment.instruments.registry import instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -32,6 +33,7 @@ def _seconds_to_tdiv(seconds_per_div: float) -> str:
     return f"{value:g}{suffix}"
 
 
+@instrument_model("oscope", "tektronix-t3dso2000")
 class TekT3dso2000Oscope(GenericOscope):
     _model = "tektronix-t3dso2000"
 

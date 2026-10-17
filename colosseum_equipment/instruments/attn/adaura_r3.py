@@ -8,11 +8,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._text_protocol import parse_adaura_status_channel
+from colosseum_equipment.instruments.registry import instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("attn", "adaura-r3")
 class AdauraR3Attn:
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         self._transport = transport

@@ -4,12 +4,15 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("oscope", "generic", extra_optional=("measurement_slot",))
+@best_effort_commands
 class GenericOscope(ScpiInstrumentMixin):
     """Generic SCPI oscilloscope (subset; vendor models extend)."""
 

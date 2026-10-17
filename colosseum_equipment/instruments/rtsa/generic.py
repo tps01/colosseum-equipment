@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.instruments.rtsa.iq_export import (
     normalize_iq_format,
     write_iq_bin,
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("rtsa", "generic", extra_optional=("center_freq", "span", "rbw"))
+@best_effort_commands
 class GenericRtsa(ScpiInstrumentMixin):
     """Generic SCPI real-time spectrum analyzer (spectrum setup + IQ block download)."""
 

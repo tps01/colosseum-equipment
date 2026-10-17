@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.vna._vna_channel import (
     calc_prefix,
     disp_prefix,
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
+@instrument_model("vna", "rohde-znb")
 class RohdeZnbVna(GenericVna):
     _model = "rohde-znb"
 

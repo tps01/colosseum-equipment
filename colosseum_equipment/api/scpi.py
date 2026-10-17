@@ -12,27 +12,13 @@ from typing import TYPE_CHECKING, Any, cast
 from colosseum.decorators import command
 
 from colosseum_equipment.connections import get_transport
+from colosseum_equipment.instruments.registry import kind_id_params
 from colosseum_equipment.protocols.scpi import SCPIHelper
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-_KIND_ID_PARAMS: dict[str, str] = {
-    "psu_id": "psu",
-    "dmm_id": "dmm",
-    "serial_id": "serial",
-    "vsg_id": "vsg",
-    "asg_id": "asg",
-    "speca_id": "speca",
-    "rtsa_id": "rtsa",
-    "attn_id": "attn",
-    "pwrmeter_id": "pwrmeter",
-    "rfswitch_id": "rfswitch",
-    "oscope_id": "oscope",
-    "eload_id": "eload",
-    "freqcounter_id": "freqcounter",
-    "vna_id": "vna",
-}
+_KIND_ID_PARAMS: dict[str, str] = kind_id_params()
 
 
 def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
@@ -96,7 +82,7 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
 
 :param command: SCPI command string (including terminators as required by the driver).
 :type command: str
-:param {id_list}: Pass exactly one ``*_id`` matching a configured bench resource.
+:param {id_list}: Pass exactly one ``*_id`` matching a configured instrument.
 
 :returns: {returns_line}
 :raises ValueError: If zero or more than one ``*_id`` is provided.

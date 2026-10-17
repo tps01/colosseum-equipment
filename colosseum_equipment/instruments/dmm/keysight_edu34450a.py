@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from colosseum_equipment.instruments.dmm.generic import GenericDMM
+from colosseum_equipment.instruments.registry import instrument_model
 
 
+@instrument_model("dmm", "keysight-edu34450a")
 class KeysightEDU34450A(GenericDMM):
     """Reference driver for Keysight EDU34450A (Keysight EDU34450A Programming Guide)."""
 

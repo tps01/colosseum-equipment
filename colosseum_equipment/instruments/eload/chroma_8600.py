@@ -6,8 +6,10 @@ Manual: 8600 Series Programming Manual — ``FUNCtion``, ``CURRent:LEVel``, ``IN
 from __future__ import annotations
 
 from colosseum_equipment.instruments.eload.generic import GenericEload
+from colosseum_equipment.instruments.registry import instrument_model
 
 
+@instrument_model("eload", "chroma-8600", "chroma-8601")
 class Chroma8600Eload(GenericEload):
     _MODE_MAP = {
         "cc": "CURRent",

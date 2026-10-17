@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from colosseum.logging import get_logger
+
 from colosseum_equipment.io.backends.scpi.dio import ScpiDioBackend
 from colosseum_equipment.io.backends.sim.dio import SimDioBackend
 from colosseum_equipment.io.exceptions import IoConfigError
 
-_GENERIC_DIO_DRIVERS = frozenset({"", "generic", "visa", "serial", "scpi"})
+_logger = get_logger("colosseum.io")
+_SCPI_ALIASES = frozenset({"", "generic", "visa", "serial"})
+_alias_warned: set[str] = set()
 
 
 def _driver_name(config: dict[str, Any]) -> str:
@@ -44,7 +48,11 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             port_lines=_port_lines(config),
             direction=_direction(config),
         )
-    if driver in _GENERIC_DIO_DRIVERS:
+    if driver == "scpi" or driver in _SCPI_ALIASES:
+        if driver in _SCPI_ALIASES and driver not in _alias_warned:
+            _alias_warned.add(driver)
+            shown = driver or "omitted"
+            _logger.warning("col.io dio driver `%s` is accepted; prefer driver = \"scpi\"", shown)
         return ScpiDioBackend.from_config(dio_id, config)
     raise IoConfigError(f"col.io dio: unsupported driver `{driver}`")
 

@@ -11,7 +11,7 @@ from colosseum_equipment.io.connections import get_backend
 def configure(*, dio_id: int, direction: int) -> None:
     """Configure port direction bitmask.
 
-    :param dio_id: Configured ``equipment.dio`` id from bench TOML.
+    :param dio_id: Configured ``io.dio`` id from config TOML.
     :type dio_id: int
     :param direction: Bitmask of input (0) vs output (1) per line.
     :type direction: int
@@ -28,7 +28,7 @@ def configure(*, dio_id: int, direction: int) -> None:
 def write_port(*, dio_id: int, value: int) -> None:
     """Write a port value.
 
-    :param dio_id: Configured ``equipment.dio`` id from bench TOML.
+    :param dio_id: Configured ``io.dio`` id from config TOML.
     :type dio_id: int
     :param value: Port output bitmask.
     :type value: int
@@ -45,7 +45,7 @@ def write_port(*, dio_id: int, value: int) -> None:
 def read_port(*, dio_id: int, key: str) -> int:
     """Read a full port value.
 
-    :param dio_id: Configured ``equipment.dio`` id from bench TOML.
+    :param dio_id: Configured ``io.dio`` id from config TOML.
     :type dio_id: int
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
@@ -65,7 +65,7 @@ def read_port(*, dio_id: int, key: str) -> int:
 def write_pin(*, dio_id: int, line: int, value: bool) -> None:
     """Write one GPIO line.
 
-    :param dio_id: Configured ``equipment.dio`` id from bench TOML.
+    :param dio_id: Configured ``io.dio`` id from config TOML.
     :type dio_id: int
     :param line: Line index.
     :type line: int
@@ -84,7 +84,7 @@ def write_pin(*, dio_id: int, line: int, value: bool) -> None:
 def read_pin(*, dio_id: int, line: int, key: str) -> bool:
     """Read one GPIO line.
 
-    :param dio_id: Configured ``equipment.dio`` id from bench TOML.
+    :param dio_id: Configured ``io.dio`` id from config TOML.
     :type dio_id: int
     :param line: Line index.
     :type line: int

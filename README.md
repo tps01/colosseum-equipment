@@ -1,5 +1,11 @@
 # Colosseum Equipment
 
+## Documentation
+
+HTML docs (GitHub Pages): https://tps01.github.io/colosseum-equipment/
+
+Framework hub: https://tps01.github.io/colosseum-core/
+
 First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
 (instruments, transports, DIO).
 

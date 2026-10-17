@@ -19,15 +19,24 @@ Expected artifacts (under outputs/<timestamp>_test_power_rails/):
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 
 import colosseum as col
 
 
 def _config_filename() -> str:
-    return os.environ.get("COLOSSEUM_CONFIG") or os.environ.get(
-        "COLOSSEUM_BENCH_CONFIG", "config.toml",
-    )
+    if name := os.environ.get("COLOSSEUM_CONFIG"):
+        return name
+    legacy = os.environ.get("COLOSSEUM_BENCH_CONFIG")
+    if legacy:
+        warnings.warn(
+            "COLOSSEUM_BENCH_CONFIG is deprecated; set COLOSSEUM_CONFIG instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return legacy
+    return "config.toml"
 
 
 _CONFIG = Path(__file__).resolve().parent / "configs" / _config_filename()
