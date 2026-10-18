@@ -463,8 +463,10 @@ docstring records the manual link.
 
 | `driver` slug | Kind | Dependency | Notes |
 | --- | --- | --- | --- |
-| `sim` | dio | (core) | In-memory GPIO for CI/offline |
+| `sim` | dio, i2c, spi | (core) | In-memory adapters for CI/offline |
 | `ftdi-ft232h` | dio | pyftdi (installed by default) | FT232H GPIO adapter |
+| `ni-6501` | dio | NI-DAQmx runtime (ctypes) | USB-6501; 24 lines P0..P2; `resource` = DAQmx name |
+| `ni-845x` | dio, i2c, spi | NI-845x runtime (ctypes) | USB-8451/8452; require `model`; shared device voltage |
 
 ### IO config TOML examples
 
@@ -487,4 +489,48 @@ driver = "ftdi-ft232h"
 resource = "ftdi://ftdi:232h/1"
 port_lines = 8
 direction = 0x0F
+```
+
+**NI USB-6501:**
+
+```toml
+[io.dio]
+dio_id = 1
+driver = "ni-6501"
+resource = "Dev1"
+port_lines = 24
+direction = 0x0000FF
+drive = "open-drain"
+```
+
+**NI USB-8452 (DIO + I2C + SPI):**
+
+```toml
+[io.dio]
+dio_id = 1
+driver = "ni-845x"
+resource = "USB-8452"
+model = "usb-8452"
+port_lines = 8
+direction = 0x0F
+voltage = 3.3
+
+[io.i2c]
+i2c_id = 1
+driver = "ni-845x"
+resource = "USB-8452"
+model = "usb-8452"
+voltage = 3.3
+clock_hz = 100000
+address = 0x50
+
+[io.spi]
+spi_id = 1
+driver = "ni-845x"
+resource = "USB-8452"
+model = "usb-8452"
+voltage = 3.3
+clock_hz = 1000000
+mode = 0
+chip_select = 0
 ```

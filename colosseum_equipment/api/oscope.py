@@ -177,6 +177,16 @@ def stop(*, oscope_id: int) -> None:
 
 
 @command
+def arm_single(*, oscope_id: int) -> None:
+    """Arm one capture without waiting; generate the external event next.
+
+    Call :func:`wait_complete` before reading measurements or waveforms.
+    Unlike :func:`acquire`, this call does not wait for a trigger.
+    """
+    _inst(oscope_id).arm_single()
+
+
+@command
 def single_acquire(*, oscope_id: int) -> None:
     """Arm a single acquisition and wait for OPC completion."""
     _inst(oscope_id).single_acquire()

@@ -257,10 +257,14 @@ class GenericOscope(ScpiInstrumentMixin):
     def stop(self) -> None:
         self._scpi.write("STOP")
 
-    def single_acquire(self) -> None:
-        """Arm a single acquisition and wait for completion (OPC)."""
+    def arm_single(self) -> None:
+        """Arm one acquisition without waiting for an external event."""
         self._mark_capture()
         self._scpi.write("SING")
+
+    def single_acquire(self) -> None:
+        """Arm a single acquisition and wait for completion (OPC)."""
+        self.arm_single()
         wait_opc(self._scpi)
 
     def abort(self) -> None:
@@ -299,8 +303,7 @@ class GenericOscope(ScpiInstrumentMixin):
 
     def acquire(self, *, timeout_s: float = 10.0) -> str:
         """Arm single, wait, return capture id."""
-        self._mark_capture()
-        self._scpi.write("SING")
+        self.arm_single()
         self.wait_complete(timeout_s=timeout_s)
         return self._capture_id
 
