@@ -48,6 +48,16 @@ class SerialTransport(Transport):
         self.write(data)
         return self.read()
 
+    def flush(self) -> None:
+        self._ser.reset_input_buffer()
+        self._ser.reset_output_buffer()
+
+    def in_waiting(self) -> int:
+        return int(self._ser.in_waiting)
+
+    def set_timeout_s(self, timeout_s: float) -> None:
+        self._ser.timeout = float(timeout_s)
+
     def close(self) -> None:
         if self._ser.is_open:
             self._ser.close()

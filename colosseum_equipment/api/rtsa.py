@@ -200,7 +200,7 @@ def set_trigger_position(*, rtsa_id: int, position_dbm: float) -> None:
 
 @command
 def run(*, rtsa_id: int) -> None:
-    """Start or arm a single acquisition.
+    """Start or arm a single acquisition (non-blocking on generic models).
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
     :type rtsa_id: int
@@ -214,7 +214,84 @@ def run(*, rtsa_id: int) -> None:
 
 
 @command
-def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin") -> None:
+def wait_complete(*, rtsa_id: int, timeout_s: float = 60.0) -> None:
+    """Block until the current acquisition completes or ``timeout_s`` elapses.
+
+    :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
+    :type rtsa_id: int
+    :param timeout_s: Maximum wait time in seconds.
+    :type timeout_s: float, optional
+
+    :returns: None
+
+    :raises EquipmentTimeoutError: Acquisition did not complete in time.
+    """
+    get_cached_instrument("rtsa", rtsa_id).wait_complete(timeout_s=timeout_s)
+
+
+@command
+def abort(*, rtsa_id: int) -> None:
+    """Cancel an in-progress acquisition.
+
+    :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
+    :type rtsa_id: int
+
+    :returns: None
+    """
+    get_cached_instrument("rtsa", rtsa_id).abort()
+
+
+@command
+def acquire(*, rtsa_id: int, timeout_s: float = 60.0) -> str:
+    """Run a single acquisition and wait; returns an acquisition id string.
+
+    :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
+    :type rtsa_id: int
+    :param timeout_s: Maximum wait time in seconds.
+    :type timeout_s: float, optional
+
+    :returns: Acquisition id for correlation with saved artifacts.
+    :rtype: str
+    """
+    return str(get_cached_instrument("rtsa", rtsa_id).acquire(timeout_s=timeout_s))
+
+
+@command
+def peak_search(*, rtsa_id: int, marker: int = 1) -> None:
+    """Run a spectrum peak search (Tek RSA5100B and similar).
+
+    :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
+    :type rtsa_id: int
+    :param marker: Marker number (1-based).
+    :type marker: int, optional
+
+    :returns: None
+
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    """
+    get_cached_instrument("rtsa", rtsa_id).peak_search(marker)
+
+
+@command
+def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None:
+    """Export a non-IQ spectrum trace CSV (Tek RSA5100B workflow).
+
+    :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
+    :type rtsa_id: int
+    :param path: Relative path under the run output directory.
+    :type path: str
+    :param trace: Trace number (1-based).
+    :type trace: int, optional
+
+    :returns: None
+
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    """
+    get_cached_instrument("rtsa", rtsa_id).save_spectrum_trace_data(path, trace=trace)
+
+
+@command
+def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str = "") -> None:
     """Download IQ data as ``bin``, ``mat``, or ``iq.tar`` under the run directory.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -223,10 +300,14 @@ def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin") -> None:
     :type path: str
     :param file_format: Export format: ``bin``, ``mat``, or ``iq.tar``.
     :type file_format: str, optional
+    :param key: Evidence key (default ``rtsa_iq_<run>``).
+    :type key: str, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).save_IQ_data(path, file_format=file_format)
+    get_cached_instrument("rtsa", rtsa_id).save_IQ_data(
+        path, file_format=file_format, key=key,
+    )

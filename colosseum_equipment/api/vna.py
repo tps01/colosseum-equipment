@@ -96,6 +96,134 @@ def single_sweep(*, vna_id: int) -> None:
 
 
 @command
+def abort(*, vna_id: int) -> None:
+    """Cancel an in-progress sweep.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    """
+    get_cached_instrument("vna", vna_id).abort()
+
+
+@command
+def set_averaging_count(*, vna_id: int, count: int) -> None:
+    """Set sweep averaging count.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+    :param count: Number of sweeps to average.
+    :type count: int
+
+    :returns: None
+    """
+    get_cached_instrument("vna", vna_id).set_averaging_count(count)
+
+
+@command
+def toggle_averaging(*, vna_id: int, enabled: bool) -> None:
+    """Enable or disable sweep averaging.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+    :param enabled: ``True`` to enable averaging.
+    :type enabled: bool
+
+    :returns: None
+    """
+    get_cached_instrument("vna", vna_id).toggle_averaging(enabled)
+
+
+@command
+def set_smoothing_aperture(*, vna_id: int, percent: float) -> None:
+    """Set trace smoothing aperture as a percent of span.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+    :param percent: Smoothing aperture in percent.
+    :type percent: float
+
+    :returns: None
+    """
+    get_cached_instrument("vna", vna_id).set_smoothing_aperture(percent)
+
+
+@measurement
+def measure_s11_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
+    """Peak S11 magnitude in dB after a single sweep.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+    :param trace: Trace number.
+    :type trace: int, optional
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Peak formatted S11 value in dB.
+    :rtype: float
+    """
+    _ = key
+    return float(get_cached_instrument("vna", vna_id).measure_s11_magnitude(trace=trace))
+
+
+@measurement
+def measure_s21_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
+    """Peak S21 magnitude in dB after a single sweep.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+    :param trace: Trace number.
+    :type trace: int, optional
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Peak formatted S21 value in dB.
+    :rtype: float
+    """
+    _ = key
+    return float(get_cached_instrument("vna", vna_id).measure_s21_magnitude(trace=trace))
+
+
+@measurement
+def measure_s_parameter(
+    *,
+    vna_id: int,
+    trace: int = 1,
+    parameter: str = "S11",
+    format: str = "MLOG",
+    key: str,
+) -> float:
+    """Peak formatted S-parameter value after a single sweep.
+
+    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
+    :type vna_id: int
+    :param trace: Trace number.
+    :type trace: int, optional
+    :param parameter: S-parameter name (for example ``S21``).
+    :type parameter: str, optional
+    :param format: Display format (for example ``MLOG``).
+    :type format: str, optional
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Peak trace value in the configured format.
+    :rtype: float
+    """
+    _ = key
+    return float(
+        get_cached_instrument("vna", vna_id).measure_s_parameter(
+            trace=trace,
+            parameter=parameter,
+            format=format,
+        ),
+    )
+
+
+@command
 def wait_complete(*, vna_id: int) -> None:
     """Block until the current operation completes.
 

@@ -28,8 +28,6 @@ devices:
         getter:
           q: "MEAS:VOLT?"
           r: "{:.6f}"
-        setter:
-          q: "VOLT {:.6f}"
         specs:
           type: float
       current_limit:
@@ -39,6 +37,24 @@ devices:
           r: "{:.6f}"
         setter:
           q: "CURR {:.6f}"
+        specs:
+          type: float
+      ovp:
+        default: 3.6
+        getter:
+          q: "VOLT:PROT?"
+          r: "{:.6f}"
+        setter:
+          q: "VOLT:PROT {:.6f}"
+        specs:
+          type: float
+      ocp:
+        default: 1.0
+        getter:
+          q: "CURR:PROT?"
+          r: "{:.6f}"
+        setter:
+          q: "CURR:PROT {:.6f}"
         specs:
           type: float
 

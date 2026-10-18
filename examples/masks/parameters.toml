@@ -1,0 +1,5 @@
+# Example parameters sections for mask verification.
+# Paths are relative to this file (or CWD / run output dir).
+
+[speca_trace_1]
+mask = "wifi_spurious.json"

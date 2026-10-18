@@ -73,6 +73,30 @@ class ScpiDioBackend:
         self._direction = direction & self._mask
         self._scpi.write(f"DIG:DIR {self._direction}")
 
+    def configure_pin(self, line: int, output: bool) -> None:
+        bit = 1 << line
+        if line < 0 or line >= self._mask.bit_length():
+            raise IoConfigError(
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
+            )
+        if output:
+            self._direction |= bit
+        else:
+            self._direction &= ~bit
+        self._direction &= self._mask
+        self.configure(self._direction)
+
+    def set_pull(self, line: int, pull: str) -> None:
+        if line < 0 or line >= self._mask.bit_length():
+            raise IoConfigError(
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
+            )
+        mode = pull.strip().lower()
+        mapping = {"up": "UP", "down": "DOWN", "float": "NONE"}
+        if mode not in mapping:
+            raise IoConfigError(f"pull must be up, down, or float; got {pull!r}")
+        self._scpi.write(f"DIG:PULL {line},{mapping[mode]}")
+
     def write_port(self, value: int) -> None:
         self._output = value & self._direction & self._mask
         self._scpi.write(f"SOUR:DIG:DATA {self._output}")

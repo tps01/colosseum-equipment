@@ -80,6 +80,83 @@ def initiate(*, phasenoiseanalyzer_id: int) -> None:
 
 
 @command
+def wait_complete(*, phasenoiseanalyzer_id: int, timeout_s: float = 120.0) -> None:
+    """Wait for the current sweep with a bounded timeout.
+
+    :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
+    :type phasenoiseanalyzer_id: int
+    :param timeout_s: Maximum wait time in seconds.
+    :type timeout_s: float, optional
+
+    :returns: None
+    """
+    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).wait_complete(
+        timeout_s=timeout_s,
+    )
+
+
+@command
+def abort(*, phasenoiseanalyzer_id: int) -> None:
+    """Cancel an in-progress phase-noise sweep.
+
+    :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
+    :type phasenoiseanalyzer_id: int
+
+    :returns: None
+    """
+    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).abort()
+
+
+@command
+def set_averaging_count(*, phasenoiseanalyzer_id: int, count: int) -> None:
+    """Set sweep averaging count.
+
+    :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
+    :type phasenoiseanalyzer_id: int
+    :param count: Number of sweeps to average.
+    :type count: int
+
+    :returns: None
+    """
+    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_averaging_count(
+        count,
+    )
+
+
+@command
+def set_xcorr_count(*, phasenoiseanalyzer_id: int, count: int) -> None:
+    """Set cross-correlation count (R&S FSWP and similar).
+
+    :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
+    :type phasenoiseanalyzer_id: int
+    :param count: Cross-correlation count.
+    :type count: int
+
+    :returns: None
+    """
+    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_xcorr_count(count)
+
+
+@command
+def save_trace_data(*, phasenoiseanalyzer_id: int, path: str, trace: int = 1) -> None:
+    """Export phase-noise trace CSV and register an artifact.
+
+    :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
+    :type phasenoiseanalyzer_id: int
+    :param path: Relative path under the run output directory.
+    :type path: str
+    :param trace: Trace number (1-based).
+    :type trace: int, optional
+
+    :returns: None
+    """
+    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).save_trace_data(
+        path,
+        trace=trace,
+    )
+
+
+@command
 def wait_opc(*, phasenoiseanalyzer_id: int) -> None:
     """Wait for the instrument operation-complete bit.
 
@@ -113,6 +190,37 @@ def measure_spot_noise_dbc_hz(
     _ = key
     instrument = get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id)
     return float(instrument.measure_spot_noise_dbc_hz(offset_hz))
+
+
+@measurement
+def measure_integrated_jitter_s(
+    *,
+    phasenoiseanalyzer_id: int,
+    key: str,
+    start_hz: float | None = None,
+    stop_hz: float | None = None,
+) -> float:
+    """Measure integrated phase jitter in seconds when CALC supports it.
+
+    :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
+    :type phasenoiseanalyzer_id: int
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+    :param start_hz: Optional integration start offset in hertz.
+    :type start_hz: float | None, optional
+    :param stop_hz: Optional integration stop offset in hertz.
+    :type stop_hz: float | None, optional
+
+    :returns: Integrated jitter in seconds (RMS).
+    :rtype: float
+    """
+    _ = key
+    return float(
+        get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).measure_integrated_jitter_s(
+            start_hz=start_hz,
+            stop_hz=stop_hz,
+        ),
+    )
 
 
 @measurement

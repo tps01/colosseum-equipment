@@ -204,3 +204,25 @@ class GenericVSG(ScpiInstrumentMixin):
 
     def measure_power_dbm(self) -> float:
         return self._scpi.query_float("POW:AMPL?")
+
+    def set_arb_sample_clock(self, sample_clock_hz: float) -> None:
+        self._scpi.write(f"RAD:ARB:SCL:RATE {sample_clock_hz:.6f}")
+
+    def set_arb_trigger_source(self, source: str) -> None:
+        self._scpi.write(f"TRIG:ARB:SOUR {source}")
+
+    def arm_arb_trigger(self) -> None:
+        self._scpi.write("TRIG:ARB:IMM")
+
+    def set_arb_marker_enable(self, marker: int, enabled: bool) -> None:
+        self._scpi.write(f"RAD:ARB:MARK{int(marker)}:STAT {'ON' if enabled else 'OFF'}")
+
+    def set_arb_marker_position(self, marker: int, sample_index: int) -> None:
+        self._scpi.write(f"RAD:ARB:MARK{int(marker)}:POS {int(sample_index)}")
+
+    def set_ref_source(self, source: str) -> None:
+        self._scpi.write(f"ROSC:SOUR {source}")
+
+    def get_ref_locked(self) -> bool:
+        raw = self._scpi.query("ROSC:LOCK?").strip().upper()
+        return raw in {"1", "ON", "LOCK", "LOCKED", "TRUE"}

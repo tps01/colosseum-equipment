@@ -17,6 +17,7 @@ from . import (
     scpi,
     serial,
     speca,
+    tools,
     vna,
     vsg,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "scpi",
     "serial",
     "speca",
+    "tools",
     "vna",
     "vsg",
 ]

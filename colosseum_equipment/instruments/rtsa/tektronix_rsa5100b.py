@@ -3,8 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
+from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
+from colosseum_equipment.instruments.speca.trace_csv import (
+    frequency_axis,
+    parse_trace_amplitudes,
+    write_trace_csv,
+)
 from colosseum_equipment.instruments.rtsa.iq_export import (
     normalize_iq_format,
     write_iq_bin,
@@ -78,10 +84,47 @@ class TektronixRSA5100BRtsa(GenericRtsa):
 
     def run(self) -> None:
         self._ensure_spectrum_view()
-        self._scpi.write("INIT:IMM")
+        super().run()
         wait_opc(self._scpi)
 
-    def save_IQ_data(self, path: str, *, file_format: str = "bin") -> Path:
+    def peak_search(self, marker: int = 1) -> None:
+        self._ensure_spectrum_view()
+        self._scpi.write(f"CALC:MARK{marker}:MAX")
+
+    def save_spectrum_trace_data(self, path: str, *, trace: int = 1) -> Path:
+        """Export a non-IQ spectrum trace CSV (last completed acquisition)."""
+        self._ensure_spectrum_view()
+        center = self._scpi.query_float("DISP:SPEC:FREQ:OFFS?")
+        span = self._scpi.query_float("DISP:SPEC:FREQ:SCAL?")
+        raw = self._scpi.query(f"FETCH:SPEC:TRAC? TRACE{int(trace)}")
+        amplitudes = parse_trace_amplitudes(raw)
+        frequencies = frequency_axis(center, span, len(amplitudes))
+        artifact_path = resolve_artifact_path(path)
+        write_trace_csv(
+            artifact_path,
+            amplitudes,
+            center_hz=center,
+            span_hz=span,
+            include_frequency=True,
+        )
+        record_artifact(
+            domain="equipment",
+            command="save_spectrum_trace_data",
+            key=f"rtsa_spec_trace_{trace}",
+            path=artifact_path,
+            value={
+                "trace": trace,
+                "center_hz": center,
+                "span_hz": span,
+                "points": len(amplitudes),
+                "run_id": self._run_id,
+            },
+        )
+        return artifact_path
+
+    def save_IQ_data(self, path: str, *, file_format: str = "bin", key: str = "") -> Path:
+        from colosseum_equipment.evidence import record_artifact
+
         self._ensure_spectrum_view()
         payload = self._scpi.read_binary_block("FETCH:SPEC:IQ?")
         export_format = normalize_iq_format(file_format, path)
@@ -98,4 +141,12 @@ class TektronixRSA5100BRtsa(GenericRtsa):
             write_iq_tar(artifact_path, payload, metadata=metadata)
         else:
             write_iq_bin(artifact_path, payload)
+        evidence_key = key or f"rtsa_iq_{getattr(self, '_run_id', None) or 'last'}"
+        record_artifact(
+            domain="equipment",
+            command="save_IQ_data",
+            key=evidence_key,
+            path=artifact_path,
+            value=metadata,
+        )
         return artifact_path

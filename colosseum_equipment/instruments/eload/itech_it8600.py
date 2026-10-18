@@ -18,30 +18,39 @@ class ItechIT8600Eload(GenericEload):
         "cp": "POWer",
     }
 
-    def set_mode(self, mode: str) -> None:
+    def set_mode(self, mode: str, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         func = self._MODE_MAP.get(mode.lower(), mode)
         self._scpi.write(f"FUNCtion {func}")
 
-    def set_current(self, current: float) -> None:
+    def set_current(self, current: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"CURRent:LEVel {current}")
 
-    def set_voltage(self, voltage: float) -> None:
+    def set_voltage(self, voltage: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"VOLTage:LEVel {voltage}")
 
-    def set_power(self, power: float) -> None:
+    def set_power(self, power: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"POWer:LEVel {power}")
 
-    def set_resistance(self, resistance: float) -> None:
+    def set_resistance(self, resistance: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"RESistance:LEVel {resistance}")
 
-    def engage(self) -> None:
+    def engage(self, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write("INPut:STATe ON")
 
-    def disengage(self) -> None:
+    def disengage(self, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write("INPut:STATe OFF")
 
-    def measure_voltage(self) -> float:
+    def measure_voltage(self, *, channel: int = 1) -> float:
+        self._apply_channel(channel)
         return self._scpi.query_float("MEASure:VOLTage?")
 
-    def measure_current(self) -> float:
+    def measure_current(self, *, channel: int = 1) -> float:
+        self._apply_channel(channel)
         return self._scpi.query_float("MEASure:CURRent?")

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "domain": "time",
+  "x_unit": "s",
+  "y_unit": "V",
+  "setup": {
+    "timebase_s": 1e-6,
+    "scale_v": 0.5,
+    "offset_v": 0.0
+  },
+  "regions": [
+    {
+      "id": "pulse_body",
+      "kind": "keep_inside",
+      "x0": 2e-6,
+      "x1": 8e-6,
+      "y0": 0.8,
+      "y1": 1.2
+    },
+    {
+      "id": "pre_pulse",
+      "kind": "keep_below",
+      "x0": 0.0,
+      "x1": 1.5e-6,
+      "y0": -0.2,
+      "y1": 0.15
+    }
+  ]
+}

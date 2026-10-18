@@ -4,6 +4,7 @@ from typing import Any
 
 from pyftdi.gpio import GpioMpsseController
 
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
 
 
@@ -32,6 +33,21 @@ class FtdiFt232hDioBackend:
     def configure(self, direction: int) -> None:
         self._direction = direction & self._mask
         self._gpio.set_direction(self._mask, self._direction)
+
+    def configure_pin(self, line: int, output: bool) -> None:
+        bit = 1 << line
+        if output:
+            self._direction |= bit
+        else:
+            self._direction &= ~bit
+        self._direction &= self._mask
+        self._gpio.set_direction(self._mask, self._direction)
+
+    def set_pull(self, line: int, pull: str) -> None:
+        _ = line, pull
+        raise EquipmentCapabilityError(
+            "set_pull is not supported on ftdi-ft232h (no per-line pull control in pyftdi GPIO)",
+        )
 
     def write_port(self, value: int) -> None:
         self._gpio.write(value & self._direction & self._mask)

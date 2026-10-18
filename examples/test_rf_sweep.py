@@ -38,12 +38,16 @@ def main() -> None:
     col.equipment.vsg.set_power(vsg_id=1, power_dbm=-10.0)
     col.equipment.vsg.set_output(vsg_id=1, enabled=True)
 
-    col.equipment.speca.set_center_frequency(speca_id=1, frequency=1e9)
-    col.equipment.speca.set_span(speca_id=1, span=10e6)
-    col.equipment.speca.set_rbw(speca_id=1, rbw=100e3)
-    col.equipment.speca.peak_search(speca_id=1, marker=1)
-    col.equipment.speca.measure_marker_power(speca_id=1, marker=1, key="carrier_power")
-    col.equipment.speca.save_trace_data(speca_id=1, path="traces/carrier.csv")
+    try:
+        col.equipment.speca.set_center_frequency(speca_id=1, frequency=1e9)
+        col.equipment.speca.set_span(speca_id=1, span=10e6)
+        col.equipment.speca.set_rbw(speca_id=1, rbw=100e3)
+        col.equipment.speca.peak_search(speca_id=1, marker=1)
+        col.equipment.speca.measure_marker_power(speca_id=1, marker=1, key="carrier_power")
+        col.equipment.speca.verify_marker_power(key="carrier_power", expected_val=-42.5, tolerance=0.5)
+        col.equipment.speca.save_trace_data(speca_id=1, path="traces/carrier.csv")
+    finally:
+        col.equipment.vsg.set_output(vsg_id=1, enabled=False)
 
 
 if __name__ == "__main__":

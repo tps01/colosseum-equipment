@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "domain": "frequency",
+  "x_unit": "Hz",
+  "y_unit": "dBm",
+  "setup": {
+    "center_hz": 2400000000.0,
+    "span_hz": 100000000.0,
+    "ref_level_dbm": 0.0,
+    "rbw_hz": 100000.0
+  },
+  "regions": [
+    {
+      "id": "left_spur",
+      "kind": "keep_below",
+      "x0": 2350000000.0,
+      "x1": 2390000000.0,
+      "y0": -120.0,
+      "y1": -40.0
+    },
+    {
+      "id": "right_spur",
+      "kind": "keep_below",
+      "x0": 2410000000.0,
+      "x1": 2450000000.0,
+      "y0": -120.0,
+      "y1": -40.0
+    }
+  ]
+}

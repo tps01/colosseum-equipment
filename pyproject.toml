@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.4.3"
+version = "0.4.4"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
-  "colosseum-core>=0.17.0,<0.18",
+  "colosseum-core>=0.17.1,<0.18",
   "matplotlib>=3.7,<4",
   "numpy>=1.24,<3",
   "pyftdi>=0.55,<1",
@@ -34,7 +34,7 @@ equipment = "colosseum_equipment:register"
 include = ["colosseum_equipment*"]
 
 [tool.setuptools.package-data]
-colosseum_equipment = ["py.typed"]
+colosseum_equipment = ["py.typed", "tools/mask_templates/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/unit", "tests/integration"]
@@ -42,6 +42,7 @@ pythonpath = ["."]
 markers = [
     "visa_sim: exercises the PyVISA-sim backend",
     "plot: exercises matplotlib plot generation (slower)",
+    "gui: opens a Tk window (skip in headless CI)",
 ]
 
 [tool.ruff]
@@ -54,13 +55,18 @@ select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", 
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN", "ARG", "FBT", "E501"]
-"colosseum_equipment/instruments/**" = ["N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501"]
-"colosseum_equipment/api/**" = ["N802", "A002", "FBT001"]
+"colosseum_equipment/instruments/**" = [
+  "N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501",
+  "ARG002", "SIM105", "SIM102", "TC001", "TC003", "C416", "B007", "F841", "I001",
+]
+"colosseum_equipment/api/**" = ["N802", "A002", "FBT001", "ANN202", "ANN401", "E501"]
+"colosseum_equipment/tools/**" = ["BLE001", "ANN401", "N818", "FBT003", "SIM114"]
+"colosseum_equipment/evidence.py" = ["ANN401"]
 "colosseum_equipment/io/**" = ["FBT001", "A002", "A005"]
 "colosseum_equipment/network/windows.py" = ["N801"]
 "examples/**" = ["E501"]
 "colosseum_equipment/autoconfig/**" = ["BLE001"]
-"colosseum_equipment/transports/**" = ["BLE001", "ICN001"]
+"colosseum_equipment/transports/**" = ["BLE001", "ICN001", "RET501"]
 "colosseum_equipment/network/**" = ["BLE001"]
 
 [tool.mypy]
@@ -81,6 +87,8 @@ module = [
   "scipy.*",
   "numpy.*",
   "matplotlib.*",
+  "customtkinter",
+  "customtkinter.*",
   "pyvisa.*",
   "pyvisa_sim.*",
   "serial.*",

@@ -16,6 +16,6 @@ class TdkGenesysPSU(GenericPSU):
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         super().__init__(transport, config)
         if "ovp" in config:
-            self._scpi.write(f"VOLT:PROT {float(config['ovp'])}")
+            self.set_ovp_v(float(config["ovp"]))
         if "ocp" in config:
-            self._scpi.write(f"CURR:PROT {float(config['ocp'])}")
+            self.set_ocp_a(float(config["ocp"]))

@@ -5,7 +5,8 @@ Colosseum exposes RF bench instruments through ``col.equipment.vsg`` (vector/sig
 ``col.equipment.asg`` (analog signal generator), ``col.equipment.speca`` (classic spectrum analyzer),
 ``col.equipment.rtsa`` (real-time spectrum analyzer / IQ acquisition), and ``col.equipment.vna``.
 
-Configure instruments in TOML (see :doc:`configuration` and the generated **Bench configuration reference**).
+Configure instruments in TOML (see the core configuration guide and the
+complete bench files under ``examples/configs/``).
 Select vendor behavior with ``model``. Per-function parameters and return types are documented in the
 Python docstrings on ``colosseum_equipment.api`` modules (``vsg``, ``asg``, ``speca``, ``rtsa``, ``vna``).
 
@@ -38,9 +39,13 @@ matplotlib support is included in the default installation. RTSA IQ capture uses
 Capability errors
 -----------------
 
-If a function is not implemented for the configured ``model``, the driver raises
-``EquipmentCapabilityError``. Use ``col.equipment.scpi.write`` / ``query`` with exactly one instrument
-``*_id`` for bespoke SCPI.
+Explicitly refused operations raise ``EquipmentCapabilityError``. Inherited
+generic methods may instead send best-effort SCPI and warn once per model
+and command. A successful write does not prove hardware support; the error
+queue is not checked automatically. Distinguish vendor overrides, simulator
+coverage, and actual bench validation. See the driver/capability notes for
+per-model limits. Use ``col.equipment.scpi.write`` / ``query`` with exactly
+one instrument ``*_id`` for manual-backed bespoke SCPI.
 
 API reference
 -------------

@@ -87,7 +87,10 @@ class KeysightE4407BSpecA(GenericSpecA):
         include_frequency: bool = True,
         save_plot: bool = False,
         plot_path: str | None = None,
+        key: str = "",
     ) -> Path:
+        from colosseum_equipment.evidence import record_artifact
+
         frequencies, amplitudes = self._fetch_trace(trace, include_frequency=include_frequency)
         center = (frequencies[0] + frequencies[-1]) / 2.0 if frequencies else 0.0
         span = frequencies[-1] - frequencies[0] if len(frequencies) > 1 else 0.0
@@ -105,13 +108,36 @@ class KeysightE4407BSpecA(GenericSpecA):
             png_path = resolve_artifact_path(plot_path or str(Path(path).with_suffix(".png")))
             write_trace_plot(artifact_path, png_path)
 
+        evidence_key = key or f"speca_trace_{trace}"
+        record_artifact(
+            domain="equipment",
+            command="save_trace_data",
+            key=evidence_key,
+            path=artifact_path,
+            value={
+                "trace": trace,
+                "center_hz": center if include_frequency else None,
+                "span_hz": span if include_frequency else None,
+                "points": len(amplitudes),
+            },
+        )
         return artifact_path
 
-    def save_screenshot(self, path: str) -> Path:
+    def save_screenshot(self, path: str, *, key: str = "") -> Path:
+        from colosseum_equipment.evidence import record_artifact
+
         remote = "SCREEN.PNG"
         self._scpi.write(f'MMEM:STOR:SCR "{remote}"')
         payload = self._scpi.read_binary_block(f'MMEM:DATA? "{remote}"')
         artifact_path = resolve_artifact_path(path)
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         artifact_path.write_bytes(payload)
+        evidence_key = key or "speca_screenshot_last"
+        record_artifact(
+            domain="equipment",
+            command="save_screenshot",
+            key=evidence_key,
+            path=artifact_path,
+            value={"bytes": len(payload)},
+        )
         return artifact_path

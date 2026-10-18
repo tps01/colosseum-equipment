@@ -42,14 +42,22 @@ def main() -> None:
     col.equipment.vsg.play_iq(vsg_id=1, filename="WFM1:IQ.bin", center_freq_hz=1e9, amplitude_dbm=-10.0, sample_clock_hz=100e6)
     col.equipment.vsg.set_output(vsg_id=1, enabled=True)
 
-    col.equipment.speca.preset(speca_id=1)
-    col.equipment.speca.set_reference_level(speca_id=1, level_dbm=0.0)
-    col.equipment.speca.single_sweep(speca_id=1)
-    col.equipment.speca.save_trace_data(speca_id=1, path="traces/modulated.csv")
+    try:
+        col.equipment.speca.preset(speca_id=1)
+        col.equipment.speca.set_reference_level(speca_id=1, level_dbm=0.0)
+        col.equipment.speca.single_sweep(speca_id=1)
+        col.equipment.speca.save_trace_data(speca_id=1, path="traces/modulated.csv")
 
-    col.equipment.rtsa.set_trigger_source(rtsa_id=1, source="IMM")
-    col.equipment.rtsa.run(rtsa_id=1)
-    col.equipment.rtsa.save_IQ_data(rtsa_id=1, path="captures/iq.bin", file_format="bin")
+        col.equipment.speca.set_marker_frequency(speca_id=1, marker=1, frequency_hz=1e9)
+        col.equipment.speca.measure_marker_power(speca_id=1, marker=1, key="carrier_power")
+        col.equipment.speca.verify_marker_power(key="carrier_power", expected_val=-42.5, tolerance=0.5)
+
+        col.equipment.rtsa.set_trigger_source(rtsa_id=1, source="IMM")
+        col.equipment.rtsa.run(rtsa_id=1)
+        col.equipment.rtsa.wait_complete(rtsa_id=1, timeout_s=5.0)
+        col.equipment.rtsa.save_IQ_data(rtsa_id=1, path="captures/iq.bin", file_format="bin")
+    finally:
+        col.equipment.vsg.set_output(vsg_id=1, enabled=False)
 
 
 if __name__ == "__main__":

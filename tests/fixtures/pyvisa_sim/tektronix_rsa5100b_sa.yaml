@@ -19,16 +19,25 @@ devices:
       - q: "DISP:UPD ON"
       - q: "DISP:WIND:ACT:MEAS?"
         r: "SPECtrum"
+      - q: "DISP:WIND:ACT:MEAS SPECtrum"
+      - q: "TRIG:SOUR IMM"
       - q: "CALC:MARK1:MAX"
       - q: "TRAC:DATA? TRACE1"
         r: "-38.0,-37.5,-36.0,-37.0,-39.0"
       - q: "FETCH:SPEC:IQ?"
-        r: "#21234567890123456789012"
+        r: "#2161234567890123456"
       - q: "FETCH:SGRam:TRAC?"
         r: "#210abcdefghij"
       - q: "SYST:ERR?"
         r: "0,No error"
     properties:
+      num_samples:
+        default: 1
+        getter:
+          q: "SENS:SPEC:ACQ:POIN?"
+          r: "{:d}"
+        specs:
+          type: int
       center_freq:
         default: 1000000000.0
         getter:

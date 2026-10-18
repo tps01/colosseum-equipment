@@ -94,3 +94,78 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
 write = _make_scpi_api("write", "write", None)
 query = _make_scpi_api("query", "query", str)
 query_float = _make_scpi_api("query_float", "query_float", float)
+
+
+def _make_status_api(name: str, method: str, return_annotation: object) -> Callable[..., object]:
+    params = [
+        *[
+            inspect.Parameter(
+                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+            )
+            for param in _KIND_ID_PARAMS
+        ],
+    ]
+
+    def api(**instrument_ids: int | None) -> object:
+        helper = _scpi_helper(**instrument_ids)
+        return getattr(helper, method)()
+
+    api.__name__ = name
+    api.__qualname__ = name
+    api.__module__ = __name__
+    api_any: Any = api
+    api_any.__signature__ = inspect.Signature(params, return_annotation=return_annotation)
+    id_list = ", ".join(sorted(_KIND_ID_PARAMS))
+    api.__doc__ = f"""SCPI status helper ``{method}`` on exactly one configured instrument.
+
+:param {id_list}: Pass exactly one ``*_id`` matching a configured instrument.
+
+:raises ValueError: If zero or more than one ``*_id`` is provided.
+:raises EquipmentConnectionError: Transport or instrument connection failed.
+"""
+    return command(api_any)
+
+
+status_byte = _make_status_api("status_byte", "status_byte", int)
+esr = _make_status_api("esr", "esr", int)
+clear_status = _make_status_api("clear_status", "clear_status", None)
+
+
+def _make_drain_error_queue() -> Callable[..., list[str]]:
+    params = [
+        inspect.Parameter(
+            "max_errors",
+            inspect.Parameter.KEYWORD_ONLY,
+            default=50,
+            annotation=int,
+        ),
+        *[
+            inspect.Parameter(
+                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+            )
+            for param in _KIND_ID_PARAMS
+        ],
+    ]
+
+    def api(*, max_errors: int = 50, **instrument_ids: int | None) -> list[str]:
+        helper = _scpi_helper(**instrument_ids)
+        return helper.drain_error_queue(max_errors=max_errors)
+
+    api.__name__ = "drain_error_queue"
+    api.__qualname__ = "drain_error_queue"
+    api.__module__ = __name__
+    api_any: Any = api
+    api_any.__signature__ = inspect.Signature(params, return_annotation=list[str])
+    id_list = ", ".join(sorted(_KIND_ID_PARAMS))
+    api.__doc__ = f"""Drain SCPI ``SYST:ERR?`` until empty (or ``max_errors``).
+
+:param max_errors: Maximum number of error strings to read.
+:param {id_list}: Pass exactly one ``*_id`` matching a configured instrument.
+
+:returns: List of raw error responses (last entry is typically ``0,"No error"``).
+:raises ValueError: If zero or more than one ``*_id`` is provided.
+"""
+    return command(api_any)
+
+
+drain_error_queue = _make_drain_error_queue()

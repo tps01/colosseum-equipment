@@ -105,3 +105,49 @@ def test_rtsa_center_span(bench_rf, isolated_cwd) -> None:
     rtsa.set_span(rtsa_id=1, span_hz=20e6)
     assert float(scpi.query(command="DISP:SPEC:FREQ:OFFS?", rtsa_id=1)) == pytest.approx(2.5e9)
     assert float(scpi.query(command="DISP:SPEC:FREQ:SCAL?", rtsa_id=1)) == pytest.approx(20e6)
+
+
+def test_documented_vector_workflow_exports_real_fixture_values(bench_rf, isolated_cwd) -> None:
+    """Catch queued simulator errors even when a command reports PASS."""
+    import json
+    import runpy
+    import tarfile
+
+    from colosseum_equipment.api import rtsa, scpi
+
+    load_config(bench_rf)
+    example = runpy.run_path(str(REPO / "examples" / "test_rf_vector_mod.py"))
+    example["main"]()
+    output = get_context().output_dir
+    assert output is not None
+    assert (output / "captures/iq.bin").read_bytes() == b"1234567890123456"
+    lines = (output / "traces/modulated.csv").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 6
+    assert float(lines[1].split(",")[0]) == pytest.approx(995e6)
+    assert float(lines[1].split(",")[1]) == pytest.approx(-42.5)
+    rtsa.save_IQ_data(rtsa_id=1, path="captures/iq.iq.tar", file_format="iq.tar")
+    with tarfile.open(output / "captures/iq.iq.tar") as archive:
+        metadata = json.load(archive.extractfile("metadata.json"))
+    assert metadata["center_freq_hz"] == pytest.approx(1e9)
+    assert metadata["span_hz"] == pytest.approx(10e6)
+    assert metadata["num_samples"] == 1
+    # Each session must still be aligned after upload, capture and metadata queries.
+    for kind in ("vsg", "speca", "rtsa"):
+        assert scpi.query(command="*OPC?", **{f"{kind}_id": 1}) == "1"
+
+
+def test_documented_parameter_mask_workflow(bench_rf, isolated_cwd) -> None:
+    import runpy
+
+    from colosseum.config.parameters import attach_parameters
+
+    load_config(bench_rf)
+    attach_parameters(get_context(), REPO / "examples/masks/parameters.toml", required=True)
+    example = runpy.run_path(str(REPO / "examples/test_mask_sim.py"))
+    example["main"]()
+    output = get_context().output_dir
+    assert output is not None and (output / "speca/wifi_trace.csv").is_file()
+    rows = get_context().db.fetch_all_verifications()
+    assert [(row.key, row.status) for row in rows if row.command == "speca.verify_mask"] == [
+        ("speca_trace_1", "PASS"),
+    ]

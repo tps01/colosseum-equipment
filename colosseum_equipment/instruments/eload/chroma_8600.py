@@ -18,30 +18,39 @@ class Chroma8600Eload(GenericEload):
         "cp": "POWer",
     }
 
-    def set_mode(self, mode: str) -> None:
+    def set_mode(self, mode: str, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         func = self._MODE_MAP.get(mode.lower(), mode)
         self._scpi.write(f"FUNC {func}")
 
-    def set_current(self, current: float) -> None:
+    def set_current(self, current: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"CURR:LEV {current}")
 
-    def set_voltage(self, voltage: float) -> None:
+    def set_voltage(self, voltage: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"VOLT {voltage}")
 
-    def set_power(self, power: float) -> None:
+    def set_power(self, power: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"POW:LEV {power}")
 
-    def set_resistance(self, resistance: float) -> None:
+    def set_resistance(self, resistance: float, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write(f"RES:LEV {resistance}")
 
-    def engage(self) -> None:
+    def engage(self, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write("INP 1")
 
-    def disengage(self) -> None:
+    def disengage(self, *, channel: int = 1) -> None:
+        self._apply_channel(channel)
         self._scpi.write("INP 0")
 
-    def measure_voltage(self) -> float:
+    def measure_voltage(self, *, channel: int = 1) -> float:
+        self._apply_channel(channel)
         return self._scpi.query_float("MEAS:VOLT?")
 
-    def measure_current(self) -> float:
+    def measure_current(self, *, channel: int = 1) -> float:
+        self._apply_channel(channel)
         return self._scpi.query_float("MEAS:CURR?")

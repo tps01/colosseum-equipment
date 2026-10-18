@@ -61,7 +61,9 @@ class SCPIHelper:
         write_raw = getattr(self._transport, "write_raw", None)
         if not callable(write_raw):
             raise EquipmentResponseError("Transport does not support binary block writes")
-        write_raw(f"{command_prefix} ".encode("ascii") + block)
+        # Raw writes bypass the transport's text terminator. End the SCPI
+        # message explicitly so the next query cannot join the binary payload.
+        write_raw(f"{command_prefix} ".encode("ascii") + block + b"\n")
 
     def read_binary_block(self, command: str) -> bytes:
         read_raw = getattr(self._transport, "read_raw", None)
@@ -69,6 +71,36 @@ class SCPIHelper:
             raise EquipmentResponseError("Transport does not support binary block reads")
         self.write(command)
         return parse_definite_length_block(read_raw())
+
+    def status_byte(self) -> int:
+        """Read the IEEE 488.2 status byte (``*STB?``)."""
+        return int(float(self.query("*STB?")))
+
+    def esr(self) -> int:
+        """Read and clear the event status register (``*ESR?``)."""
+        return int(float(self.query("*ESR?")))
+
+    def clear_status(self) -> None:
+        """Clear status registers (``*CLS``)."""
+        self.write("*CLS")
+
+    def drain_error_queue(self, *, max_errors: int = 50) -> list[str]:
+        """Drain SCPI system error queue until empty or ``max_errors``.
+
+        Uses ``SYST:ERR?``; stops when code is 0 / "No error".
+        """
+        errors: list[str] = []
+        for _ in range(max(1, max_errors)):
+            raw = self.query("SYST:ERR?")
+            errors.append(raw)
+            code_part = raw.split(",", 1)[0].strip()
+            try:
+                code = int(float(code_part))
+            except ValueError:
+                code = -1
+            if code == 0:
+                break
+        return errors
 
 
 def wait_opc(scpi: SCPIHelper) -> None:

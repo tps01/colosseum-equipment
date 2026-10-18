@@ -125,6 +125,11 @@ class VISATransport(Transport):
         except Exception as exc:
             raise_mapped_visa_error(exc, resource=self._resource)
 
+    def set_timeout_s(self, timeout_s: float) -> None:
+        self._timeout = float(timeout_s)
+        if getattr(self, "_inst", None) is not None:
+            self._inst.timeout = int(float(timeout_s) * 1000)
+
     def close(self) -> None:
         with contextlib.suppress(Exception):
             self._inst.close()
