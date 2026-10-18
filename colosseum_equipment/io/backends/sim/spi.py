@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.context import get_context
 
 from colosseum_equipment.io.exceptions import IoConfigError
@@ -47,7 +49,7 @@ class SimSpiBackend:
         }
 
     @classmethod
-    def from_cache(cls, *, spi_id: int, config: dict) -> SimSpiBackend:
+    def from_cache(cls, *, spi_id: int, config: dict[str, Any]) -> SimSpiBackend:
         ctx = get_context()
         state = ctx.resource_cache.setdefault(_SIM_STATE_KEY, {})
         key = _state_key(spi_id)

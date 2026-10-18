@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.context import get_context
 
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
@@ -50,7 +52,7 @@ class SimI2cBackend:
         }
 
     @classmethod
-    def from_cache(cls, *, i2c_id: int, config: dict) -> SimI2cBackend:
+    def from_cache(cls, *, i2c_id: int, config: dict[str, Any]) -> SimI2cBackend:
         ctx = get_context()
         state = ctx.resource_cache.setdefault(_SIM_STATE_KEY, {})
         key = _state_key(i2c_id)
