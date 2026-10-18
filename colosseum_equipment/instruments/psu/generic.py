@@ -48,11 +48,11 @@ class GenericPSU(ScpiInstrumentMixin):
 
     def set_voltage(self, voltage: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"VOLT {voltage}")
+        self._scpi.write(f"VOLT {voltage:.6f}")
 
     def set_current_limit(self, current: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"CURR {current}")
+        self._scpi.write(f"CURR {current:.6f}")
 
     def set_output(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)
