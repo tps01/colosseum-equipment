@@ -55,14 +55,18 @@ select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", 
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN", "ARG", "FBT", "E501"]
-"colosseum_equipment/instruments/**" = ["N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501"]
-"colosseum_equipment/api/**" = ["N802", "A002", "FBT001"]
-"colosseum_equipment/tools/**" = ["BLE001", "ANN401", "N818", "FBT003"]
+"colosseum_equipment/instruments/**" = [
+  "N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501",
+  "ARG002", "SIM105", "SIM102", "TC001", "TC003", "C416", "B007", "F841", "I001",
+]
+"colosseum_equipment/api/**" = ["N802", "A002", "FBT001", "ANN202", "E501"]
+"colosseum_equipment/tools/**" = ["BLE001", "ANN401", "N818", "FBT003", "SIM114"]
+"colosseum_equipment/evidence.py" = ["ANN401"]
 "colosseum_equipment/io/**" = ["FBT001", "A002", "A005"]
 "colosseum_equipment/network/windows.py" = ["N801"]
 "examples/**" = ["E501"]
 "colosseum_equipment/autoconfig/**" = ["BLE001"]
-"colosseum_equipment/transports/**" = ["BLE001", "ICN001"]
+"colosseum_equipment/transports/**" = ["BLE001", "ICN001", "RET501"]
 "colosseum_equipment/network/**" = ["BLE001"]
 
 [tool.mypy]

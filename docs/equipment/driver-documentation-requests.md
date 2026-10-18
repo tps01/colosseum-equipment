@@ -42,11 +42,11 @@ uses an `http(s)://` `resource` URL (optional `username` / `password`).
 | `model` slug | Kind | Manual | Notes |
 | --- | --- | --- | --- |
 | `ublox-m8` | gnss | u-blox M8/M10/F9/F10 interface descriptions | aliases `ublox-m10`, `ublox-f9`, `ublox-f10`; NMEA + UBX NAV-PVT |
-| `septentrio-asterx-u3` | gnss | AsteRx-U3 User Manual + Septentrio Reference Guide / [pysbf2](https://pypi.org/project/pysbf2/) | aliases `septentrio-asterx-m3`, `septentrio-mosaic-x5`, `septentrio-mosaic-h`; NMEA + SBF PVTGeodetic; serial or VISA SOCKET |
-| `novatel-oem7` | gnss | [OEM7 Commands and Logs Manual](https://docs.novatel.com/OEM7/Content/PDFs/OEM7_Commands_Logs_Manual.pdf) | aliases `novatel-oem7600`, `novatel-pwrpak7`, `novatel-smart7`; NMEA + BESTPOSB; `FRESET COLDSTART` |
-| `rohde-smbv100b` | vsg | [SMBV100B User Manual](https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1178_4460_01/SMBV100B_UserManual_en_15.pdf) | ARB play; upload `.bin` / `.mat` / `.iq.tar` (16-bit I/Q) |
-| `rohde-fsw` | speca | [FSW User Manual](https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1173_9411_01/FSW_UserManual_en_57.pdf) | Spectrum analyzer SCPI |
-| `rohde-fswp` | phasenoiseanalyzer | [FSWP User Manual](https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1177_5633_01/FSWP_UserManual_en_17.pdf) | Spot noise `CALC:SNO:*` |
+| `septentrio-asterx-u3` | gnss | AsteRx-U3 User Manual + Septentrio Reference Guide / ``pysbf2`` | aliases `septentrio-asterx-m3`, `septentrio-mosaic-x5`, `septentrio-mosaic-h`; NMEA + SBF PVTGeodetic; serial or VISA SOCKET |
+| `novatel-oem7` | gnss | `https://docs.novatel.com/OEM7/Content/PDFs/OEM7_Commands_Logs_Manual.pdf` | aliases `novatel-oem7600`, `novatel-pwrpak7`, `novatel-smart7`; NMEA + BESTPOSB; `FRESET COLDSTART` |
+| `rohde-smbv100b` | vsg | `https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1178_4460_01/SMBV100B_UserManual_en_15.pdf` | ARB play; upload `.bin` / `.mat` / `.iq.tar` (16-bit I/Q) |
+| `rohde-fsw` | speca | `https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1173_9411_01/FSW_UserManual_en_57.pdf` | Spectrum analyzer SCPI |
+| `rohde-fswp` | phasenoiseanalyzer | `https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1177_5633_01/FSWP_UserManual_en_17.pdf` | Spot noise `CALC:SNO:*` |
 | `controlbyweb-webrelay` | relay | ControlByWeb Integration Manual | `state.xml` HTTP GET |
 | `controlbyweb-x410` | relay | ControlByWeb Integration Manual | `state.json` HTTP GET |
 | `keysight-edu34450a` | dmm | EDU34450A Programming Guide | DC V/I/R |
@@ -66,7 +66,7 @@ uses an `http(s)://` `resource` URL (optional `username` / `password`).
 | `rohde-znb` | vna | R&S ZNB user manual | SCPI `SENS<n>:*` |
 | `anritsu-541xx` | vna | 10410-00147 GPIB User's Guide | GPIB mnemonics |
 | `keysight-u2001a` | pwrmeter | U2000 programming guide | aliases `keysight-u2000a`, `keysight-u2000` |
-| `minicircuits-rc` | rfswitch | Prog_Manual-2-Switch | alias `minicircuits-ztrc` |
+| `minicircuits-rc` | rfswitch | `Prog_Manual-2-Switch` | alias `minicircuits-ztrc` |
 
 ### Config TOML examples
 

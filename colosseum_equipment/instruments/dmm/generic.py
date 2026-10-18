@@ -84,7 +84,7 @@ class GenericDMM(ScpiInstrumentMixin):
 
     def set_input_z(self, ohms: float, *, channel: int = 1) -> None:
         self._require_channel(channel)
-        self._scpi.write(f"INP:IMP:AUTO OFF")
+        self._scpi.write("INP:IMP:AUTO OFF")
         self._scpi.write(f"INP:IMP {ohms}")
 
     def get_input_z(self, *, channel: int = 1) -> float:
