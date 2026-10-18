@@ -31,6 +31,22 @@ def write(*, serial_id: int, data: str, append_newline: str = "") -> None:
     _channel(serial_id).write(data, append_newline=append_newline)
 
 
+@command
+def write_bytes(*, serial_id: int, data: bytes) -> None:
+    """Write raw bytes to a configured serial port.
+
+    :param serial_id: Configured ``equipment.serial`` id from config TOML.
+    :type serial_id: int
+    :param data: Payload to send.
+    :type data: bytes
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Port open or write failed.
+    """
+    _channel(serial_id).write_bytes(data)
+
+
 @measurement
 def read(*, serial_id: int, key: str, strip_ansi: bool = False) -> str:
     """Read one line from a configured serial port.
@@ -50,6 +66,26 @@ def read(*, serial_id: int, key: str, strip_ansi: bool = False) -> str:
     _ = key
     text = _channel(serial_id).read_line()
     return strip_ansi_text(text) if strip_ansi else text
+
+
+@measurement
+def read_bytes(*, serial_id: int, size: int, key: str) -> bytes:
+    """Read up to ``size`` bytes from a configured serial port.
+
+    :param serial_id: Configured ``equipment.serial`` id from config TOML.
+    :type serial_id: int
+    :param size: Maximum number of bytes to read.
+    :type size: int
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Received bytes (may be shorter than ``size`` on timeout).
+    :rtype: bytes
+
+    :raises EquipmentConnectionError: Port read failed or timed out.
+    """
+    _ = key
+    return _channel(serial_id).read_bytes(size)
 
 
 @measurement
@@ -79,3 +115,54 @@ def read_until(
     _ = key
     text = _channel(serial_id).read_until(terminator)
     return strip_ansi_text(text) if strip_ansi else text
+
+
+@command
+def flush(*, serial_id: int) -> None:
+    """Discard pending RX/TX buffers on the serial port when supported.
+
+    :param serial_id: Configured ``equipment.serial`` id from config TOML.
+    :type serial_id: int
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Port flush failed.
+    :raises EquipmentCapabilityError: Transport does not support flush.
+    """
+    _channel(serial_id).flush()
+
+
+@measurement
+def measure_in_waiting(*, serial_id: int, key: str) -> int:
+    """Read the number of bytes waiting in the RX buffer.
+
+    :param serial_id: Configured ``equipment.serial`` id from config TOML.
+    :type serial_id: int
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Byte count available to read.
+    :rtype: int
+
+    :raises EquipmentConnectionError: Port access failed.
+    :raises EquipmentCapabilityError: Transport does not expose buffer depth.
+    """
+    _ = key
+    return int(_channel(serial_id).measure_in_waiting())
+
+
+@command
+def set_timeout_s(*, serial_id: int, timeout_s: float) -> None:
+    """Set the serial port read timeout in seconds.
+
+    :param serial_id: Configured ``equipment.serial`` id from config TOML.
+    :type serial_id: int
+    :param timeout_s: Read timeout in seconds.
+    :type timeout_s: float
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Port access failed.
+    :raises EquipmentCapabilityError: Transport does not support changing timeout.
+    """
+    _channel(serial_id).set_timeout_s(timeout_s)

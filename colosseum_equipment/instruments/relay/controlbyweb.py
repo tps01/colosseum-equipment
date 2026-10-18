@@ -29,6 +29,14 @@ class ControlByWebRelay(GenericRelay):
         value = 1 if enabled else 0
         self._transport.write(self._path(f"relay{int(channel)}={value}"))
 
+    def set_all(self, bitmask: int) -> None:
+        parts: list[str] = []
+        for index in range(self._relay_count):
+            channel = index + 1
+            enabled = bool((int(bitmask) >> index) & 1)
+            parts.append(f"relay{channel}={1 if enabled else 0}")
+        self._transport.write(self._path("&".join(parts)))
+
     def pulse_relay(self, channel: int, duration_s: float | None = None) -> None:
         n = int(channel)
         if duration_s is None:
@@ -36,15 +44,28 @@ class ControlByWebRelay(GenericRelay):
             return
         self._transport.write(self._path(f"pulseTime{n}={duration_s:g}&relay{n}=2"))
 
+    def set_pulse_width_s(self, channel: int, width_s: float) -> None:
+        n = int(channel)
+        self._transport.write(self._path(f"pulseTime{n}={width_s:g}"))
+
     def measure_relay(self, channel: int) -> bool:
         body = self._transport.query(self._path())
         return self._parse_relay_state(body, int(channel))
+
+    def measure_all(self) -> int:
+        body = self._transport.query(self._path())
+        bitmask = 0
+        for index in range(self._relay_count):
+            channel = index + 1
+            if self._parse_relay_state(body, channel):
+                bitmask |= 1 << index
+        return bitmask
 
     def _parse_relay_state(self, body: str, channel: int) -> bool:
         raise NotImplementedError
 
 
-@instrument_model("relay", "controlbyweb-webrelay")
+@instrument_model("relay", "controlbyweb-webrelay", extra_optional=("relay_count",))
 class ControlByWebWebRelay(ControlByWebRelay):
     """Classic WebRelay / WebRelay-Quad via ``state.xml``."""
 
@@ -55,7 +76,7 @@ class ControlByWebWebRelay(ControlByWebRelay):
         return text not in ("0", "0.0", "")
 
 
-@instrument_model("relay", "controlbyweb-x410")
+@instrument_model("relay", "controlbyweb-x410", extra_optional=("relay_count",))
 class ControlByWebX410(ControlByWebRelay):
     """X-410 / X-400 series via ``state.json``."""
 

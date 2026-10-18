@@ -21,14 +21,30 @@ from colosseum_equipment.instruments.registry import instrument_model
     "keysight-u2004a",
 )
 class KeysightU2000PwrMeter(GenericPwrMeter):
-    def set_frequency(self, frequency_hz: float) -> None:
+    def set_frequency(self, frequency_hz: float, *, channel: int = 1) -> None:
+        self._require_channel(channel)
         self._scpi.write(f"SENS:FREQ {frequency_hz:.6f}")
 
-    def set_averaging_count(self, count: int) -> None:
+    def set_averaging_count(self, count: int, *, channel: int = 1) -> None:
+        self._require_channel(channel)
         self._scpi.write(f"SENS:AVER:COUN {int(count)}")
 
-    def measure_power(self) -> float:
+    def measure_power_dbm(self, *, channel: int = 1) -> float:
+        self._require_channel(channel)
         return self._scpi.query_float("FETCh?")
 
-    def zero_sensor(self) -> None:
+    def measure_power_peak_dbm(self, *, channel: int = 1) -> float:
+        self._require_channel(channel)
+        return self._scpi.query_float("FETCh:PEAK?")
+
+    def measure_power_avg_dbm(self, *, channel: int = 1) -> float:
+        self._require_channel(channel)
+        return self._scpi.query_float("FETCh:AVER?")
+
+    def zero_sensor(self, *, channel: int = 1) -> None:
+        self._require_channel(channel)
         self._scpi.write("CAL:ZERO:AUTO ONCE")
+
+    def calibrate(self, *, channel: int = 1) -> None:
+        self._require_channel(channel)
+        self._scpi.write("CAL:AUTO ONCE")

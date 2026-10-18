@@ -19,6 +19,11 @@ devices:
       - q: "RAD:ARB:STAT 0"
       - q: "OUTP ON"
       - q: "OUTP OFF"
+      # The advertised example uploads exactly this eight-byte fixture.
+      - q: 'MMEM:DATA "WFM1:IQ.bin" #18deadbeef'
+      - q: 'RAD:ARB:WAV "WFM1:IQ.bin"'
+      - q: "RAD:ARB:SCLock:RATE 100000000.000000"
+      - q: "OUTP:MOD ON"
       - q: "OUTP:STAT?"
         r: "1"
     properties:

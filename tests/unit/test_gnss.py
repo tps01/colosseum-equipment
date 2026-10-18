@@ -268,9 +268,12 @@ def test_start_logging_updates_fix(unit_runtime_context) -> None:
     transport = _ByteTransport([gga])
     instrument = build_instrument("gnss", 1, {"model": "generic"}, transport)
     try:
-        instrument.start_logging("gnss/session.nmea")
+        instrument.start_logging("gnss/session.nmea", key="session")
         instrument.wait_for_fix(2.0)
         assert abs(instrument.measure_latitude() - 37.7749) < 1e-4
+        deadline = time.monotonic() + 2.5
+        while time.monotonic() < deadline and not instrument._track_samples:
+            time.sleep(0.05)
     finally:
         instrument.stop_logging()
     assert instrument._raw_log_path is not None
@@ -468,11 +471,14 @@ def test_save_plots_via_instrument(unit_runtime_context) -> None:
     transport = _ByteTransport([gsv, gga])
     instrument = build_instrument("gnss", 1, {"model": "generic"}, transport)
     try:
-        instrument.start_logging("gnss/run.nmea")
+        instrument.start_logging("gnss/run.nmea", key="run")
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline and not instrument._gsv:
             time.sleep(0.02)
         instrument.wait_for_fix(2.0)
+        deadline = time.monotonic() + 2.5
+        while time.monotonic() < deadline and not instrument._track_samples:
+            time.sleep(0.05)
         track = instrument.save_track_plot("gnss/track.png")
         sky = instrument.save_skyplot("gnss/sky.png")
         quality = instrument.save_quality_plot("gnss/quality.png")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
+from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments._capabilities import unsupported
@@ -72,6 +73,47 @@ class GenericVna(ScpiInstrumentMixin):
 
     def wait_complete(self) -> None:
         wait_opc(self._scpi)
+
+    def abort(self) -> None:
+        self._ensure_scpi_vna("abort")
+        self._scpi.write(":ABOR")
+
+    def set_averaging_count(self, count: int) -> None:
+        self._ensure_scpi_vna("set_averaging_count")
+        self._scpi.write(f"{self._sens()}:AVER:COUN {int(count)}")
+
+    def toggle_averaging(self, enabled: bool) -> None:
+        self._ensure_scpi_vna("toggle_averaging")
+        self._scpi.write(f"{self._sens()}:AVER {'ON' if enabled else 'OFF'}")
+
+    def set_smoothing_aperture(self, percent: float) -> None:
+        self._ensure_scpi_vna("set_smoothing_aperture")
+        self._scpi.write(f"{self._calc()}:SMO {percent:.3f}")
+
+    def _sweep_evidence(self, *, trace: int, parameter: str, export_format: str) -> dict[str, Any]:
+        evidence: dict[str, Any] = {
+            "trace": trace,
+            "parameter": parameter.upper(),
+            "format": export_format,
+        }
+        for key, command in (
+            ("if_bw_hz", f"{self._sens()}:BWID:RES?"),
+            ("points", f"{self._sens()}:SWE:POIN?"),
+            ("sweep_type", f"{self._sens()}:SWE:TYPE?"),
+            ("cal_state", f"{self._sens()}:CORR:STAT?"),
+            ("cal_set", f"{self._sens()}:CORR:CSET:ACT?"),
+            ("start_hz", f"{self._sens()}:FREQ:STAR?"),
+            ("stop_hz", f"{self._sens()}:FREQ:STOP?"),
+        ):
+            try:
+                evidence[key] = self._scpi.query_float(command)
+            except Exception:
+                pass
+        try:
+            evidence["source_power_dbm"] = self._scpi.query_float("SOUR1:POW?")
+        except Exception:
+            pass
+        return evidence
 
     def toggle_display(self, enabled: bool) -> None:
         self._ensure_scpi_vna("toggle_display")
@@ -202,14 +244,41 @@ class GenericVna(ScpiInstrumentMixin):
         if display_was_enabled:
             self.toggle_display(True)
 
+        record_artifact(
+            domain="equipment",
+            command="save_trace_data",
+            key=f"vna_trace_{trace}_{parameter.lower()}",
+            path=artifact_path,
+            value=self._sweep_evidence(
+                trace=trace,
+                parameter=parameter,
+                export_format=export_format,
+            ),
+        )
         return artifact_path
 
-    def measure_s11_magnitude(self, trace: int = 1) -> float:
-        self._ensure_scpi_vna("measure_s11_magnitude")
-        self.set_trace_parameters(trace, "S11", "MLOG")
+    def _measure_trace_peak(self, trace: int, parameter: str, fmt: str) -> float:
+        self._ensure_scpi_vna(f"measure_{parameter.lower()}_magnitude")
+        self.set_trace_parameters(trace, parameter, fmt)
         self.single_sweep()
         raw = self._scpi.query(f"{self._calc()}:PAR{trace}:DATA:FDATA?")
         values = parse_vna_trace_values(raw)
         if not values:
-            raise EquipmentResponseError("empty S11 magnitude trace")
+            raise EquipmentResponseError(f"empty {parameter} trace")
         return max(values)
+
+    def measure_s11_magnitude(self, trace: int = 1) -> float:
+        return self._measure_trace_peak(trace, "S11", "MLOG")
+
+    def measure_s21_magnitude(self, trace: int = 1) -> float:
+        return self._measure_trace_peak(trace, "S21", "MLOG")
+
+    def measure_s_parameter(
+        self,
+        *,
+        trace: int = 1,
+        parameter: str = "S11",
+        format: str = "MLOG",
+    ) -> float:
+        """Peak formatted trace value after a single sweep."""
+        return self._measure_trace_peak(trace, parameter.upper(), format.upper())

@@ -47,6 +47,32 @@ class SimTransport(Transport):
             return
         self.write(text)
 
+    def read_bytes(self, size: int) -> bytes:
+        if self.kind == "serial":
+            sim_read = str(self._state.get("sim_read", "OK"))
+            offset = int(self._state.get("rx_offset", 0))
+            chunk = sim_read[offset : offset + size].encode("ascii", errors="replace")
+            self._state["rx_offset"] = offset + len(chunk)
+            return chunk
+        return self.read_line().encode("ascii", errors="replace")[:size]
+
+    def flush(self) -> None:
+        if self.kind == "serial":
+            self._state["rx_offset"] = len(str(self._state.get("sim_read", "")))
+            self._state["tx_log"] = []
+            return
+        return None
+
+    def in_waiting(self) -> int:
+        if self.kind == "serial":
+            sim_read = str(self._state.get("sim_read", "OK"))
+            offset = int(self._state.get("rx_offset", 0))
+            return max(0, len(sim_read) - offset)
+        return 0
+
+    def set_timeout_s(self, timeout_s: float) -> None:
+        self._state["timeout"] = float(timeout_s)
+
     def read_line(self) -> str:
         if self.kind == "serial":
             return self._serial_take_until("\n").strip()

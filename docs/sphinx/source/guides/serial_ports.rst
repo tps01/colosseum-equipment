@@ -10,17 +10,17 @@ Configuration
 
 DUT console on one port; SCPI instrument on another::
 
-   [equipment.serial]
+   [[equipment.serial]]
    serial_id = 1
    port = "COM5"
    baudrate = 115200
-   driver = serial
+   driver = "serial"
 
-   [equipment.serial]
+   [[equipment.serial]]
    serial_id = 2
    port = "COM3"
    baudrate = 9600
-   driver = serial
+   driver = "serial"
 
 Simulated port for CI (``driver = sim``)::
 
@@ -46,4 +46,4 @@ SCPI on a serial port
 
    col.equipment.scpi.query(serial_id=2, command="*IDN?")
 
-See also the generated ``api/serial`` and ``api/scpi`` reference chapters in the equipment PDF.
+See the :doc:`../api/serial` and :doc:`../api/scpi` API pages on this site.

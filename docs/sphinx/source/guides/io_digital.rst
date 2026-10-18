@@ -38,6 +38,33 @@ Configure direction, drive outputs, and record readbacks as measurements::
 
 ``read_port`` and ``read_pin`` require ``key=`` and persist measurement rows under domain ``equipment`` in ``execution.sqlite``. ``write_port``, ``write_pin``, and ``configure`` are ``@command`` APIs (optional ``key=``).
 
+Named pins and per-line setup
+-----------------------------
+
+Add a ``pins`` map to the selected row; names resolve to zero-based lines::
+
+   [io.dio]
+   dio_id = 1
+   driver = "sim"
+   port_lines = 8
+   direction = 0x01
+   pins = { reset = 0, ready = 1 }
+
+In a configured procedure, use either ``name`` or ``line``, not both::
+
+   col.io.dio.configure_pin(dio_id=1, line=0, output=True)
+   col.io.dio.configure_pin(dio_id=1, line=1, output=False)
+   col.io.dio.set_pull(dio_id=1, line=1, pull="up")
+   col.io.dio.write_pin(dio_id=1, name="reset", value=False)
+   col.io.dio.read_pin(dio_id=1, name="reset", key="reset_low")
+   col.shared.verify.verify_field(key="reset_low", expected_val=False)
+
+The last line requires ``colosseum-shared``. It verifies the recorded readback;
+a successful write alone does not establish the pin level. Sim supports pulls;
+``ftdi-ft232h`` explicitly refuses ``set_pull`` because its GPIO path does not
+provide per-line pull control. Use external resistors or a supported backend.
+Input pull behavior and driving a line are different operations.
+
 Platform notes
 --------------
 

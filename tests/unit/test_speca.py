@@ -39,7 +39,7 @@ def test_generic_speca_control_commands_write_scpi() -> None:
         "CALC:MARK2:STAT OFF",
         "CALC:MARK1:MAX:NEXT",
         "CALC:MARK1:MAX:PREV",
-        "CALC:MARK1:MAX",
+        "CALC:MARK1:MAX:NH",
         "SWE:POIN 801",
         "TRIG:DEL:STAT ON",
         "TRIG:DEL 0.001000000",

@@ -9,10 +9,12 @@ registered as artifacts. Unsupported operations raise
 
 from __future__ import annotations
 
-from colosseum.decorators import command, measurement
+from colosseum.decorators import VerificationResult, command, measurement, verification
 
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
+from colosseum_equipment.tools.mask_apply import apply_speca_mask_setup
+from colosseum_equipment.tools.mask_verify import verification_from_mask
 
 
 @command
@@ -208,7 +210,7 @@ def set_marker_frequency(*, speca_id: int, marker: int, frequency_hz: float) -> 
 
 @measurement
 def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
-    """Read marker amplitude in dBm and persist a measurement row.
+    """Read marker amplitude in dBm from the last completed sweep (does not re-arm).
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
@@ -230,7 +232,7 @@ def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
 
 @measurement
 def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
-    """Read marker frequency in hertz and persist a measurement row.
+    """Read marker frequency in hertz from the last completed sweep (does not re-arm).
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
@@ -318,8 +320,9 @@ def save_trace_data(
     include_frequency: bool = True,
     save_plot: bool = False,
     plot_path: str | None = None,
+    key: str = "",
 ) -> None:
-    """Export trace data to a CSV under the run directory and register an artifact.
+    """Export trace data to CSV after a new single sweep (see ``single_sweep`` / ``arm_sweep``).
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
@@ -333,6 +336,8 @@ def save_trace_data(
     :type save_plot: bool, optional
     :param plot_path: Optional explicit PNG path under the run directory.
     :type plot_path: str | None, optional
+    :param key: Evidence key for later ``verify_mask`` (default ``speca_trace_<n>``).
+    :type key: str, optional
 
     :returns: None
 
@@ -345,6 +350,38 @@ def save_trace_data(
         include_frequency=include_frequency,
         save_plot=save_plot,
         plot_path=plot_path,
+        key=key,
+    )
+
+
+@command
+def apply_mask_setup(*, speca_id: int, mask: str, key: str = "") -> None:
+    """Apply mask JSON ``setup`` fields (center/span/ref/RBW) to this SpecA.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :param mask: Path to mask JSON (or from ``parameters.toml`` via ``key=``).
+    :param key: Optional parameters / evidence key for this step.
+    """
+    _ = key
+    apply_speca_mask_setup(mask, speca_id=speca_id)
+
+
+@verification
+def verify_mask(
+    *,
+    key: str,
+    mask: str = "",
+    optional: bool = False,
+) -> VerificationResult:
+    """Verify a prior ``save_trace_data`` CSV against a mask JSON file.
+
+    ``mask`` may come from ``parameters.toml`` for ``key``.
+    """
+    return verification_from_mask(
+        key=key,
+        mask=mask,
+        prefer_commands=("save_trace_data",),
+        optional=optional,
     )
 
 
@@ -609,6 +646,289 @@ def set_continuous_sweep(*, speca_id: int, enabled: bool) -> None:
 
 
 @command
+def arm_sweep(*, speca_id: int) -> None:
+    """Arm a single sweep without blocking for completion.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    """
+    get_cached_instrument("speca", speca_id).arm_sweep()
+
+
+@command
+def wait_complete(*, speca_id: int, timeout_s: float = 60.0) -> None:
+    """Block until the current sweep completes or ``timeout_s`` elapses.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param timeout_s: Maximum wait time in seconds.
+    :type timeout_s: float, optional
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises EquipmentTimeoutError: Sweep did not complete in time.
+    """
+    get_cached_instrument("speca", speca_id).wait_complete(timeout_s=timeout_s)
+
+
+@command
+def abort(*, speca_id: int) -> None:
+    """Cancel an in-progress sweep.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+
+    :returns: None
+
+    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    """
+    get_cached_instrument("speca", speca_id).abort()
+
+
+@command
+def set_attenuation_db(*, speca_id: int, attenuation_db: float) -> None:
+    """Set input attenuation in dB.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param attenuation_db: Input attenuation in dB.
+    :type attenuation_db: float
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).set_attenuation_db(attenuation_db)
+
+
+@command
+def set_auto_attenuation(*, speca_id: int, enabled: bool) -> None:
+    """Enable or disable automatic input attenuation.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param enabled: ``True`` to enable auto attenuation.
+    :type enabled: bool
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).set_auto_attenuation(enabled)
+
+
+@command
+def toggle_preamp(*, speca_id: int, enabled: bool) -> None:
+    """Enable or disable the input preamplifier.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param enabled: ``True`` to enable the preamp.
+    :type enabled: bool
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).toggle_preamp(enabled)
+
+
+@command
+def set_averaging_count(*, speca_id: int, count: int) -> None:
+    """Set sweep averaging count.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param count: Number of sweeps to average.
+    :type count: int
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).set_averaging_count(count)
+
+
+@command
+def set_average_type(*, speca_id: int, average_type: str) -> None:
+    """Set trace averaging type (model-specific, for example ``VID`` or ``POW``).
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param average_type: Averaging type string accepted by the configured model.
+    :type average_type: str
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).set_average_type(average_type)
+
+
+@command
+def set_marker_to_center(*, speca_id: int, marker: int = 1) -> None:
+    """Move a marker to the spectrum center frequency.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param marker: Marker number (1-based).
+    :type marker: int, optional
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).set_marker_to_center(marker)
+
+
+@command
+def toggle_delta_marker(*, speca_id: int, marker: int, enabled: bool) -> None:
+    """Enable or disable delta-marker mode on a marker.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param marker: Marker number (1-based).
+    :type marker: int
+    :param enabled: ``True`` to enable delta mode.
+    :type enabled: bool
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).toggle_delta_marker(marker, enabled)
+
+
+@command
+def set_marker_delta_reference(*, speca_id: int, marker: int, reference_marker: int) -> None:
+    """Set which marker is the delta reference for ``marker``.
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param marker: Delta marker number.
+    :type marker: int
+    :param reference_marker: Reference marker number.
+    :type reference_marker: int
+
+    :returns: None
+    """
+    get_cached_instrument("speca", speca_id).set_marker_delta_reference(marker, reference_marker)
+
+
+@measurement
+def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
+    """Read delta-marker frequency offset in hertz (last sweep; does not re-arm).
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param marker: Marker number (1-based).
+    :type marker: int, optional
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Delta frequency in hertz.
+    :rtype: float
+    """
+    _ = key
+    return float(get_cached_instrument("speca", speca_id).measure_marker_delta_frequency(marker))
+
+
+@measurement
+def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> float:
+    """Read delta-marker amplitude in dB (last sweep; does not re-arm).
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param marker: Marker number (1-based).
+    :type marker: int, optional
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Delta amplitude in dB.
+    :rtype: float
+    """
+    _ = key
+    return float(get_cached_instrument("speca", speca_id).measure_marker_delta_power(marker))
+
+
+@measurement
+def measure_channel_power_dbm(*, speca_id: int, marker: int = 1, key: str) -> float:
+    """Read channel power in dBm when instrument CALC supports it (fetch; no new sweep).
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param marker: Marker tied to the channel-power measurement.
+    :type marker: int, optional
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: Channel power in dBm.
+    :rtype: float
+    """
+    _ = key
+    return float(get_cached_instrument("speca", speca_id).measure_channel_power_dbm(marker))
+
+
+@measurement
+def measure_acpr_db(*, speca_id: int, key: str, side: str = "both") -> float:
+    """Read adjacent-channel power ratio in dB when ACP CALC exists (fetch).
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+    :param side: ``upper``, ``lower``, or ``both``.
+    :type side: str, optional
+
+    :returns: ACPR in dB.
+    :rtype: float
+    """
+    _ = key
+    return float(get_cached_instrument("speca", speca_id).measure_acpr_db(side=side))
+
+
+@measurement
+def measure_obw_hz(
+    *,
+    speca_id: int,
+    start_hz: float,
+    stop_hz: float,
+    key: str,
+    threshold_db: float = 3.0,
+    smoothing_order: int = 0,
+    trace: int = 1,
+    trace_path: str | None = None,
+) -> float:
+    """Measure occupied bandwidth in hertz (instrument OBW when available, else host trace).
+
+    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :type speca_id: int
+    :param start_hz: Lower analysis bound in hertz (host fallback).
+    :type start_hz: float
+    :param stop_hz: Upper analysis bound in hertz (host fallback).
+    :type stop_hz: float
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+    :param threshold_db: Host fallback threshold below peak in dB.
+    :type threshold_db: float, optional
+    :param smoothing_order: Host fallback Savitzky-Golay order.
+    :type smoothing_order: int, optional
+    :param trace: Trace number when a live sweep is required for fallback.
+    :type trace: int, optional
+    :param trace_path: Optional prior trace CSV under the run directory.
+    :type trace_path: str | None, optional
+
+    :returns: Occupied bandwidth in hertz.
+    :rtype: float
+    """
+    _ = key
+    return float(
+        get_cached_instrument("speca", speca_id).measure_obw_hz(
+            start_hz,
+            stop_hz,
+            threshold_db=threshold_db,
+            smoothing_order=smoothing_order,
+            trace=trace,
+            trace_path=trace_path,
+        ),
+    )
+
+
+@command
 def single_sweep(*, speca_id: int) -> None:
     """Trigger a single sweep and wait for completion.
 
@@ -624,17 +944,19 @@ def single_sweep(*, speca_id: int) -> None:
 
 
 @command
-def save_screenshot(*, speca_id: int, path: str) -> None:
+def save_screenshot(*, speca_id: int, path: str, key: str = "") -> None:
     """Save a display screenshot and register an artifact (vendor-specific).
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param path: Relative path under the output directory for the screenshot file.
     :type path: str
+    :param key: Evidence key (default ``speca_screenshot_<sweep>``).
+    :type key: str, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("speca", speca_id).save_screenshot(path)
+    get_cached_instrument("speca", speca_id).save_screenshot(path, key=key)

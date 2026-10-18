@@ -15,8 +15,9 @@ _UNIT_DB_TABLES = ("measurements", "verifications", "events", "artifacts", "run_
 def connect_unit_test_db(manager: DatabaseManager, uri: str = UNIT_TEST_DB_URI) -> None:
     if manager.is_initialized():
         return
-    manager._conn = sqlite3.connect(uri, uri=True)
+    manager._conn = sqlite3.connect(uri, uri=True, check_same_thread=False)
     manager.defer_commits = True
+    manager._start_write_queue()
 
 
 def truncate_unit_test_db(db: sqlite3.Connection | str = UNIT_TEST_DB_URI) -> None:

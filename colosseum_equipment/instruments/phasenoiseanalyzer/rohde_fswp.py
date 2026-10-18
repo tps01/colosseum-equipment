@@ -44,3 +44,6 @@ class RohdeFswpPhaseNoiseAnalyzer(GenericPhaseNoiseAnalyzer):
 
     def measure_carrier_frequency_hz(self) -> float:
         return self._scpi.query_float("FREQ:CENT?")
+
+    def set_xcorr_count(self, count: int) -> None:
+        self._scpi.write(f"CORR:COUN {int(count)}")

@@ -636,3 +636,106 @@ verify_power_dbm = tolerance_verifier(
     name="verify_power_dbm",
     default_tolerance=0.5,
 )
+
+
+@command
+def set_arb_sample_clock(*, vsg_id: int, sample_clock_hz: float) -> None:
+    """Set arbitrary waveform sample clock rate in hertz.
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+    :param sample_clock_hz: Sample clock in hertz.
+    :type sample_clock_hz: float
+
+    :returns: None
+    """
+    get_cached_instrument("vsg", vsg_id).set_arb_sample_clock(sample_clock_hz)
+
+
+@command
+def set_arb_trigger_source(*, vsg_id: int, source: str) -> None:
+    """Set ARB playback trigger source.
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+    :param source: Trigger source string accepted by the configured model.
+    :type source: str
+
+    :returns: None
+    """
+    get_cached_instrument("vsg", vsg_id).set_arb_trigger_source(source)
+
+
+@command
+def arm_arb_trigger(*, vsg_id: int) -> None:
+    """Arm or force an immediate ARB trigger.
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+
+    :returns: None
+    """
+    get_cached_instrument("vsg", vsg_id).arm_arb_trigger()
+
+
+@command
+def set_arb_marker_enable(*, vsg_id: int, marker: int, enabled: bool) -> None:
+    """Enable or disable an ARB marker.
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+    :param marker: Marker index (1-based on most models).
+    :type marker: int
+    :param enabled: ``True`` to enable the marker.
+    :type enabled: bool
+
+    :returns: None
+    """
+    get_cached_instrument("vsg", vsg_id).set_arb_marker_enable(marker, enabled)
+
+
+@command
+def set_arb_marker_position(*, vsg_id: int, marker: int, sample_index: int) -> None:
+    """Set ARB marker position in sample indices.
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+    :param marker: Marker index.
+    :type marker: int
+    :param sample_index: Sample index within the waveform.
+    :type sample_index: int
+
+    :returns: None
+    """
+    get_cached_instrument("vsg", vsg_id).set_arb_marker_position(marker, sample_index)
+
+
+@command
+def set_ref_source(*, vsg_id: int, source: str) -> None:
+    """Set reference oscillator source (for example ``INT`` or ``EXT``).
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+    :param source: Reference source string accepted by the configured model.
+    :type source: str
+
+    :returns: None
+    """
+    get_cached_instrument("vsg", vsg_id).set_ref_source(source)
+
+
+@measurement
+def get_ref_locked(*, vsg_id: int, key: str) -> float:
+    """Read whether the reference oscillator is locked.
+
+    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
+    :type vsg_id: int
+    :param key: Unique measurement key within domain ``equipment``.
+    :type key: str
+
+    :returns: ``1.0`` when locked, ``0.0`` otherwise.
+    :rtype: float
+    """
+    _ = key
+    locked = get_cached_instrument("vsg", vsg_id).get_ref_locked()
+    return 1.0 if locked else 0.0

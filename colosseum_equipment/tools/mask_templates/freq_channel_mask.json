@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "domain": "frequency",
+  "x_unit": "Hz",
+  "y_unit": "dBm",
+  "setup": {
+    "center_hz": 2440000000.0,
+    "span_hz": 80000000.0,
+    "ref_level_dbm": 0.0,
+    "rbw_hz": 100000.0
+  },
+  "regions": [
+    {
+      "id": "passband_floor",
+      "kind": "keep_above",
+      "x0": 2422000000.0,
+      "x1": 2458000000.0,
+      "y0": -20.0,
+      "y1": 10.0
+    },
+    {
+      "id": "lower_adjacent",
+      "kind": "keep_below",
+      "x0": 2400000000.0,
+      "x1": 2418000000.0,
+      "y0": -120.0,
+      "y1": -45.0
+    },
+    {
+      "id": "upper_adjacent",
+      "kind": "keep_below",
+      "x0": 2462000000.0,
+      "x1": 2480000000.0,
+      "y0": -120.0,
+      "y1": -45.0
+    }
+  ]
+}

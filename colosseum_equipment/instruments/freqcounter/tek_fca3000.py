@@ -26,10 +26,12 @@ class TekFca3000FreqCounter(GenericFreqCounter):
     def set_gate_time(self, seconds: float) -> None:
         self._scpi.write(f"SENSe:FREQuency:GATE:TIME {seconds}")
 
-    def measure_frequency(self) -> float:
+    def measure_frequency(self, *, channel: int = 1) -> float:
+        self._select_input(channel)
         self._scpi.write(":FUNC 'FREQ'")
         return self._scpi.query_float("MEASure:FREQuency?")
 
-    def measure_period(self) -> float:
+    def measure_period(self, *, channel: int = 1) -> float:
+        self._select_input(channel)
         self._scpi.write(":FUNC 'PER'")
         return self._scpi.query_float("MEASure:PERiod?")

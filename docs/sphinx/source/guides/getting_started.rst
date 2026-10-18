@@ -2,7 +2,7 @@ Getting started
 ===============
 
 Install the ``colosseum-equipment`` wheel into the same virtual environment as
-``colosseum-core`` (GitHub Release; Colosseum is not on PyPI). Core discovers
+``colosseum-core`` (download both from GitHub Releases). Core discovers
 the ``equipment`` and ``io`` namespaces automatically.
 
 This page uses **sim** drivers so you can exercise the flow without instruments.

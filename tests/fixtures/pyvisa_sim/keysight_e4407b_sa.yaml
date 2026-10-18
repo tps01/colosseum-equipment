@@ -17,6 +17,7 @@ devices:
       - q: "INIT:IMM"
       - q: "DISP:UPD OFF"
       - q: "DISP:UPD ON"
+      - q: "DISP:WIND:TRAC:Y:SCAL:RLEV 0.0"
       - q: "CALC:MARK1:MAX"
       - q: "TRAC:DATA? TRACE1"
         r: "-42.5,-41.0,-40.5,-41.5,-43.0"

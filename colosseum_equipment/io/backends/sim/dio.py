@@ -27,6 +27,7 @@ class SimDioBackend:
         self._direction = direction & mask
         self._output = 0
         self._input = 0
+        self._pulls: dict[int, str] = {}
 
     def _persist(self) -> None:
         ctx = get_context()
@@ -36,6 +37,7 @@ class SimDioBackend:
             "output": self._output,
             "input": self._input,
             "mask": self._mask,
+            "pulls": dict(self._pulls),
         }
 
     @classmethod
@@ -53,10 +55,38 @@ class SimDioBackend:
         backend._output = entry["output"] & mask
         backend._input = entry["input"] & mask
         backend._direction = entry["direction"] & mask
+        backend._pulls = dict(entry.get("pulls", {}))
         return backend
 
     def configure(self, direction: int) -> None:
         self._direction = direction & self._mask
+        self._persist()
+
+    def configure_pin(self, line: int, output: bool) -> None:
+        bit = 1 << line
+        if line < 0 or line >= self._mask.bit_length():
+            raise IoConfigError(
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
+            )
+        if output:
+            self._direction |= bit
+        else:
+            self._direction &= ~bit
+        self._direction &= self._mask
+        self._persist()
+
+    def set_pull(self, line: int, pull: str) -> None:
+        bit = 1 << line
+        if line < 0 or line >= self._mask.bit_length():
+            raise IoConfigError(
+                f"line {line} out of range for port_lines={self._mask.bit_length()}",
+            )
+        mode = pull.strip().lower()
+        if mode not in ("up", "down", "float"):
+            raise IoConfigError(f"pull must be up, down, or float; got {pull!r}")
+        if self._direction & bit:
+            raise IoConfigError(f"line {line} is configured as output")
+        self._pulls[line] = mode
         self._persist()
 
     def write_port(self, value: int) -> None:

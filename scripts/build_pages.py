@@ -7,6 +7,7 @@ API reference (Sphinx autodoc) is primary; README/guides are secondary.
 from __future__ import annotations
 
 import argparse
+import ast
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,7 @@ API_MODULES: tuple[tuple[str, str, str], ...] = (
     ('rtsa', 'colosseum_equipment.api.rtsa', 'col.equipment.rtsa'),
     ('scpi', 'colosseum_equipment.api.scpi', 'col.equipment.scpi'),
     ('serial', 'colosseum_equipment.api.serial', 'col.equipment.serial'),
+    ('tools', 'colosseum_equipment.api.tools', 'col.equipment.tools'),
     ('speca', 'colosseum_equipment.api.speca', 'col.equipment.speca'),
     ('vna', 'colosseum_equipment.api.vna', 'col.equipment.vna'),
     ('vsg', 'colosseum_equipment.api.vsg', 'col.equipment.vsg'),
@@ -51,6 +53,9 @@ GUIDES: tuple[str, ...] = (
     'docs/sphinx/source/guides/rf_equipment.rst',
     'docs/sphinx/source/guides/io_digital.rst',
     'docs/sphinx/source/guides/serial_ports.rst',
+    'docs/sphinx/source/guides/instrument_workflows.rst',
+    'docs/equipment/masks.md',
+    'docs/equipment/driver-documentation-requests.md',
 )
 # --- end per-plugin constants ---
 
@@ -235,6 +240,14 @@ def _copy_branding() -> None:
 
 
 def stage() -> None:
+    # Fail when a root API export has no reference/navigation entry.
+    api_source = REPO_ROOT / "colosseum_equipment" / "api" / "__init__.py"
+    exported = next(ast.literal_eval(node.value) for node in ast.parse(api_source.read_text(encoding="utf-8-sig")).body
+                    if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets))
+    documented = {path.rsplit(".", 1)[-1] for _, _, path in (*API_MODULES, *API_FUNCTIONS)}
+    missing = set(exported) - documented
+    if missing:
+        raise SystemExit(f"Public API missing from Pages inventory: {sorted(missing)}")
     if SITE_SOURCE.exists():
         shutil.rmtree(SITE_SOURCE)
     SITE_SOURCE.mkdir(parents=True)
@@ -258,7 +271,13 @@ def stage() -> None:
         guides_dir.mkdir(parents=True, exist_ok=True)
         name = Path(rel).stem
         guide_names.append(f"guides/{name}")
-        text = _sanitize_guide(src.read_text(encoding="utf-8"))
+        text = src.read_text(encoding="utf-8")
+        if src.suffix == ".md":
+            text = subprocess.check_output(
+                ["pandoc", "-f", "markdown", "-t", "rst"], input=text, text=True,
+                encoding="utf-8",
+            )
+        text = _sanitize_guide(text)
         (guides_dir / f"{name}.rst").write_text(text, encoding="utf-8")
 
     _write_conf(_read_version())
@@ -270,7 +289,7 @@ def build_html() -> Path:
     if HTML_DIR.exists():
         shutil.rmtree(HTML_DIR)
     HTML_DIR.mkdir(parents=True)
-    # Do not treat every autodoc nit as fatal; keep going for partial import issues.
+    # Report all warnings, then fail the build if any remain.
     subprocess.run(
         [
             sys.executable,

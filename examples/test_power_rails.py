@@ -51,21 +51,26 @@ def main() -> None:
     col.equipment.psu.set_current_limit(psu_id=1, current=1.0)
     col.equipment.psu.set_output(psu_id=1, enabled=True)
 
-    # --- Measurement + required verification (architecture doc flow) ---
-    col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="vrail_3v3")
-    col.equipment.dmm.verify_voltage(key="vrail_3v3", expected_val=3.3, tolerance=0.1)
+    try:
+        # --- Measurement + required verification (architecture doc flow) ---
+        col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="vrail_3v3")
+        col.equipment.dmm.verify_voltage(key="vrail_3v3", expected_val=3.3, tolerance=0.1)
 
-    col.equipment.dmm.measure_voltage(dmm_id=1, channel=2, key="engineering_probe_point")
-    # --- Optional engineering check (FAIL/ERROR must not fail the run) ---
-    col.equipment.dmm.verify_voltage(key="engineering_probe_point", expected_val=1.8, tolerance=0.1, optional=True)
+        # Reuse the supported single DMM input. The simulated value is still 3.3 V,
+        # so this different engineering limit deliberately produces an optional FAIL.
+        col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="engineering_probe_point")
+        # --- Optional engineering check (FAIL/ERROR must not fail the run) ---
+        col.equipment.dmm.verify_voltage(key="engineering_probe_point", expected_val=1.8, tolerance=0.1, optional=True)
 
-    # --- Escape hatch: direct SCPI readback for bring-up / debug ---
-    readback = col.equipment.scpi.query_float(psu_id=1, command="VOLT?")
-    # Implementations may log at DEBUG; high-level APIs remain preferred in tests.
+        # --- Escape hatch: direct SCPI readback for bring-up / debug ---
+        readback = col.equipment.scpi.query_float(psu_id=1, command="VOLT?")
+        # Implementations may log at DEBUG; high-level APIs remain preferred in tests.
 
-    if readback < 3.0:
-        # Illustrative host-side guard; real tests should prefer verify_* APIs.
-        raise RuntimeError(f"PSU readback unexpectedly low: {readback}")
+        if readback < 3.0:
+            # Illustrative host-side guard; real tests should prefer verify_* APIs.
+            raise RuntimeError(f"PSU readback unexpectedly low: {readback}")
+    finally:
+        col.equipment.psu.set_output(psu_id=1, enabled=False)
 
 
 if __name__ == "__main__":
