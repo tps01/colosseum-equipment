@@ -1,0 +1,42 @@
+# Example NI USB-6501 + USB-8452 IO layout (not wired to a hardware run).
+# Requires NI-DAQmx and NI-845x installed; adjust resource names to MAX aliases.
+
+[[io.dio]]
+dio_id = 1
+driver = ni-6501
+resource = Dev1
+port_lines = 24
+direction = 0x0000FF
+drive = open-drain
+
+[[io.dio]]
+dio_id = 2
+driver = ni-845x
+resource = USB-8452
+model = usb-8452
+port_lines = 8
+direction = 0x0F
+drive = push-pull
+voltage = 3.3
+
+[io.i2c]
+i2c_id = 1
+driver = ni-845x
+resource = USB-8452
+model = usb-8452
+voltage = 3.3
+clock_hz = 100000
+address = 0x50
+address_bits = 7
+pullup = true
+
+[io.spi]
+spi_id = 1
+driver = ni-845x
+resource = USB-8452
+model = usb-8452
+voltage = 3.3
+clock_hz = 1000000
+mode = 0
+chip_select = 0
+bits_per_word = 8

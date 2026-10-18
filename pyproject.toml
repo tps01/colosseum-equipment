@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.4.4"
+version = "0.5.0"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -54,7 +54,7 @@ src = ["colosseum_equipment"]
 select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "ARG", "FBT", "E501"]
+"tests/**" = ["ANN", "ARG", "FBT", "E501", "N802"]
 "colosseum_equipment/instruments/**" = [
   "N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501",
   "ARG002", "SIM105", "SIM102", "TC001", "TC003", "C416", "B007", "F841", "I001",
@@ -63,6 +63,7 @@ select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", 
 "colosseum_equipment/tools/**" = ["BLE001", "ANN401", "N818", "FBT003", "SIM114"]
 "colosseum_equipment/evidence.py" = ["ANN401"]
 "colosseum_equipment/io/**" = ["FBT001", "A002", "A005"]
+"colosseum_equipment/io/backends/ni/**" = ["N816", "SIM105"]
 "colosseum_equipment/network/windows.py" = ["N801"]
 "examples/**" = ["E501"]
 "colosseum_equipment/autoconfig/**" = ["BLE001"]

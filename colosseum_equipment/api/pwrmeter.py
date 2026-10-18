@@ -120,6 +120,17 @@ def preset(*, pwrmeter_id: int) -> None:
     _inst(pwrmeter_id).preset()
 
 
+@command
+def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
+    """Start a new sensor acquisition and wait before fetching a statistic.
+
+    Configure the qualified sensor's measurement/gate/trigger mode first.
+    The transport timeout bounds the wait; unsupported generic dialects must
+    be supplied by a model adapter rather than treated as measured power.
+    """
+    _inst(pwrmeter_id).acquire(channel=channel)
+
+
 @measurement
 def measure_power_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     """Measure RF power in dBm.

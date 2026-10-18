@@ -152,12 +152,20 @@ the stimulus is applied externally after zeroing::
    col.equipment.pwrmeter.set_frequency(pwrmeter_id=1, channel=1, frequency_hz=1e9)
    col.equipment.pwrmeter.set_averaging_count(pwrmeter_id=1, channel=1, count=16)
    # Apply the known RF stimulus here before the measurement.
+   col.equipment.pwrmeter.acquire(pwrmeter_id=1, channel=1)
    col.equipment.pwrmeter.measure_power_dbm(pwrmeter_id=1, channel=1, key="rf_power")
    col.equipment.pwrmeter.verify_power_dbm(key="rf_power", expected_val=-10.0, tolerance=0.5)
 
 ``measure_power_w`` reports watts; ``measure_power_dbm`` reports dBm. Select the
 matching verifier/units, sensor range, calibration frequency and averaging.
 The U2000 is single-channel; extra channel IDs are not additional sensors.
+Equipment 0.5.0 adds ``pwrmeter.acquire`` for a new measurement before fetch-style
+statistics. Configure the sensor's measurement/gate/trigger mode first; generic
+SCPI commands require qualification on the actual model. U2000 sensors provide
+average power and explicitly refuse envelope-peak queries; see the
+`Keysight average/peak comparison <https://www.keysight.com/us/en/assets/7018-03996/application-notes/5991-2642.pdf>`_.
+A peak-capable sensor uses ``measure_power_peak_dbm`` after its fresh acquisition;
+setting averaging count to one does not turn an average sensor into a peak sensor.
 
 Scope: measure and export a completed capture
 ---------------------------------------------
@@ -180,6 +188,12 @@ For ``model="tektronix-mdo4000"`` on a wired channel-1 signal::
 the completed capture; make a new acquisition deliberately when another record
 is wanted. Timeout is an acquisition failure, not a zero waveform. Probe ratio,
 coupling, termination and record length also belong in a real bench procedure.
+For an event created by the procedure, Equipment 0.5.0 provides nonblocking
+``arm_single``. Configure a normal trigger first, then arm, create the event and
+call ``wait_complete`` before fetching. Do not call blocking ``acquire`` and
+then attempt to create the event it is waiting for. Tek MDO4000 completion waits
+for acquisition to stop; OPC alone does not accept a still-running acquisition.
+
 Use :doc:`masks` for time-domain mask setup and CSV acceptance.
 
 SpecA, VSG and RTSA: numerical acceptance and export

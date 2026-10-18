@@ -43,6 +43,8 @@ API_MODULES: tuple[tuple[str, str, str], ...] = (
     ('vna', 'colosseum_equipment.api.vna', 'col.equipment.vna'),
     ('vsg', 'colosseum_equipment.api.vsg', 'col.equipment.vsg'),
     ('dio', 'colosseum_equipment.io.api.dio', 'col.io.dio'),
+    ('i2c', 'colosseum_equipment.io.api.i2c', 'col.io.i2c'),
+    ('spi', 'colosseum_equipment.io.api.spi', 'col.io.spi'),
 )
 # Optional single-function pages: (rst_stem, "module:qualname", displayed name)
 API_FUNCTIONS: tuple[tuple[str, str, str], ...] = (

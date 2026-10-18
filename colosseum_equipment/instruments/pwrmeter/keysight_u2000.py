@@ -8,6 +8,7 @@ Catalog: https://www.keysight.com/zz/en/assets/9018-01701/programming-guides/901
 
 from __future__ import annotations
 
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.pwrmeter.generic import GenericPwrMeter
 from colosseum_equipment.instruments.registry import instrument_model
 
@@ -35,7 +36,7 @@ class KeysightU2000PwrMeter(GenericPwrMeter):
 
     def measure_power_peak_dbm(self, *, channel: int = 1) -> float:
         self._require_channel(channel)
-        return self._scpi.query_float("FETCh:PEAK?")
+        raise EquipmentCapabilityError("U2000-series sensors measure average power, not envelope peak power")
 
     def measure_power_avg_dbm(self, *, channel: int = 1) -> float:
         self._require_channel(channel)

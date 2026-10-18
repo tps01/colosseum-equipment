@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
-from colosseum_equipment.protocols.scpi import SCPIHelper
+from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -52,6 +52,14 @@ class GenericPwrMeter(ScpiInstrumentMixin):
     def set_offset_db(self, offset_db: float, *, channel: int = 1) -> None:
         prefix = self._sensor_prefix(channel)
         self._scpi.write(f"{prefix}CORR:OFFS {offset_db:.3f}")
+
+    def acquire(self, *, channel: int = 1) -> None:
+        """Start and complete a new measurement before a fetch-style statistic."""
+        ch = self._require_channel(channel)
+        init = "INIT" if ch == 1 else f"INIT{ch}"
+        self._scpi.write(f"{init}:CONT OFF")
+        self._scpi.write(f"{init}:IMM")
+        wait_opc(self._scpi)
 
     def measure_power_dbm(self, *, channel: int = 1) -> float:
         prefix = self._sensor_prefix(channel)
