@@ -9,6 +9,8 @@ preset → set_channel_* → set_timebase_* → set_trigger_* → set_acquire_*
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import VerificationResult, command, measurement, verification
 
 from colosseum_equipment.api._verify import tolerance_verifier
@@ -17,7 +19,7 @@ from colosseum_equipment.tools.mask_apply import apply_oscope_mask_setup
 from colosseum_equipment.tools.mask_verify import verification_from_mask
 
 
-def _inst(oscope_id: int):
+def _inst(oscope_id: int) -> Any:
     return get_cached_instrument("oscope", oscope_id)
 
 

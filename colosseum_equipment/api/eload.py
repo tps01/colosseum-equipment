@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import command, measurement
 
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(eload_id: int):
+def _inst(eload_id: int) -> Any:
     return get_cached_instrument("eload", eload_id)
 
 

@@ -7,12 +7,14 @@ commands use R&S-style SCPI on the ``generic`` model.
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import command, measurement
 
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(asg_id: int):
+def _inst(asg_id: int) -> Any:
     return get_cached_instrument("asg", asg_id)
 
 

@@ -557,7 +557,8 @@ class GenericGnss:
             if self._dop is not None:
                 used = set(self._dop.prns)
                 for row in rows:
-                    row["used"] = int(row["prn"]) in used
+                    prn = row["prn"]
+                    row["used"] = int(prn) in used if prn is not None else False
             return rows
 
     def get_constellations_present(
@@ -775,7 +776,7 @@ class GenericGnss:
             if rows:
                 return rows
         if self._track_samples:
-            return [dict(row) for row in self._track_samples]  # type: ignore[misc]
+            return [dict(row) for row in self._track_samples]
         return []
 
     def save_track_plot(self, path: str) -> Path:
