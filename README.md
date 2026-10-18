@@ -7,7 +7,8 @@ API reference (GitHub Pages): <https://tps01.github.io/colosseum-equipment/>
 Framework hub: <https://tps01.github.io/colosseum-core/>
 
 First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
-(instruments, transports, DIO).
+(instruments, transports, DIO, I2C, SPI). NI USB-6501 and USB-845x adapters
+load the installed NI-DAQmx / NI-845x runtimes via ctypes.
 
 ## Install
 
@@ -76,3 +77,19 @@ pytest
 ruff check colosseum_equipment
 mypy
 ```
+
+### External events after arming (0.5.0+)
+
+Use `col.equipment.oscope.arm_single(oscope_id=...)` when the procedure must
+create a load step or other event after the scope is armed. It returns without
+waiting for that event. Generate the event, then call
+`wait_complete(oscope_id=..., timeout_s=...)` before fetching. `acquire` remains
+the blocking arm-and-wait operation for an already running/repetitive stimulus.
+Generic SCPI arming is best effort; qualify the command dialect and trigger
+readiness on the configured model. Tek MDO4000 has an explicit implementation.
+
+Power sensors also expose `pwrmeter.acquire(pwrmeter_id=..., channel=...)` in
+0.5.0 to complete a new acquisition before fetch-style peak/average statistics.
+Use a qualified sensor mode/trigger/gate and transport timeout. U2000-series
+average-only sensors explicitly refuse envelope-peak reads; a generic peak query
+is not evidence of hardware capability.

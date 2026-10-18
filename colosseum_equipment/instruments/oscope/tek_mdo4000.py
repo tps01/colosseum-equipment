@@ -193,10 +193,14 @@ class TekMdo4000Oscope(GenericOscope):
     def abort(self) -> None:
         self._scpi.write("ACQuire:STATE STOP")
 
-    def single_acquire(self) -> None:
+    def arm_single(self) -> None:
+        """Arm a single Tek acquisition without blocking on the future trigger."""
         self._mark_capture()
         self._scpi.write("ACQuire:STOPAfter SEQuence")
         self._scpi.write("ACQuire:STATE RUN")
+
+    def single_acquire(self) -> None:
+        self.arm_single()
         wait_opc(self._scpi)
 
     def get_acquire_state(self) -> str:
@@ -208,20 +212,13 @@ class TekMdo4000Oscope(GenericOscope):
             state = self.get_acquire_state().upper()
             if state in {"0", "STOP"} or "STOP" in state:
                 return
-            try:
-                if self._scpi.query("*OPC?").strip().startswith("1"):
-                    return
-            except Exception:
-                pass
             time.sleep(0.05)
         raise EquipmentTimeoutError(
             f"oscope model `{self._model}` acquisition did not complete within {timeout_s}s",
         )
 
     def acquire(self, *, timeout_s: float = 10.0) -> str:
-        self._mark_capture()
-        self._scpi.write("ACQuire:STOPAfter SEQuence")
-        self._scpi.write("ACQuire:STATE RUN")
+        self.arm_single()
         self.wait_complete(timeout_s=timeout_s)
         return self._capture_id
 
