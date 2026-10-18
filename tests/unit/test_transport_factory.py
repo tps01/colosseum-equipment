@@ -6,7 +6,7 @@ import logging
 from unittest.mock import patch
 
 import pytest
-from colosseum_equipment.exceptions import EquipmentConnectionError
+from colosseum.exceptions import ProceduralFault
 from colosseum_equipment.transports.factory import open_transport
 from colosseum_equipment.transports.sim import SimTransport
 
@@ -39,7 +39,7 @@ def test_open_transport_explicit_sim() -> None:
 
 
 def test_open_transport_missing_resource_raises() -> None:
-    with pytest.raises(EquipmentConnectionError, match="missing `resource`"):
+    with pytest.raises(ProceduralFault, match="missing `resource`"):
         open_transport("psu", 1, {})
 
 
@@ -52,7 +52,7 @@ def test_open_transport_port_without_driver_uses_serial_for_attn() -> None:
 
 
 def test_open_transport_serial_kind_without_port_raises() -> None:
-    with pytest.raises(EquipmentConnectionError, match="missing `port`"):
+    with pytest.raises(ProceduralFault, match="missing `port`"):
         open_transport("serial", 1, {})
 
 

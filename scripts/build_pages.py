@@ -46,7 +46,12 @@ API_MODULES: tuple[tuple[str, str, str], ...] = (
 API_FUNCTIONS: tuple[tuple[str, str, str], ...] = (
     ('autoconfig', 'colosseum_equipment.api._autoconfig.autoconfig', 'col.equipment.autoconfig'),
 )
-GUIDES: tuple[str, ...] = ('docs/sphinx/source/guides/rf_equipment.rst', 'docs/sphinx/source/guides/io_digital.rst', 'docs/sphinx/source/guides/serial_ports.rst')
+GUIDES: tuple[str, ...] = (
+    'docs/sphinx/source/guides/getting_started.rst',
+    'docs/sphinx/source/guides/rf_equipment.rst',
+    'docs/sphinx/source/guides/io_digital.rst',
+    'docs/sphinx/source/guides/serial_ports.rst',
+)
 # --- end per-plugin constants ---
 
 HUB_URL = "https://tps01.github.io/colosseum-core/"
@@ -107,8 +112,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 project = "{TITLE}"
-copyright = "Colosseum contributors"
-author = "Colosseum contributors"
+copyright = "tps01"
+author = "tps01"
 release = "{version}"
 
 master_doc = "index"
@@ -121,6 +126,11 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "alabaster"
 html_static_path = ["_static"]
+html_logo = "_static/colosseum-logo.png"
+html_favicon = "_static/colosseum.ico"
+html_theme_options = {{
+    "logo_name": True,
+}}
 html_baseurl = "{pages_url}"
 
 autodoc_member_order = "bysource"
@@ -204,7 +214,20 @@ def _write_index(api_docs: list[str], guide_names: list[str]) -> None:
         lines.extend(f"   {name}" for name in guide_names)
     lines.append("")
     (SITE_SOURCE / "index.rst").write_text("\n".join(lines), encoding="utf-8")
-    (SITE_SOURCE / "_static").mkdir(exist_ok=True)
+    _copy_branding()
+
+
+def _copy_branding() -> None:
+    """Copy Colosseum logo/favicon from a sibling colosseum-core checkout when present."""
+    static = SITE_SOURCE / "_static"
+    static.mkdir(parents=True, exist_ok=True)
+    core_static = (
+        REPO_ROOT.parent / "colosseum-core" / "docs" / "sphinx" / "source" / "_static"
+    )
+    for name in ("colosseum-logo.png", "colosseum.ico"):
+        src = core_static / name
+        if src.is_file():
+            shutil.copy2(src, static / name)
 
 
 def stage() -> None:

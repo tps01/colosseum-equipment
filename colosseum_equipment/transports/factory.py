@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from colosseum.exceptions import ProceduralFault
 from colosseum.logging import get_logger
 
 from colosseum_equipment.exceptions import EquipmentConnectionError
@@ -14,6 +15,10 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.equipment")
+
+
+def _open_failed(message: str) -> ProceduralFault:
+    return ProceduralFault(message)
 
 
 def _kind_address(kind: str) -> str | None:
@@ -66,39 +71,48 @@ def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Tran
         timeout,
     )
 
-    if driver == "sim":
-        return SimTransport(kind, equipment_id, config)
-    if driver == "visa":
-        resource = str(config.get("resource") or "").strip()
-        if not resource:
-            raise EquipmentConnectionError(f"equipment.{kind} id {equipment_id} missing `resource`")
-        visa_backend = config.get("visa_backend")
-        sim_definition = config.get("sim_definition")
-        visa_library = config.get("visa_library")
-        return VISATransport(
-            resource,
-            timeout=timeout,
-            visa_backend=str(visa_backend) if visa_backend is not None else None,
-            sim_definition=str(sim_definition) if sim_definition is not None else None,
-            visa_library=str(visa_library) if visa_library is not None else None,
-        )
-    if driver == "serial":
-        if not address:
-            raise EquipmentConnectionError(f"equipment.{kind} id {equipment_id} missing `port`")
-        default_baud = 9600 if kind == "gnss" else 115200
-        baudrate = int(config.get("baudrate", default_baud))
-        return SerialTransport(address, baudrate=baudrate, timeout=timeout)
-    if driver == "http":
-        if not address:
-            raise EquipmentConnectionError(
-                f"equipment.{kind} id {equipment_id} missing `resource`",
+    try:
+        if driver == "sim":
+            return SimTransport(kind, equipment_id, config)
+        if driver == "visa":
+            resource = str(config.get("resource") or "").strip()
+            if not resource:
+                raise _open_failed(f"equipment.{kind} id {equipment_id} missing `resource`")
+            visa_backend = config.get("visa_backend")
+            sim_definition = config.get("sim_definition")
+            visa_library = config.get("visa_library")
+            return VISATransport(
+                resource,
+                timeout=timeout,
+                visa_backend=str(visa_backend) if visa_backend is not None else None,
+                sim_definition=str(sim_definition) if sim_definition is not None else None,
+                visa_library=str(visa_library) if visa_library is not None else None,
             )
-        return HttpTransport(
-            address,
-            timeout=timeout,
-            username=str(config.get("username") or ""),
-            password=str(config.get("password") or ""),
+        if driver == "serial":
+            if not address:
+                raise _open_failed(f"equipment.{kind} id {equipment_id} missing `port`")
+            default_baud = 9600 if kind == "gnss" else 115200
+            baudrate = int(config.get("baudrate", default_baud))
+            return SerialTransport(address, baudrate=baudrate, timeout=timeout)
+        if driver == "http":
+            if not address:
+                raise _open_failed(
+                    f"equipment.{kind} id {equipment_id} missing `resource`",
+                )
+            return HttpTransport(
+                address,
+                timeout=timeout,
+                username=str(config.get("username") or ""),
+                password=str(config.get("password") or ""),
+            )
+        raise _open_failed(
+            f"Unsupported driver `{driver}` for equipment.{kind} id {equipment_id}",
         )
-    raise EquipmentConnectionError(
-        f"Unsupported driver `{driver}` for equipment.{kind} id {equipment_id}",
-    )
+    except ProceduralFault:
+        raise
+    except EquipmentConnectionError as exc:
+        raise _open_failed(str(exc)) from exc
+    except Exception as exc:
+        raise _open_failed(
+            f"Failed to open equipment.{kind} id {equipment_id}: {exc}",
+        ) from exc
