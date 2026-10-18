@@ -59,7 +59,7 @@ select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", 
   "N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501",
   "ARG002", "SIM105", "SIM102", "TC001", "TC003", "C416", "B007", "F841", "I001",
 ]
-"colosseum_equipment/api/**" = ["N802", "A002", "FBT001", "ANN202", "E501"]
+"colosseum_equipment/api/**" = ["N802", "A002", "FBT001", "ANN202", "ANN401", "E501"]
 "colosseum_equipment/tools/**" = ["BLE001", "ANN401", "N818", "FBT003", "SIM114"]
 "colosseum_equipment/evidence.py" = ["ANN401"]
 "colosseum_equipment/io/**" = ["FBT001", "A002", "A005"]
