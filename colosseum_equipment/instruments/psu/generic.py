@@ -48,11 +48,11 @@ class GenericPSU(ScpiInstrumentMixin):
 
     def set_voltage(self, voltage: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"VOLT {voltage:.6f}")
+        self._scpi.write(f"VOLT {float(voltage):.6f}")
 
     def set_current_limit(self, current: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"CURR {current:.6f}")
+        self._scpi.write(f"CURR {float(current):.6f}")
 
     def set_output(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)
@@ -100,11 +100,11 @@ class GenericPSU(ScpiInstrumentMixin):
 
     def set_ovp_v(self, voltage: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"VOLT:PROT {voltage}")
+        self._scpi.write(f"VOLT:PROT {float(voltage):.6f}")
 
     def set_ocp_a(self, current: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"CURR:PROT {current}")
+        self._scpi.write(f"CURR:PROT {float(current):.6f}")
 
     def toggle_ovp(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)

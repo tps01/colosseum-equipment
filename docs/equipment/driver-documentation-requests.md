@@ -291,12 +291,12 @@ docstring records the manual link.
 | `siglent-sdg3000x` | asg | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `siglent-sdg7000a` | asg | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `tektronix-afg31000` | asg | <https://www.tek.com/en/support/datasheets-manuals-software-downloads> | generic SCPI |
-| `minicircuits-rudat` | attn | <https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf> | generic SCPI |
-| `minicircuits-rcdat` | attn | <https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf> | generic SCPI |
-| `minicircuits-rc4dat` | attn | <https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf> | generic SCPI |
-| `minicircuits-rc8dat` | attn | <https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf> | generic SCPI |
-| `minicircuits-zvva` | attn | <https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf> | generic SCPI |
-| `minicircuits-rcm-ztm` | attn | <https://www.minicircuits.com/softwaredownload/Prog_Manual-Modular_ZTM_RCM.pdf> | generic SCPI |
+| `minicircuits-rudat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
+| `minicircuits-rcdat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
+| `minicircuits-rc4dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
+| `minicircuits-rc8dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
+| `minicircuits-zvva` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
+| `minicircuits-rcm-ztm` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-Modular_ZTM_RCM.pdf` | generic SCPI |
 | `vaunix-lda-302p-1` | attn | <https://vaunix.com/digital-attenuators/> | generic SCPI |
 | `vaunix-lda-302p-h` | attn | <https://vaunix.com/digital-attenuators/> | generic SCPI |
 | `vaunix-lda` | attn | <https://vaunix.com/digital-attenuators/> | generic SCPI |
@@ -399,8 +399,8 @@ docstring records the manual link.
 | `keysight-u2001a` | pwrmeter | <https://www.keysight.com/zz/en/assets/9018-01701/programming-guides/9018-01701.pdf> | existing driver |
 | `keysight-u2002a` | pwrmeter | <https://www.keysight.com/zz/en/assets/9018-01701/programming-guides/9018-01701.pdf> | alias of `keysight-u2001a` |
 | `keysight-u2004a` | pwrmeter | <https://www.keysight.com/zz/en/assets/9018-01701/programming-guides/9018-01701.pdf> | alias of `keysight-u2001a` |
-| `minicircuits-rc` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf> | existing driver |
-| `minicircuits-ztrc` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf> | existing driver |
+| `minicircuits-rc` | rfswitch | `https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf` | existing driver |
+| `minicircuits-ztrc` | rfswitch | `https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf` | existing driver |
 | `minicircuits-usb-switch` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
 | `minicircuits-u2c` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
 | `minicircuits-rcs` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
@@ -438,10 +438,10 @@ docstring records the manual link.
 | `siglent-ssa3032x-plus` | speca | <https://siglentna.com/resources/documents/spectrum-analyzers/> | generic SCPI |
 | `siglent-ssa3075x-plus` | speca | <https://siglentna.com/resources/documents/spectrum-analyzers/> | generic SCPI |
 | `siglent-ssa5000a` | speca | <https://siglentna.com/resources/documents/spectrum-analyzers/> | generic SCPI |
-| `siglent-sna5000a` | vna | <https://siglentna.com/wp-content/uploads/dlm_uploads/2022/11/SNA5000A_ProgrammingGuide_PG09050_E03.pdf> | generic SCPI |
+| `siglent-sna5000a` | vna | `https://siglentna.com/wp-content/uploads/dlm_uploads/2022/11/SNA5000A_ProgrammingGuide_PG09050_E03.pdf` | generic SCPI |
 | `siglent-sna6000a` | vna | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `siglent-sva1000x` | vna | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
-| `keysight-e5071c` | vna | <https://helpfiles.keysight.com/csg/e5071c/using_this_help.htm> | generic SCPI |
+| `keysight-e5071c` | vna | `https://helpfiles.keysight.com/csg/e5071c/using_this_help.htm` | generic SCPI |
 | `rigol-dna6000` | vna | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-dna6000-r` | vna | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-dsg3030` | vsg | <https://www.rigolna.com/support/downloads/> | generic SCPI |

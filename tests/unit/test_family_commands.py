@@ -38,7 +38,7 @@ def test_rigol_dp700_still_warns_on_generic(caplog: pytest.LogCaptureFixture) ->
     instrument = _build("psu", "rigol-dp711", transport)
     with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
         instrument.set_voltage(3.3)
-    assert transport.written == ["VOLT 3.3"]
+    assert transport.written == ["VOLT 3.300000"]
     assert "using generic SCPI" in caplog.text
 
 
