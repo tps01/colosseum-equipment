@@ -78,6 +78,7 @@ def record_artifact(
     path: Path | str,
     value: Any = None,
     units: str | None = None,
+    status: str = "PASS",
 ) -> None:
     """Record a saved file as a measurement with ``artifact_path``.
 
@@ -94,6 +95,7 @@ def record_artifact(
         key=key,
         value=value if value is not None else {"path": stored},
         artifact_path=stored,
+        status=status,
         units=units,
     )
     insert = getattr(db, "insert_measurement", None)

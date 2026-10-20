@@ -44,6 +44,7 @@ _TIER1_RULES: tuple[_PatternRule, ...] = (
     _PatternRule("SSA3021X+", "speca", "siglent-ssa3021x-plus"),
     _PatternRule("SSA3032X+", "speca", "siglent-ssa3032x-plus"),
     _PatternRule("SSA3075X+", "speca", "siglent-ssa3075x-plus"),
+    _PatternRule("RSA5103B", "rtsa", "tektronix-rsa5100b"),
     _PatternRule("RSA5106B", "rtsa", "tektronix-rsa5100b"),
     _PatternRule("SDG1032X", "asg", "siglent-sdg1032x"),
     _PatternRule("SDG1062X", "asg", "siglent-sdg1062x"),
@@ -230,11 +231,117 @@ _TIER2_RULES: tuple[_PatternRule, ...] = (
 )
 
 
+# Inventory additions match the model field exactly, including manufacturer.
+# Numeric model names must never match a serial number or another vendor.
+_INVENTORY_MODELS: dict[str, tuple[str, str]] = {
+    "AFG3032": ("asg", "gwinstek-afg3032"),
+    "SMIQ04B": ("vsg", "rohde-smiq04b"),
+    "8648C": ("vsg", "keysight-8648c"),
+    "83650L": ("vsg", "keysight-83650l"),
+    "MG3692C": ("vsg", "anritsu-mg3692c"),
+    "TSG4106A": ("vsg", "tektronix-tsg4106a"),
+    "MSO58": ("oscope", "tektronix-mso58"),
+    "MSO64": ("oscope", "tektronix-mso64"),
+    "TBS2204B": ("oscope", "tektronix-tbs2204b"),
+    "MSO4104": ("oscope", "tektronix-mso4104"),
+    "TDS7704B": ("oscope", "tektronix-tds7704b"),
+    "ML2495A": ("pwrmeter", "anritsu-ml2495a"),
+    "NRX": ("pwrmeter", "rohde-nrx"),
+    "FPC1500": ("speca", "rohde-fpc1500"),
+    "MS2721B": ("speca", "anritsu-ms2721b"),
+    "MS2723B": ("speca", "anritsu-ms2723b"),
+    "MS2720T": ("speca", "anritsu-ms2720t"),
+    "8593E": ("speca", "keysight-8593e"),
+    "8563EC": ("speca", "keysight-8563ec"),
+    "PLA4K600240": ("eload", "ametek-pla4k-600-240"),
+    "RSA5115B": ("rtsa", "tektronix-rsa5115b"),
+    "RSA5126B": ("rtsa", "tektronix-rsa5126b"),
+    "RSA6114A": ("rtsa", "tektronix-rsa6114a"),
+    "33250A": ("asg", "keysight-33250a"),
+    "CG635": ("asg", "srs-cg635"),
+    "2001": ("dmm", "keithley-2001"),
+    "2100": ("dmm", "keithley-2100"),
+    "34410A": ("dmm", "keysight-34410a"),
+    "34411A": ("dmm", "keysight-34411a"),
+    "U1252A": ("dmm", "keysight-u1252a"),
+    "U1272A": ("dmm", "keysight-u1272a"),
+    "636005": ("eload", "chroma-63600-5"),
+    "T3EL150303P": ("eload", "teledyne-t3el150303p"),
+    "53150A": ("freqcounter", "keysight-53150a"),
+    "DSA71254": ("oscope", "keysight-dsa71254"),
+    "DSAZ204A": ("oscope", "keysight-dsaz204a"),
+    "RTE1204": ("oscope", "rohde-rte1204"),
+    "RTP164": ("oscope", "rohde-rtp164"),
+    "RTB2004": ("oscope", "rohde-rtb2004"),
+    "RTM3004": ("oscope", "rohde-rtm3004"),
+    "TDS2014": ("oscope", "tektronix-tds2014"),
+    "TDS2024C": ("oscope", "tektronix-tds2024c"),
+    "TDS3032B": ("oscope", "tektronix-tds3032b"),
+    "TDS3034B": ("oscope", "tektronix-tds3034b"),
+    "E5052B": ("phasenoiseanalyzer", "keysight-e5052b"),
+    "E3644A": ("psu", "keysight-e3644a"),
+    "N6705A": ("psu", "keysight-n6705a"),
+    "HMP4040": ("psu", "rohde-hmp4040"),
+    "E4417A": ("pwrmeter", "keysight-e4417a"),
+    "N1912A": ("pwrmeter", "keysight-n1912a"),
+    "U8487A": ("pwrmeter", "keysight-u8487a"),
+    "U8488A": ("pwrmeter", "keysight-u8488a"),
+    "NRP18S": ("pwrmeter", "rohde-nrp18s"),
+    "NRP33SN": ("pwrmeter", "rohde-nrp33sn"),
+    "E4440A": ("speca", "keysight-e4440a"),
+    "N9000A": ("speca", "keysight-n9000a"),
+    "N9010A": ("speca", "keysight-n9010a"),
+    "N9010B": ("speca", "keysight-n9010b"),
+    "N9020A": ("speca", "keysight-n9020a"),
+    "N9020B": ("speca", "keysight-n9020b"),
+    "N9030A": ("speca", "keysight-n9030a"),
+    "E5062A": ("vna", "keysight-e5062a"),
+    "E5071B": ("vna", "keysight-e5071b"),
+    "E8362B": ("vna", "keysight-e8362b"),
+    "N5222B": ("vna", "keysight-n5222b"),
+    "N5245B": ("vna", "keysight-n5245b"),
+    "N5247B": ("vna", "keysight-n5247b"),
+    "N9915A": ("vna", "keysight-n9915a"),
+    "N9917B": ("vna", "keysight-n9917b"),
+    "ZNLE6": ("vna", "rohde-znle6"),
+    "E4422B": ("vsg", "keysight-e4422b"),
+    "E8241A": ("vsg", "keysight-e8241a"),
+    "E8257C": ("vsg", "keysight-e8257c"),
+    "E8257D": ("vsg", "keysight-e8257d"),
+    "N5183A": ("vsg", "keysight-n5183a"),
+    "N5183B": ("vsg", "keysight-n5183b"),
+    "SMA100B": ("vsg", "rohde-sma100b"),
+    "SMB100A": ("vsg", "rohde-smb100a"),
+}
+
+_INVENTORY_VENDORS = {
+    "keysight": ("KEYSIGHT", "AGILENT", "HEWLETTPACKARD", "HP"),
+    "keithley": ("KEITHLEY",),
+    "rohde": ("ROHDESCHWARZ", "RS", "HAMEG"),
+    "tektronix": ("TEKTRONIX",),
+    "teledyne": ("TELEDYNE", "LECROY"),
+    "chroma": ("CHROMA",),
+    "srs": ("STANFORDRESEARCH", "SRS"),
+    "anritsu": ("ANRITSU",),
+    "gwinstek": ("GWINSTEK", "GOODWILL"),
+    "ametek": ("AMETEK", "SORENSEN", "AMREL"),
+}
+
 def classify_idn(idn: str) -> IdnMatch | None:
     """Classify a raw *IDN? response into equipment kind and model."""
     normalized = idn.strip().upper()
     if not normalized:
         return None
+    fields = normalized.split(",")
+    if len(fields) >= 2:
+        vendor = "".join(c for c in fields[0] if c.isalnum())
+        token = "".join(c for c in fields[1].removeprefix("MODEL ") if c.isalnum())
+        exact = _INVENTORY_MODELS.get(token)
+        if exact:
+            kind, model = exact
+            vendors = _INVENTORY_VENDORS[model.split("-", 1)[0]]
+            if vendor.startswith(vendors):
+                return IdnMatch(kind=kind, model=model)
     for rule in _TIER1_RULES:
         if rule.substring.upper() in normalized:
             return IdnMatch(kind=rule.kind, model=rule.model)

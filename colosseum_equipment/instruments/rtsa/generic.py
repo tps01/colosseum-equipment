@@ -23,7 +23,10 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
-@instrument_model("rtsa", "generic", extra_optional=("center_freq", "span", "rbw"))
+@instrument_model(
+    "rtsa", "generic",
+    extra_optional=("center_freq", "span", "rbw", "sample_rate_hz", "reference_level_dbm"),
+)
 @best_effort_commands
 class GenericRtsa(ScpiInstrumentMixin):
     """Generic SCPI real-time spectrum analyzer (spectrum setup + IQ block download).
@@ -153,3 +156,22 @@ class GenericRtsa(ScpiInstrumentMixin):
             value=metadata,
         )
         return artifact_path
+
+    def capture_iq(
+        self,
+        *,
+        center_hz: float,
+        span_hz: float,
+        bandwidth_hz: float,
+        seconds: float,
+        path: str,
+        file_format: str = "mat",
+        sample_format: str = "f32",
+        timeout_s: float = 120.0,
+        key: str = "",
+    ) -> dict[str, Any]:
+        """Acquire one IQ record and write decoded samples to ``path``.
+
+        Model drivers that support length-mode IQ capture override this method.
+        """
+        unsupported(self._model, "capture_iq")

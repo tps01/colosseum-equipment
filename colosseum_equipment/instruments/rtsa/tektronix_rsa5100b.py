@@ -1,21 +1,28 @@
 from __future__ import annotations
 
+import contextlib
+import time
 from typing import TYPE_CHECKING, Any
+
+import numpy as np
+from colosseum.logging import get_logger
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
+from colosseum_equipment.exceptions import EquipmentResponseError, EquipmentTimeoutError
 from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
+from colosseum_equipment.instruments.rtsa.iq_export import (
+    normalize_iq_format,
+    write_capture_iq,
+    write_iq_bin,
+    write_iq_mat,
+    write_iq_tar,
+)
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
     parse_trace_amplitudes,
     write_trace_csv,
-)
-from colosseum_equipment.instruments.rtsa.iq_export import (
-    normalize_iq_format,
-    write_iq_bin,
-    write_iq_mat,
-    write_iq_tar,
 )
 from colosseum_equipment.protocols.scpi import wait_opc
 
@@ -24,14 +31,27 @@ if TYPE_CHECKING:
 
     from colosseum_equipment.transports.base import Transport
 
+_logger = get_logger("colosseum.equipment")
 
-@instrument_model("rtsa", "tektronix-rsa5100b")
+# Firmware is unreliable on a single large FETCh:RFIN:IQ?; match the MATLAB
+# chunking strategy (~250k complex samples per request).
+_IQ_CHUNK_SAMPLES = 250_000
+_RECORD_ID_RETRIES = 9
+_HEADER_RETRIES = 9
+
+
+@instrument_model(
+    "rtsa",
+    "tektronix-rsa5100b",
+    "tektronix-rsa5103b",
+    "tektronix-rsa6000",
+)
 class TektronixRSA5100BRtsa(GenericRtsa):
-    """Tektronix RSA5100B real-time spectrum analyzer (IQ acquisition)."""
+    """Tektronix RSA5100B / RSA6000 real-time spectrum analyzer (IQ acquisition)."""
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         super().__init__(transport, config)
-        self._model = "tektronix-rsa5100b"
+        self._model = str(config.get("model", "tektronix-rsa5100b")).lower()
 
     def _ensure_spectrum_view(self) -> None:
         active = self._scpi.query("DISP:WIND:ACT:MEAS?").upper()
@@ -123,8 +143,6 @@ class TektronixRSA5100BRtsa(GenericRtsa):
         return artifact_path
 
     def save_IQ_data(self, path: str, *, file_format: str = "bin", key: str = "") -> Path:
-        from colosseum_equipment.evidence import record_artifact
-
         self._ensure_spectrum_view()
         payload = self._scpi.read_binary_block("FETCH:SPEC:IQ?")
         export_format = normalize_iq_format(file_format, path)
@@ -150,3 +168,172 @@ class TektronixRSA5100BRtsa(GenericRtsa):
             value=metadata,
         )
         return artifact_path
+
+    def _setup_iqvtime(
+        self,
+        *,
+        center_hz: float,
+        span_hz: float,
+        bandwidth_hz: float,
+        seconds: float,
+    ) -> None:
+        self._scpi.write("ABORt")
+        self._scpi.write("TRIGger:SEQuence:STATus 0")
+        self._scpi.write("INIT:CONT OFF")
+        self._scpi.write("DISPlay:GENeral:MEASview:NEW IQVTime")
+        self._scpi.write("DISPlay:GENeral:MEASview:SELect IQVTime")
+        self._scpi.write("SENSe:IQVTime:CLEar:RESults")
+        self._scpi.write("DISPlay:IQVTime:X:SCALe:AUTO")
+        self._scpi.write("DISPlay:IQVTime:Y:SCALe:AUTO")
+        self._scpi.write("SENSe:ACQuisition:MODE LENGTH")
+        self._scpi.write(f"SENSe:ACQuisition:SEConds {seconds:.9f}")
+        self._scpi.write(f"SENSe:ACQuisition:BANDwidth {bandwidth_hz:.6f}")
+        self._scpi.write("SENSe:IQVTime:MAXTracepoints NEVerdecimate")
+        self._scpi.write(f"SENSe:IQVTime:FREQuency:SPAN {span_hz:.6f}")
+        self._scpi.write(f"SENSe:IQVTime:FREQuency:CENTer {center_hz:.6f}")
+
+    def _wait_opc(self, *, timeout_s: float) -> None:
+        deadline = time.monotonic() + timeout_s
+        transport = getattr(self._scpi, "_transport", None)
+        setter = getattr(transport, "set_timeout_s", None) if transport is not None else None
+        prev_timeout = getattr(transport, "_timeout", None) if transport is not None else None
+        try:
+            while time.monotonic() < deadline:
+                remaining = max(0.05, deadline - time.monotonic())
+                if callable(setter):
+                    with contextlib.suppress(Exception):
+                        setter(min(remaining, 1.0))
+                try:
+                    if self._scpi.query("*OPC?").strip().startswith("1"):
+                        return
+                except Exception:
+                    pass
+                time.sleep(0.05)
+        finally:
+            if callable(setter) and prev_timeout is not None:
+                with contextlib.suppress(Exception):
+                    setter(float(prev_timeout))
+        raise EquipmentTimeoutError(
+            f"rtsa model `{self._model}` IQ acquisition did not complete within {timeout_s}s",
+        )
+
+    def _fetch_record_id(self) -> int:
+        details = ""
+        for _ in range(_RECORD_ID_RETRIES):
+            details = self._scpi.query("FETCh:RFIN:RECord:IDS?")
+            fields = [part.strip() for part in details.split(",") if part.strip()]
+            if len(fields) >= 2:
+                first = int(float(fields[0]))
+                last = int(float(fields[1]))
+                if first != last:
+                    _logger.warning(
+                        "Unexpected RFIN record ID range %s; using first ID %s",
+                        details,
+                        first,
+                    )
+                return first
+        raise EquipmentResponseError(
+            f"Unable to obtain RFIN record IDs after {_RECORD_ID_RETRIES} tries "
+            f"(last reply {details!r})",
+        )
+
+    def _fetch_iq_header(self, record_id: int) -> tuple[float, int]:
+        header = ""
+        for _ in range(_HEADER_RETRIES):
+            header = self._scpi.query(f"FETCh:RFIN:IQ:HEADer? {record_id}")
+            fields = [part.strip() for part in header.split(",") if part.strip()]
+            if len(fields) >= 3:
+                sample_rate_hz = float(fields[1])
+                num_samples = int(float(fields[2]))
+                return sample_rate_hz, num_samples
+        raise EquipmentResponseError(
+            f"Unable to obtain RFIN IQ header after {_HEADER_RETRIES} tries "
+            f"(last reply {header!r})",
+        )
+
+    def _fetch_iq_float32(self, record_id: int, num_samples: int) -> np.ndarray:
+        if num_samples <= 0:
+            return np.array([], dtype=np.complex64)
+        parts: list[np.ndarray] = []
+        start = 0
+        while start < num_samples:
+            end = min(start + _IQ_CHUNK_SAMPLES, num_samples) - 1
+            cmd = f"FETCh:RFIN:IQ? {record_id},{start},{end}"
+            payload = self._scpi.read_binary_block(cmd)
+            expected = (end - start + 1) * 8
+            if len(payload) < expected:
+                raise EquipmentResponseError(
+                    f"Short RFIN IQ block: got {len(payload)} bytes, expected {expected}",
+                )
+            raw = np.frombuffer(payload[:expected], dtype="<f4")
+            chunk = raw[0::2].astype(np.float32) + 1j * raw[1::2].astype(np.float32)
+            parts.append(chunk.astype(np.complex64, copy=False))
+            start = end + 1
+        return np.concatenate(parts) if len(parts) > 1 else parts[0]
+
+    def capture_iq(
+        self,
+        *,
+        center_hz: float,
+        span_hz: float,
+        bandwidth_hz: float,
+        seconds: float,
+        path: str,
+        file_format: str = "mat",
+        sample_format: str = "f32",
+        timeout_s: float = 120.0,
+        key: str = "",
+    ) -> dict[str, Any]:
+        """Acquire one IQ vs Time record (RSA6000 / RSA5100B length mode)."""
+        self._run_id = f"{time.monotonic():.6f}"
+        self._setup_iqvtime(
+            center_hz=center_hz,
+            span_hz=span_hz,
+            bandwidth_hz=bandwidth_hz,
+            seconds=seconds,
+        )
+        self._scpi.write("INITIATE:IMMEDIATE")
+        self._wait_opc(timeout_s=timeout_s)
+
+        transport = getattr(self._scpi, "_transport", None)
+        setter = getattr(transport, "set_timeout_s", None) if transport is not None else None
+        prev_timeout = getattr(transport, "_timeout", None) if transport is not None else None
+        try:
+            if callable(setter):
+                with contextlib.suppress(Exception):
+                    setter(max(float(timeout_s), 1.0))
+            record_id = self._fetch_record_id()
+            sample_rate_hz, num_samples = self._fetch_iq_header(record_id)
+            iq = self._fetch_iq_float32(record_id, num_samples)
+        finally:
+            if callable(setter) and prev_timeout is not None:
+                with contextlib.suppress(Exception):
+                    setter(float(prev_timeout))
+
+        artifact_path = resolve_artifact_path(path)
+        base_meta = {
+            "center_hz": float(center_hz),
+            "span_hz": float(span_hz),
+            "bandwidth_hz": float(bandwidth_hz),
+            "seconds": float(seconds),
+            "sample_rate_hz": float(sample_rate_hz),
+            "record_id": int(record_id),
+            "run_id": self._run_id,
+        }
+        out_meta = write_capture_iq(
+            artifact_path,
+            iq,
+            file_format=file_format,
+            sample_format=sample_format,
+            metadata=base_meta,
+        )
+        out_meta["path"] = str(artifact_path)
+        evidence_key = key or f"rtsa_capture_iq_{self._run_id}"
+        record_artifact(
+            domain="equipment",
+            command="capture_iq",
+            key=evidence_key,
+            path=artifact_path,
+            value=out_meta,
+        )
+        return out_meta
