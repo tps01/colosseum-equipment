@@ -33,9 +33,20 @@ def format_definite_length_block(payload: bytes) -> bytes:
 def parse_definite_length_block(data: bytes) -> bytes:
     if not data.startswith(b"#"):
         return data
+    if len(data) < 2 or data[1:2] not in b"123456789":
+        raise EquipmentResponseError("malformed or indefinite SCPI block header")
     digit_count = int(chr(data[1]))
-    length = int(data[2 : 2 + digit_count].decode("ascii"))
+    digits = data[2 : 2 + digit_count]
+    if len(digits) != digit_count or not digits.isdigit():
+        raise EquipmentResponseError("truncated or invalid SCPI block length")
+    length = int(digits)
     start = 2 + digit_count
+    if len(data) < start + length:
+        raise EquipmentResponseError(
+            f"truncated SCPI block: expected {length} payload bytes, got {len(data) - start}",
+        )
+    if data[start + length:].strip(b"\r\n"):
+        raise EquipmentResponseError("unexpected trailing data after SCPI block")
     return data[start : start + length]
 
 

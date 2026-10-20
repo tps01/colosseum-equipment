@@ -55,4 +55,5 @@ def write_iq_tar(path: Path, payload: bytes, *, metadata: dict[str, Any] | None 
         meta_info = tarfile.TarInfo(name="metadata.json")
         meta_info.size = len(meta_bytes)
         archive.addfile(meta_info, io.BytesIO(meta_bytes))
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(buffer.getvalue())

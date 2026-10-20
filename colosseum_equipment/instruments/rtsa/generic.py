@@ -23,7 +23,10 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
-@instrument_model("rtsa", "generic", extra_optional=("center_freq", "span", "rbw"))
+@instrument_model(
+    "rtsa", "generic",
+    extra_optional=("center_freq", "span", "rbw", "sample_rate_hz", "reference_level_dbm"),
+)
 @best_effort_commands
 class GenericRtsa(ScpiInstrumentMixin):
     """Generic SCPI real-time spectrum analyzer (spectrum setup + IQ block download).

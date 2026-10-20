@@ -66,3 +66,31 @@ def test_catalog_idn_prefers_the_longer_model_token() -> None:
     assert scope is not None
     assert scope.kind == "oscope"
     assert scope.model == "tektronix-mdo3024"
+
+
+def test_inventory_exact_models_resolve_to_registered_builders() -> None:
+    from colosseum_equipment.autoconfig.idn_registry import _INVENTORY_MODELS
+    from colosseum_equipment.instruments.registry import registered_models
+    manufacturers = {
+        "anritsu": "ANRITSU", "gwinstek": "GW INSTEK", "ametek": "AMETEK",
+        "keysight": "Agilent Technologies", "rohde": "Rohde&Schwarz",
+        "keithley": "KEITHLEY INSTRUMENTS INC.", "tektronix": "TEKTRONIX",
+        "chroma": "CHROMA", "srs": "Stanford Research Systems", "teledyne": "Teledyne LeCroy",
+    }
+    for token, (kind, model) in _INVENTORY_MODELS.items():
+        vendor = manufacturers[model.split("-", 1)[0]]
+        # Keithley uses MODEL prefixes; model identifiers cannot match serial numbers.
+        field = f"MODEL {token}" if model.startswith("keithley-") else token
+        match = classify_idn(f"{vendor},{field},123,1.0")
+        assert match is not None, model
+        assert (match.kind, match.model) == (kind, model)
+        assert model in registered_models(kind)
+        unknown = classify_idn(f"{vendor},UNKNOWN,{token},1.0")
+        assert unknown is None or unknown.model != model
+        unrelated = classify_idn(f"UNRELATED,{token},123,1.0")
+        assert unrelated is None or unrelated.model != model
+
+
+def test_inventory_suffixes_do_not_match_different_hardware() -> None:
+    assert classify_idn("Keysight,N9010B-OTHER,1,1") is None
+    assert classify_idn("Keysight,N5245B-UNKNOWN,1,1") is None

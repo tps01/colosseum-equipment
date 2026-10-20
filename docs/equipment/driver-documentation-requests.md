@@ -39,6 +39,13 @@ uses an `http(s)://` `resource` URL (optional `username` / `password`).
 
 ## Implemented vendor models
 
+For the 0.8.1 additions from `misc_equipment.xlsx`, see the
+[inventory rollout](inventory-rollout.md). It lists each named model's
+implemented subset, command references, hardware qualification requirements and
+remaining category work. The [manual analysis](inventory-manual-analysis.md)
+records the follow-up source audit, native dialects and unresolved entries. Those drivers explicitly refuse inherited operations
+outside their documented subset, rather than relying on best-effort warnings.
+
 | `model` slug | Kind | Manual | Notes |
 | --- | --- | --- | --- |
 | `ublox-m8` | gnss | u-blox M8/M10/F9/F10 interface descriptions | aliases `ublox-m10`, `ublox-f9`, `ublox-f10`; NMEA + UBX NAV-PVT |

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 @instrument_model(
     "psu",
     "generic",
-    extra_optional=("voltage", "ovp", "ocp", "channels", "channel_count"),
+    extra_optional=("voltage", "ovp", "ocp", "channels", "channel_count", "baudrate", "device_address"),
 )
 @best_effort_commands
 class GenericPSU(ScpiInstrumentMixin):
