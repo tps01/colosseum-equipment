@@ -66,3 +66,10 @@ def test_catalog_idn_prefers_the_longer_model_token() -> None:
     assert scope is not None
     assert scope.kind == "oscope"
     assert scope.model == "tektronix-mdo3024"
+
+
+def test_classify_tek_rsa5115b() -> None:
+    match = classify_idn("TEKTRONIX,RSA5115B,B010100,1.0.0")
+    assert match is not None
+    assert match.kind == "rtsa"
+    assert match.model == "tektronix-rsa5100b"

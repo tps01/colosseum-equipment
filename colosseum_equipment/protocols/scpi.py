@@ -66,11 +66,42 @@ class SCPIHelper:
         write_raw(f"{command_prefix} ".encode("ascii") + block + b"\n")
 
     def read_binary_block(self, command: str) -> bytes:
+        """Read a definite-length IEEE 488.2 binary block after ``command``.
+
+        Continues calling the transport ``read_raw`` until the header length is
+        satisfied so large IQ transfers are not truncated by a single read size.
+        """
         read_raw = getattr(self._transport, "read_raw", None)
         if not callable(read_raw):
             raise EquipmentResponseError("Transport does not support binary block reads")
         self.write(command)
-        return parse_definite_length_block(read_raw())
+        buffer = bytearray(read_raw())
+        while True:
+            if not buffer.startswith(b"#"):
+                return bytes(buffer)
+            if len(buffer) < 2:
+                buffer.extend(read_raw())
+                continue
+            try:
+                digit_count = int(chr(buffer[1]))
+            except ValueError as exc:
+                raise EquipmentResponseError(
+                    f"Invalid definite-length block header: {bytes(buffer[:16])!r}",
+                ) from exc
+            header_len = 2 + digit_count
+            if len(buffer) < header_len:
+                buffer.extend(read_raw())
+                continue
+            try:
+                payload_len = int(buffer[2:header_len].decode("ascii"))
+            except ValueError as exc:
+                raise EquipmentResponseError(
+                    f"Invalid definite-length block size: {bytes(buffer[:header_len])!r}",
+                ) from exc
+            total = header_len + payload_len
+            if len(buffer) >= total:
+                return bytes(buffer[header_len:total])
+            buffer.extend(read_raw())
 
     def status_byte(self) -> int:
         """Read the IEEE 488.2 status byte (``*STB?``)."""

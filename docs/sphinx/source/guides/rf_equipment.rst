@@ -15,7 +15,9 @@ Supported vendor models
 
 * ``keysight-esg`` - Agilent/Keysight E4428C (analog) and E4438C (vector arb)
 * ``keysight-e4407b`` - Agilent/Keysight E4407B ESA-E spectrum analyzer
-* ``tektronix-rsa5100b`` - Tektronix RSA5100B RTSA (configure under ``equipment.rtsa``)
+* ``tektronix-rsa5100b`` - Tektronix RSA5100B / RSA6000 family RTSA (aliases
+  ``tektronix-rsa5103b``, ``tektronix-rsa5115b``, ``tektronix-rsa5126b``,
+  ``tektronix-rsa6000``; configure under ``equipment.rtsa``)
 * ``generic`` - Keysight-style SCPI for offline PyVISA-sim or compatible lab gear
 
 Example workflows
@@ -33,8 +35,15 @@ Trace and capture artifacts
 
 ``save_trace_data`` on ``col.equipment.speca`` writes a CSV under the active output directory and registers an
 artifact row. Pass ``save_plot=True`` or ``plot_path=`` for an optional PNG (``speca_trace_plot``);
-matplotlib support is included in the default installation. RTSA IQ capture uses ``save_IQ_data``
-(see API docstrings).
+matplotlib support is included in the default installation.
+
+RTSA spectrum / opaque IQ download uses ``save_IQ_data``. Length-mode IQ records
+(center, span, acquisition bandwidth, duration) use ``col.equipment.rtsa.capture_iq``,
+which decodes samples and writes ``mat`` / ``bin`` / ``iq.tar`` with
+``sample_format`` ``f32``, ``i16``, or ``c64``. Models that do not implement the
+call raise ``EquipmentCapabilityError``. On Tektronix RSA5100B / RSA6000 family
+instruments, prefer a VISA socket resource such as
+``TCPIP0::<ip>::4000::SOCKET``. Drivers override ``capture_iq`` for other RTSAs.
 
 Capability errors
 -----------------
