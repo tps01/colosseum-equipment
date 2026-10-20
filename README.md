@@ -10,6 +10,12 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
 (instruments, transports, DIO, I2C, SPI). NI USB-6501 and USB-845x adapters
 load the installed NI-DAQmx / NI-845x runtimes via ctypes.
 
+Version 0.6.0 adds USB2ANY and Aardvark I2C/SPI masters, Cheetah SPI, and
+Beagle I2C/SPI, USB 12, and USB 480 capture through `col.io.analyzer`.
+Vendor runtimes are installed separately and are not distributed in the wheel.
+See the [adapter guide](docs/sphinx/source/guides/io_digital.rst) for setup,
+capture limits, and hardware qualification requirements.
+
 ## Install
 
 Download the wheel from [GitHub Releases](https://github.com/tps01/colosseum-equipment/releases)

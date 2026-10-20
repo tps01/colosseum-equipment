@@ -51,6 +51,8 @@ _IO_CONFIG_SPECS = (
             "library",
             "nack",
             "read_data",
+            "target_power",
+            "timeout_ms",
         ),
     ),
     ConfigSectionSpec(
@@ -68,6 +70,18 @@ _IO_CONFIG_SPECS = (
             "bits_per_word",
             "library",
             "read_data",
+            "target_power",
+            "timeout_ms",
+        ),
+    ),
+    ConfigSectionSpec(
+        "io.analyzer",
+        "analyzer_id",
+        required_keys=("driver",),
+        optional_keys=(
+            "resource", "model", "protocol", "mode", "sample_rate_hz",
+            "pullup", "target_power", "timeout_ms", "max_duration_s",
+            "max_records", "max_bytes", "records",
         ),
     ),
 )

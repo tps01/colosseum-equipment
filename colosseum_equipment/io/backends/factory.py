@@ -99,6 +99,14 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
 
 def open_i2c_backend(i2c_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
     driver = _driver_name(config)
+    if driver == "totalphase-aardvark":
+        from colosseum_equipment.io.backends.totalphase import AardvarkI2cBackend
+
+        return AardvarkI2cBackend(config)
+    if driver == "ti-usb2any":
+        from colosseum_equipment.io.backends.usb2any import Usb2AnyI2cBackend
+
+        return Usb2AnyI2cBackend(config)
     if driver == "sim":
         from colosseum_equipment.io.backends.sim.i2c import SimI2cBackend
 
@@ -121,6 +129,14 @@ def open_i2c_backend(i2c_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
 
 def open_spi_backend(spi_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
     driver = _driver_name(config)
+    if driver in ("totalphase-aardvark", "totalphase-cheetah"):
+        from colosseum_equipment.io.backends.totalphase import TotalPhaseSpiBackend
+
+        return TotalPhaseSpiBackend(config, cheetah=driver == "totalphase-cheetah")
+    if driver == "ti-usb2any":
+        from colosseum_equipment.io.backends.usb2any import Usb2AnySpiBackend
+
+        return Usb2AnySpiBackend(config)
     if driver == "sim":
         from colosseum_equipment.io.backends.sim.spi import SimSpiBackend
 
@@ -148,4 +164,10 @@ def open_backend(kind: str, resource_id: int, config: dict[str, Any]) -> Any:  #
         return open_i2c_backend(resource_id, config)
     if kind == "spi":
         return open_spi_backend(resource_id, config)
+    if kind == "analyzer":
+        if _driver_name(config) not in ("sim", "totalphase-beagle"):
+            raise IoConfigError("analyzer driver must be sim or totalphase-beagle")
+        from colosseum_equipment.io.backends.analyzer import AnalyzerBackend
+
+        return AnalyzerBackend(config)
     raise IoConfigError(f"unsupported io kind `{kind}`")
