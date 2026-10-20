@@ -33,9 +33,20 @@ def format_definite_length_block(payload: bytes) -> bytes:
 def parse_definite_length_block(data: bytes) -> bytes:
     if not data.startswith(b"#"):
         return data
+    if len(data) < 2 or data[1:2] not in b"123456789":
+        raise EquipmentResponseError("malformed or indefinite SCPI block header")
     digit_count = int(chr(data[1]))
-    length = int(data[2 : 2 + digit_count].decode("ascii"))
+    digits = data[2 : 2 + digit_count]
+    if len(digits) != digit_count or not digits.isdigit():
+        raise EquipmentResponseError("truncated or invalid SCPI block length")
+    length = int(digits)
     start = 2 + digit_count
+    if len(data) < start + length:
+        raise EquipmentResponseError(
+            f"truncated SCPI block: expected {length} payload bytes, got {len(data) - start}",
+        )
+    if data[start + length:].strip(b"\r\n"):
+        raise EquipmentResponseError("unexpected trailing data after SCPI block")
     return data[start : start + length]
 
 
@@ -77,30 +88,24 @@ class SCPIHelper:
         self.write(command)
         buffer = bytearray(read_raw())
         while True:
-            if not buffer.startswith(b"#"):
-                return bytes(buffer)
+            if not buffer.startswith(b"#") or (
+                len(buffer) >= 2 and buffer[1:2] not in b"123456789"
+            ):
+                return parse_definite_length_block(bytes(buffer))
             if len(buffer) < 2:
                 buffer.extend(read_raw())
                 continue
-            try:
-                digit_count = int(chr(buffer[1]))
-            except ValueError as exc:
-                raise EquipmentResponseError(
-                    f"Invalid definite-length block header: {bytes(buffer[:16])!r}",
-                ) from exc
+            digit_count = int(chr(buffer[1]))
             header_len = 2 + digit_count
             if len(buffer) < header_len:
                 buffer.extend(read_raw())
                 continue
-            try:
-                payload_len = int(buffer[2:header_len].decode("ascii"))
-            except ValueError as exc:
-                raise EquipmentResponseError(
-                    f"Invalid definite-length block size: {bytes(buffer[:header_len])!r}",
-                ) from exc
-            total = header_len + payload_len
+            digits = bytes(buffer[2:header_len])
+            if not digits.isdigit():
+                return parse_definite_length_block(bytes(buffer))
+            total = header_len + int(digits)
             if len(buffer) >= total:
-                return bytes(buffer[header_len:total])
+                return parse_definite_length_block(bytes(buffer))
             buffer.extend(read_raw())
 
     def status_byte(self) -> int:

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
-@instrument_model("dmm", "generic", extra_optional=("channels", "channel_count"))
+@instrument_model("dmm", "generic", extra_optional=("channels", "channel_count", "baudrate"))
 @best_effort_commands
 class GenericDMM(ScpiInstrumentMixin):
     def __init__(self, transport: Transport, config: dict[str, Any] | None = None) -> None:

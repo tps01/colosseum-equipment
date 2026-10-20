@@ -6,7 +6,10 @@ import ctypes
 import sys
 from functools import lru_cache
 from threading import RLock
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from colosseum.logging import get_logger
 
@@ -40,7 +43,7 @@ def load_api(library: str) -> Any:  # noqa: ANN401
         lib = ctypes.WinDLL(library)
         integer, byte = ctypes.c_int32, ctypes.c_uint8
         buffer = ctypes.POINTER(byte)
-        signatures = {
+        signatures: dict[str, Sequence[object]] = {
             "u2aOpen": [ctypes.c_char_p],
             "u2aClose": [integer],
             "u2aSuppressSplash": [integer],

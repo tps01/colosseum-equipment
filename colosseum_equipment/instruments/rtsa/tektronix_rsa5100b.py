@@ -44,8 +44,6 @@ _HEADER_RETRIES = 9
     "rtsa",
     "tektronix-rsa5100b",
     "tektronix-rsa5103b",
-    "tektronix-rsa5115b",
-    "tektronix-rsa5126b",
     "tektronix-rsa6000",
 )
 class TektronixRSA5100BRtsa(GenericRtsa):

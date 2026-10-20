@@ -45,6 +45,15 @@ col.equipment.psu.set_voltage(psu_id=1, voltage=3.3)
 col.endex()
 ```
 
+## Inventory coverage
+
+The 0.6.0 inventory expansion adds bounded drivers in 12 existing equipment
+kinds. See [implemented models, limits and remaining category work](docs/equipment/inventory-rollout.md),
+[manual analysis of the remaining categories](docs/equipment/inventory-manual-analysis.md),
+and [hardware configuration examples](examples/configs/config.inventory.hardware.toml.example).
+These additions have command-level regression tests; physical hardware
+qualification remains outstanding.
+
 ## Trace / waveform masks
 
 Author masks offline with `col.equipment.tools.create_mask`. In procedures use

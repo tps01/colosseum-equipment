@@ -7,6 +7,8 @@ under the active run output directory and registered as artifacts.
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import command
 
 from colosseum_equipment.connections import get_cached_instrument
@@ -330,13 +332,13 @@ def capture_iq(
     sample_format: str = "f32",
     timeout_s: float = 120.0,
     key: str = "",
-) -> dict:
+) -> dict[str, Any]:
     """Acquire one length-mode IQ record and write decoded samples to ``path``.
 
     ``bandwidth_hz`` is the IQ acquisition bandwidth, not spectrum resolution
-    bandwidth. Supported models (for example ``tektronix-rsa5100b``) set up an
-    IQ vs Time measurement, wait for completion, decode the wire samples, and
-    export them.
+    bandwidth. Supported models (for example ``tektronix-rsa5100b`` and
+    ``tektronix-rsa5115b``) set up an IQ vs Time measurement, wait for
+    completion, decode the wire samples, and export them.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
     :type rtsa_id: int

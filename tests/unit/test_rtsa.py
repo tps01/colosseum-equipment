@@ -181,12 +181,18 @@ def test_write_capture_iq_sample_formats(tmp_path: Path) -> None:
         write_capture_iq(tmp_path / "bad.bin", iq, file_format="bin", sample_format="f64")
 
 
-def test_tek_rsa5115b_alias_builds_same_driver() -> None:
-    inst = build_instrument("rtsa", 1, {"model": "tektronix-rsa5115b"}, RfStubTransport())
-    assert isinstance(inst, TektronixRSA5100BRtsa)
+def test_tek_rsa_family_aliases_leave_exact_models_native() -> None:
+    from colosseum_equipment.instruments.rtsa.tektronix_native import TekRsa5100bNative
+
+    for model in ("tektronix-rsa5103b", "tektronix-rsa6000"):
+        inst = build_instrument("rtsa", 1, {"model": model}, RfStubTransport())
+        assert type(inst) is TektronixRSA5100BRtsa
+    native = build_instrument("rtsa", 1, {"model": "tektronix-rsa5115b"}, RfStubTransport())
+    assert type(native) is TekRsa5100bNative
 
 
-def test_tek_capture_iq_iqvtime_sequence(unit_runtime_context) -> None:
+@pytest.mark.parametrize("model", ["tektronix-rsa5100b", "tektronix-rsa5115b"])
+def test_tek_capture_iq_iqvtime_sequence(unit_runtime_context, model: str) -> None:
     _ = unit_runtime_context
     samples = np.array([1.0, 2.0, 3.0, 4.0], dtype="<f4")
     block = format_definite_length_block(samples.tobytes())
@@ -198,7 +204,7 @@ def test_tek_capture_iq_iqvtime_sequence(unit_runtime_context) -> None:
             "__raw__": block,
         },
     )
-    inst = build_instrument("rtsa", 1, {"model": "tektronix-rsa5100b"}, transport)
+    inst = build_instrument("rtsa", 1, {"model": model}, transport)
     meta = inst.capture_iq(
         center_hz=503e6,
         span_hz=10e6,

@@ -16,8 +16,10 @@ Supported vendor models
 * ``keysight-esg`` - Agilent/Keysight E4428C (analog) and E4438C (vector arb)
 * ``keysight-e4407b`` - Agilent/Keysight E4407B ESA-E spectrum analyzer
 * ``tektronix-rsa5100b`` - Tektronix RSA5100B / RSA6000 family RTSA (aliases
-  ``tektronix-rsa5103b``, ``tektronix-rsa5115b``, ``tektronix-rsa5126b``,
-  ``tektronix-rsa6000``; configure under ``equipment.rtsa``)
+  ``tektronix-rsa5103b`` and ``tektronix-rsa6000``; configure under
+  ``equipment.rtsa``). Exact models ``tektronix-rsa5115b`` and
+  ``tektronix-rsa5126b`` use native spectrum commands and still provide
+  ``capture_iq``.
 * ``generic`` - Keysight-style SCPI for offline PyVISA-sim or compatible lab gear
 
 Example workflows

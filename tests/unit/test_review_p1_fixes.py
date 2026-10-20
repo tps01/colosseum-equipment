@@ -78,8 +78,8 @@ def test_gnss_ttff_without_logging() -> None:
 
 
 def test_parse_ascii_waveform_keeps_first_sample() -> None:
-    # IEEE definite-length header glued to first sample: ``#2`` + ``13`` + payload.
-    values = _parse_ascii_waveform("#2131.0,2.0,3.0", points_expected=3)
+    # IEEE definite-length header glued to first sample: ``#2`` + ``11`` + payload.
+    values = _parse_ascii_waveform("#2111.0,2.0,3.0", points_expected=3)
     assert values == [1.0, 2.0, 3.0]
 
 
