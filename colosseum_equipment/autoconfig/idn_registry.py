@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -327,6 +328,26 @@ _INVENTORY_VENDORS = {
     "ametek": ("AMETEK", "SORENSEN", "AMREL"),
 }
 
+_LAMBDA_VENDOR = re.compile(r"(?:^|[^A-Z0-9])LAMBDA(?:[^A-Z0-9]|$)")
+# A digit is required so the word GENESYS is not a GEN rating.
+_LAMBDA_GEN_MODEL = re.compile(
+    r"(?:^|[^A-Z0-9])GENH?\d+(?:\.\d+)?-\d+(?:\.\d+)?(?:-[A-Z0-9]+)*",
+)
+
+
+def lambda_gen_identity(idn: str) -> bool:
+    """Return whether ``idn`` is a Lambda ``GEN``/``GENH`` rating.
+
+    Comma, space, and underscore are separators, so ``LAMBDA,GEN60-25-LAN`` and
+    ``LAMBDA_GENH40-19-IEMD`` both match. The word ``GENESYS`` does not.
+    """
+    normalized = idn.strip().upper()
+    return (
+        _LAMBDA_VENDOR.search(normalized) is not None
+        and _LAMBDA_GEN_MODEL.search(normalized) is not None
+    )
+
+
 def classify_idn(idn: str) -> IdnMatch | None:
     """Classify a raw *IDN? response into equipment kind and model."""
     normalized = idn.strip().upper()
@@ -345,6 +366,8 @@ def classify_idn(idn: str) -> IdnMatch | None:
     for rule in _TIER1_RULES:
         if rule.substring.upper() in normalized:
             return IdnMatch(kind=rule.kind, model=rule.model)
+    if lambda_gen_identity(normalized):
+        return IdnMatch(kind="psu", model="tdk-genesys")
     for rule in _TIER2_RULES:
         if rule.substring.upper() in normalized:
             return IdnMatch(kind=rule.kind, model=rule.model)

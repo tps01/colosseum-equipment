@@ -54,13 +54,29 @@ def get_cached_instrument(kind: str, equipment_id: int) -> Any:  # noqa: ANN401
     ctx = get_context()
     key = f"instrument:{kind}:{equipment_id}"
     cfg = get_config(kind, equipment_id)
-    model = str(cfg.get("model", "generic")).lower()
+    model = str(cfg.get("model") or "generic").lower()
 
     def _open() -> Any:  # noqa: ANN401
         from colosseum_equipment.instruments.factory import build_instrument
+        from colosseum_equipment.instruments.identify import (
+            instrument_config,
+            resolve_instrument_model,
+        )
 
         transport = get_transport(kind, equipment_id)
-        return build_instrument(kind, equipment_id, cfg, transport)
+        resolved_model = resolve_instrument_model(kind, cfg, transport)
+        _logger.debug(
+            "Resolved equipment.%s id=%s model=%s",
+            kind,
+            equipment_id,
+            resolved_model,
+        )
+        return build_instrument(
+            kind,
+            equipment_id,
+            instrument_config(kind, cfg, resolved_model),
+            transport,
+        )
 
     return cached_resource(
         ctx.resource_cache,
@@ -82,3 +98,4 @@ def close_all() -> None:
 
     close_io_backends()
     close_cached_resources(ctx.resource_cache, (("equipment:",),), logger=_logger)
+    close_cached_resources(ctx.resource_cache, (("visa:manager:",),), logger=_logger)

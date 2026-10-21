@@ -38,7 +38,6 @@ _kind_specs: dict[str, KindSpec] = {}
 _load_state = "idle"
 _best_effort_warned: set[tuple[str, str]] = set()
 
-_SERIAL_OPTIONAL = ("driver", "baudrate", "timeout", "sim_read")
 _HTTP_OPTIONAL = ("driver", "timeout", "username", "password")
 
 
@@ -55,14 +54,6 @@ class KindSpec:
         return f"{self.kind}_id"
 
     def section(self) -> ConfigSectionSpec:
-        if self.address == "serial":
-            optional = tuple(dict.fromkeys((*_SERIAL_OPTIONAL, *self.extra_optional)))
-            return ConfigSectionSpec(
-                f"equipment.{self.kind}",
-                self.id_field,
-                required_keys=("port",),
-                optional_keys=optional,
-            )
         if self.address == "http":
             optional = tuple(dict.fromkeys((*_HTTP_OPTIONAL, *self.extra_optional)))
             return ConfigSectionSpec(
@@ -72,8 +63,10 @@ class KindSpec:
                 optional_keys=optional,
             )
         optional_keys = tuple(dict.fromkeys((*VISA_OPTIONAL_KEYS, *self.extra_optional)))
-        if self.address == "either" and "port" not in optional_keys:
-            optional_keys = (*optional_keys, "port")
+        if self.address == "either":
+            for key in ("port", "resource"):
+                if key not in optional_keys:
+                    optional_keys = (*optional_keys, key)
         required = () if self.address == "either" else ("resource",)
         return ConfigSectionSpec(
             f"equipment.{self.kind}",
@@ -183,7 +176,9 @@ def ensure_instruments_loaded() -> None:
                     continue
                 importlib.import_module(f"{package_name}.{module_info.name}")
         if "serial" not in _kind_specs:
-            register_kind(KindSpec("serial", address="serial"))
+            register_kind(
+                KindSpec("serial", address="either", extra_optional=("baudrate", "sim_read")),
+            )
     except Exception:
         _load_state = "idle"
         raise

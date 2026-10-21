@@ -10,6 +10,11 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
 (instruments, transports, DIO, I2C, SPI). NI USB-6501 and USB-845x adapters
 load the installed NI-DAQmx / NI-845x runtimes via ctypes.
 
+Version 0.7.0 opens instrument resources through pyVISA, including `COM` ports
+as `ASRL`. When `model` is omitted, `*IDN?` selects a known driver or the
+generic one for that equipment kind. Genesys LAN and IEEE supplies use
+`OUTP:STAT`.
+
 Version 0.6.0 adds USB2ANY and Aardvark I2C/SPI masters, Cheetah SPI, and
 Beagle I2C/SPI, USB 12, and USB 480 capture through `col.io.analyzer`.
 Vendor runtimes are installed separately and are not distributed in the wheel.
@@ -62,10 +67,13 @@ Author masks offline with `col.equipment.tools.create_mask`. In procedures use
 
 ## Serial ports: raw I/O vs SCPI
 
-Each `[equipment.serial]` row is a COM/TTY port. Use `col.equipment.serial` for raw
-read/write (DUT console, debug UART, USB-serial). Use
-`col.equipment.scpi.query(serial_id=..., command="*IDN?")` for SCPI dialog on
-the same port config. Two ports use two `[[equipment.serial]]` tables.
+Each `[equipment.serial]` row is opened with pyVISA. `COM5` and `port = "COM5"`
+are the resource `ASRL5::INSTR`; an `ASRL`/`TCPIP`/`GPIB`/`USB` string is used
+as written. Use `col.equipment.serial` for raw read/write (DUT console, debug
+UART, USB-serial). Use `col.equipment.scpi.query(serial_id=..., command="*IDN?")`
+for SCPI dialog on the same port config. Two ports use two `[[equipment.serial]]`
+tables. `model` is optional on SCPI instruments: when it is omitted, `*IDN?`
+selects a known model for that equipment kind, otherwise the generic driver.
 
 ```python
 col.equipment.serial.write(serial_id=1, data="AT", append_newline="\r\n")

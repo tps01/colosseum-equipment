@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import contextlib
+import re
 from pathlib import Path
 from typing import Any
 
 from colosseum.logging import get_logger
 
+from colosseum_equipment._cache import cached_resource
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.base import Transport
 from colosseum_equipment.transports.visa_errors import map_visa_exception, raise_mapped_visa_error
 
 _logger = get_logger("colosseum.equipment")
+
+_COM_PORT = re.compile(r"COM(\d+):?", re.IGNORECASE)
 
 
 def _find_checkout_root() -> Path | None:
@@ -41,6 +45,74 @@ def resolve_sim_definition(path: str) -> Path:
     raise EquipmentConnectionError(f"PyVISA-sim definition file not found: {path}")
 
 
+def normalize_visa_resource(address: str) -> str:
+    """Return a pyVISA resource string for ``address``.
+
+    ``COM5`` becomes ``ASRL5::INSTR``. Strings that already contain ``::`` are
+    returned unchanged. Device paths are wrapped as ``ASRL<path>::INSTR``.
+    """
+    text = address.strip()
+    match = _COM_PORT.fullmatch(text)
+    if match:
+        return f"ASRL{int(match.group(1))}::INSTR"
+    if "::" in text:
+        return text
+    if text.startswith("/") or text.startswith("\\\\.\\"):
+        return f"ASRL{text}::INSTR"
+    return text
+
+
+def _context_cache() -> dict[str, object] | None:
+    try:
+        from colosseum.context import get_context
+
+        return get_context().resource_cache
+    except RuntimeError:
+        return None
+
+
+def _new_resource_manager(visa_library: str | None, sim_path: str | None) -> Any:  # noqa: ANN401
+    import pyvisa
+
+    if sim_path is not None:
+        return pyvisa.ResourceManager(f"{sim_path}@sim")
+    if visa_library:
+        return pyvisa.ResourceManager(visa_library)
+    return pyvisa.ResourceManager()
+
+
+def _release_failed_open(session: object, manager: object, *, shared: bool) -> None:
+    close_session = getattr(session, "close", None)
+    if callable(close_session):
+        with contextlib.suppress(Exception):
+            close_session()
+    if shared:
+        return
+    close_manager = getattr(manager, "close", None)
+    if callable(close_manager):
+        with contextlib.suppress(Exception):
+            close_manager()
+
+
+def _acquire_resource_manager(
+    visa_library: str | None,
+    sim_path: str | None,
+) -> tuple[Any, bool]:
+    """Return ``(manager, shared)``. A shared manager is closed by ``close_all``."""
+    cache = _context_cache()
+    if cache is None:
+        return _new_resource_manager(visa_library, sim_path), False
+    if sim_path is not None:
+        key = f"visa:manager:sim:{sim_path}"
+    else:
+        key = f"visa:manager:lib:{visa_library or ''}"
+
+    def _open() -> Any:  # noqa: ANN401
+        return _new_resource_manager(visa_library, sim_path)
+
+    return cached_resource(cache, key, _open), True
+
+
 class VISATransport(Transport):
     _inst: Any
 
@@ -52,47 +124,55 @@ class VISATransport(Transport):
         visa_backend: str | None = None,
         sim_definition: str | None = None,
         visa_library: str | None = None,
+        baudrate: int | None = None,
+        line_mode: bool = False,
     ) -> None:
-        import pyvisa
-
         self._resource = resource
         self._timeout = timeout
+        self._shared_manager = False
         backend = (visa_backend or "").lower()
+        sim_path: str | None = None
+        manager: Any = None
+        session: Any = None
         try:
             if backend == "sim":
                 if not sim_definition:
                     raise EquipmentConnectionError(
                         "visa_backend=sim requires `sim_definition` in bench config",
                     )
-                sim_path = resolve_sim_definition(sim_definition)
-                self._rm = pyvisa.ResourceManager(f"{sim_path}@sim")
-            else:
-                self._rm = (
-                    pyvisa.ResourceManager(visa_library)
-                    if visa_library
-                    else pyvisa.ResourceManager()
-                )
-            if backend == "sim":
-                self._inst = self._rm.open_resource(
+                sim_path = str(resolve_sim_definition(sim_definition))
+            manager, self._shared_manager = _acquire_resource_manager(
+                str(visa_library) if visa_library else None,
+                sim_path,
+            )
+            self._rm = manager
+            if backend == "sim" or line_mode:
+                session = self._rm.open_resource(
                     resource,
                     read_termination="\n",
                     write_termination="\n",
                 )
             else:
-                self._inst = self._rm.open_resource(resource)
+                session = self._rm.open_resource(resource)
+            self._inst = session
             self._inst.timeout = int(timeout * 1000)
+            if baudrate is not None:
+                self._inst.baud_rate = int(baudrate)
         except EquipmentConnectionError:
+            _release_failed_open(session, manager, shared=self._shared_manager)
             raise
         except Exception as exc:
+            _release_failed_open(session, manager, shared=self._shared_manager)
             mapped = map_visa_exception(exc, resource=resource)
             raise EquipmentConnectionError(
                 f"Failed to open VISA resource `{resource}`: {mapped}",
             ) from exc
         _logger.debug(
-            "VISA resource open: %s backend=%s timeout=%ss",
+            "VISA resource open: %s backend=%s timeout=%ss line_mode=%s",
             resource,
             backend or "default",
             timeout,
+            line_mode,
         )
 
     def write(self, data: str) -> None:
@@ -119,9 +199,43 @@ class VISATransport(Transport):
         except Exception as exc:
             raise_mapped_visa_error(exc, resource=self._resource)
 
+    def write_bytes(self, payload: bytes) -> None:
+        self.write_raw(payload)
+
     def read_raw(self, size: int = 655360) -> bytes:
         try:
             return bytes(self._inst.read_raw(size))
+        except Exception as exc:
+            raise_mapped_visa_error(exc, resource=self._resource)
+
+    def read_bytes(self, size: int) -> bytes:
+        try:
+            return bytes(self._inst.read_bytes(size))
+        except Exception as exc:
+            raise_mapped_visa_error(exc, resource=self._resource)
+
+    def read_until(self, terminator: str | bytes) -> str:
+        term = terminator.encode("ascii") if isinstance(terminator, str) else terminator
+        buffer = bytearray()
+        while not bytes(buffer).endswith(term):
+            chunk = self.read_bytes(1)
+            if not chunk:
+                break
+            buffer.extend(chunk)
+        return bytes(buffer).decode("ascii", errors="replace")
+
+    def flush(self) -> None:
+        import pyvisa
+
+        mask = pyvisa.constants.VI_READ_BUF_DISCARD | pyvisa.constants.VI_WRITE_BUF_DISCARD
+        try:
+            self._inst.flush(mask)
+        except Exception as exc:
+            raise_mapped_visa_error(exc, resource=self._resource)
+
+    def in_waiting(self) -> int:
+        try:
+            return int(self._inst.bytes_in_buffer)
         except Exception as exc:
             raise_mapped_visa_error(exc, resource=self._resource)
 
@@ -133,5 +247,6 @@ class VISATransport(Transport):
     def close(self) -> None:
         with contextlib.suppress(Exception):
             self._inst.close()
-        with contextlib.suppress(Exception):
-            self._rm.close()
+        if not self._shared_manager:
+            with contextlib.suppress(Exception):
+                self._rm.close()

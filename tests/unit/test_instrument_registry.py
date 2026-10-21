@@ -52,7 +52,10 @@ def test_kind_specs_are_the_config_and_scpi_map() -> None:
     assert rtsa.required_keys == ("resource",)
     assert "center_freq" in rtsa.optional_keys
     serial = specs["serial"].section()
-    assert serial.required_keys == ("port",)
+    assert serial.required_keys == ()
+    assert "port" in serial.optional_keys
+    assert "resource" in serial.optional_keys
+    assert "baudrate" in serial.optional_keys
     gnss = specs["gnss"].section()
     assert gnss.required_keys == ()
     assert "port" in gnss.optional_keys
