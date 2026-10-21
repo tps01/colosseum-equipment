@@ -32,6 +32,23 @@ def test_tier2_generic_heuristics() -> None:
 def test_unknown_idn_returns_none() -> None:
     assert classify_idn("UNKNOWN,WIDGET,1,1") is None
     assert classify_idn("") is None
+    assert classify_idn("ACME,GEN30-50,1,1") is None
+
+
+def test_lambda_gen_family_maps_to_genesys_scpi() -> None:
+    identities = (
+        "LAMBDA,GEN60-25-LAN,S/N:26M5470,REV:1U:4.0-AP17",
+        "LAMBDA,GENH12.5-60-LAN,1,1",
+        "LAMBDA_GEN30-50",
+        "LAMBDA_GEN30-80",
+        "LAMBDA_GEN40-38-IEEE",
+        "LAMBDA_GENH40-19-IEMD",
+        "LAMBDA, GEN30-50",
+    )
+    for identity in identities:
+        match = classify_idn(identity)
+        assert match is not None, identity
+        assert (match.kind, match.model) == ("psu", "tdk-genesys")
 
 
 def test_rohde_idn_fswp_before_fsw() -> None:

@@ -26,20 +26,17 @@ devices:
         r: "2026/05/27"
       - q: "STT?"
         r: "MV(3.3000),PV(3.3000),MC(1.0000),PC(1.0000),SR(00),FR(00)"
-      # SCPI-compatible aliases used by current Colosseum PSU drivers
-      - q: "OUTP ON"
-      - q: "OUTP OFF"
-      - q: "VOLT:PROT 3.6"
-      - q: "CURR:PROT 1.0"
+      - q: "SOUR:MOD?"
+        r: "CV"
     properties:
-      # SCPI-like interface used by GenericPSU
+      # Genesys LAN/IEEE SCPI. Source commands keep the leading colon.
       voltage:
         default: 3.3
         getter:
-          q: "VOLT?"
+          q: ":VOLT?"
           r: "{:.6f}"
         setter:
-          q: "VOLT {:.6f}"
+          q: ":VOLT {:.6f}"
         specs:
           type: float
       meas_voltage:
@@ -48,18 +45,47 @@ devices:
           q: "MEAS:VOLT?"
           r: "{:.6f}"
         setter:
-          q: "VOLT {:.6f}"
+          q: ":VOLT {:.6f}"
         specs:
           type: float
       current_limit:
         default: 1.0
         getter:
-          q: "CURR?"
+          q: ":CURR?"
           r: "{:.6f}"
         setter:
-          q: "CURR {:.6f}"
+          q: ":CURR {:.6f}"
         specs:
           type: float
+      output_state:
+        default: "OFF"
+        getter:
+          q: "OUTP:STAT?"
+          r: "{}"
+        setter:
+          q: "OUTP:STAT {}"
+        specs:
+          type: str
+          valid: ["ON", "OFF"]
+      ovp_level:
+        default: 5.0
+        getter:
+          q: ":VOLT:PROT:LEV?"
+          r: "{:.6f}"
+        setter:
+          q: ":VOLT:PROT:LEV {:.6f}"
+        specs:
+          type: float
+      foldback:
+        default: "OFF"
+        getter:
+          q: ":CURR:PROT:STAT?"
+          r: "{}"
+        setter:
+          q: ":CURR:PROT:STAT {}"
+        specs:
+          type: str
+          valid: ["ON", "OFF"]
       # Native Genesys digital command set (PV/PC/MV/MC/OUT)
       pv:
         default: 3.3
