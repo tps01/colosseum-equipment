@@ -5,6 +5,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import numpy.typing as npt
 from colosseum.logging import get_logger
 
 from colosseum_equipment._paths import resolve_artifact_path
@@ -251,10 +252,10 @@ class TektronixRSA5100BRtsa(GenericRtsa):
             f"(last reply {header!r})",
         )
 
-    def _fetch_iq_float32(self, record_id: int, num_samples: int) -> np.ndarray:
+    def _fetch_iq_float32(self, record_id: int, num_samples: int) -> npt.NDArray[np.complex64]:
         if num_samples <= 0:
             return np.array([], dtype=np.complex64)
-        parts: list[np.ndarray] = []
+        parts: list[npt.NDArray[np.complex64]] = []
         start = 0
         while start < num_samples:
             end = min(start + _IQ_CHUNK_SAMPLES, num_samples) - 1
