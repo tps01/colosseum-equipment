@@ -1,0 +1,122 @@
+# Select the rows you need and replace resources. Hardware is not auto-qualified.
+# See docs/equipment/inventory-rollout.md for supported operations and limits.
+
+[[equipment.dmm]]
+dmm_id = 1
+model = "keysight-34411a"
+resource = "GPIB0::22::INSTR"
+timeout = 10.0
+
+[[equipment.dmm]]
+dmm_id = 2
+model = "keysight-u1272a"
+driver = "serial"
+resource = "COM7" # Optical cable; change for your platform.
+baudrate = 9600 # Match meter/cable configuration.
+timeout = 5.0
+
+[[equipment.psu]]
+psu_id = 1
+model = "keysight-n6705a"
+resource = "TCPIP0::192.0.2.10::inst0::INSTR"
+channels = 4 # Configure only fitted module slots; no output is enabled here.
+
+[equipment.freqcounter]
+freqcounter_id = 1
+model = "keysight-53150a"
+resource = "GPIB0::3::INSTR"
+
+[equipment.vsg]
+vsg_id = 1
+model = "keysight-n5183b"
+resource = "TCPIP0::192.0.2.14::inst0::INSTR"
+# No RF output is enabled by this row.
+
+[equipment.speca]
+speca_id = 1
+model = "keysight-n9020b"
+resource = "TCPIP0::192.0.2.11::inst0::INSTR"
+timeout = 60.0
+
+[equipment.vna]
+vna_id = 1
+model = "keysight-n5245b"
+resource = "TCPIP0::192.0.2.12::inst0::INSTR"
+channel = 1 # Create measurement/trace numbers on PNA before use.
+timeout = 60.0
+
+[equipment.pwrmeter]
+pwrmeter_id = 1
+model = "keysight-u8487a"
+resource = "USB0::0x2A8D::0x0000::REPLACE_SERIAL::INSTR" # Replace entire resource.
+timeout = 30.0
+
+[[equipment.oscope]]
+oscope_id = 1
+model = "tektronix-tds3032b"
+resource = "GPIB0::1::INSTR"
+timeout = 10.0
+
+[equipment.eload]
+eload_id = 1
+model = "chroma-63600-5"
+resource = "GPIB0::5::INSTR"
+channels = 6 # Replace with actual logical channel count; select static L1.
+
+[equipment.asg]
+asg_id = 1
+model = "keysight-33250a"
+resource = "GPIB0::10::INSTR"
+
+[equipment.phasenoiseanalyzer]
+phasenoiseanalyzer_id = 1
+model = "keysight-e5052b"
+resource = "TCPIP0::192.0.2.13::inst0::INSTR"
+timeout = 60.0
+
+[equipment.rtsa]
+rtsa_id = 1
+model = "signalhound-bb60c-spike"
+resource = "TCPIP0::127.0.0.1::5025::SOCKET" # Running Spike SCPI server.
+center_freq = 1000000000.0
+sample_rate_hz = 1000000.0 # Spike/device may coerce; export queries actual rate.
+rbw = 500000.0 # Analog IF bandwidth, independent of sample rate.
+timeout = 60.0
+# Do not add a speca Spike row to this same server: Spike allows one connection.
+
+# Native Genesys serial interface: use the exact fitted interface and panel settings.
+[[equipment.psu]]
+psu_id = 2
+model = "tdk-gen300-5-serial"
+driver = "serial"
+resource = "COM8"
+baudrate = 9600
+device_address = 6 # Replace with panel address; no broadcast commands are used.
+timeout = 3.0
+# Disable unsolicited SRQ messages for this request/response subset.
+
+# Read-only native Fluke primary display; held/relative values remain display values.
+[[equipment.dmm]]
+dmm_id = 3
+model = "fluke-289"
+driver = "serial"
+resource = "COM9" # IR adapter, 115200 8N1.
+baudrate = 115200
+timeout = 3.0
+
+[[equipment.dmm]]
+dmm_id = 4
+model = "fluke-189"
+driver = "serial"
+resource = "COM10" # IR adapter, 9600 8N1; different QM reply from 289.
+baudrate = 9600
+timeout = 3.0
+
+[[equipment.oscope]]
+oscope_id = 2
+model = "rohde-rte1204" # Or rohde-rtp164.
+resource = "TCPIP0::192.0.2.15::inst0::INSTR"
+timeout = 10.0
+# Configure analog waveform 1, MANual probe attenuation and V units.
+# Segmentation/history must be off.
+# arm_single -> wait_complete -> save_waveform. This profile owns the ESR events.

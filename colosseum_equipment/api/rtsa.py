@@ -7,6 +7,8 @@ under the active run output directory and registered as artifacts.
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import command
 
 from colosseum_equipment.connections import get_cached_instrument
@@ -294,6 +296,10 @@ def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None
 def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str = "") -> None:
     """Download IQ data as ``bin``, ``mat``, or ``iq.tar`` under the run directory.
 
+    Writes the opaque instrument binary block (no sample reinterpretation).
+    For decoded length-mode IQ records with ``f32`` / ``i16`` / ``c64`` encodings,
+    use :func:`capture_iq`.
+
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
     :type rtsa_id: int
     :param path: Relative path under the active run output directory.
@@ -310,4 +316,70 @@ def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str 
     """
     get_cached_instrument("rtsa", rtsa_id).save_IQ_data(
         path, file_format=file_format, key=key,
+    )
+
+
+@command
+def capture_iq(
+    *,
+    rtsa_id: int,
+    center_hz: float,
+    span_hz: float,
+    bandwidth_hz: float,
+    seconds: float,
+    path: str,
+    file_format: str = "mat",
+    sample_format: str = "f32",
+    timeout_s: float = 120.0,
+    key: str = "",
+) -> dict[str, Any]:
+    """Acquire one length-mode IQ record and write decoded samples to ``path``.
+
+    ``bandwidth_hz`` is the IQ acquisition bandwidth, not spectrum resolution
+    bandwidth. Supported models (for example ``tektronix-rsa5100b`` and
+    ``tektronix-rsa5115b``) set up an IQ vs Time measurement, wait for
+    completion, decode the wire samples, and export them.
+
+    :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
+    :type rtsa_id: int
+    :param center_hz: Center frequency in hertz.
+    :type center_hz: float
+    :param span_hz: Frequency span in hertz.
+    :type span_hz: float
+    :param bandwidth_hz: IQ acquisition bandwidth in hertz.
+    :type bandwidth_hz: float
+    :param seconds: Acquisition duration in seconds.
+    :type seconds: float
+    :param path: Relative path under the active run output directory.
+    :type path: str
+    :param file_format: Container: ``mat``, ``bin``, or ``iq.tar``.
+    :type file_format: str, optional
+    :param sample_format: Sample encoding: ``f32`` (default), ``i16``, or ``c64``.
+    :type sample_format: str, optional
+    :param timeout_s: Maximum wait for acquisition and transfer.
+    :type timeout_s: float, optional
+    :param key: Evidence key (default ``rtsa_capture_iq_<run>``).
+    :type key: str, optional
+
+    :returns: JSON-safe metadata including ``sample_rate_hz``, ``num_samples``,
+        ``path``, ``sample_format``, and ``peak`` when ``sample_format`` is ``i16``.
+    :rtype: dict
+
+    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises EquipmentTimeoutError: Acquisition or transfer did not complete in time.
+    :raises EquipmentResponseError: Unsupported ``sample_format`` or bad instrument reply.
+    """
+    return dict(
+        get_cached_instrument("rtsa", rtsa_id).capture_iq(
+            center_hz=center_hz,
+            span_hz=span_hz,
+            bandwidth_hz=bandwidth_hz,
+            seconds=seconds,
+            path=path,
+            file_format=file_format,
+            sample_format=sample_format,
+            timeout_s=timeout_s,
+            key=key,
+        ),
     )

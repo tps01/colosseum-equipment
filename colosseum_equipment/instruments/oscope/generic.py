@@ -16,7 +16,7 @@ from colosseum_equipment.exceptions import (
 )
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
-from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
+from colosseum_equipment.protocols.scpi import SCPIHelper, parse_definite_length_block, wait_opc
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -32,23 +32,18 @@ _ACQUIRE_MODES = {
 def _parse_ascii_waveform(raw: str, *, points_expected: int) -> list[float]:
     """Parse SCPI ASCII waveform payload, including definite-length ``#`` headers.
 
-    A header like ``#14`` + 4 data digits may be glued to the first sample
-    (``#1412341.0,2.0``). Strip the framing before splitting samples.
+    For example, ``#2`` + ``11`` + ``1.0,2.0,3.0`` declares eleven payload
+    bytes. Validate the framing before interpreting comma-separated samples.
     """
-    text = raw.strip()
-    if text.startswith("#"):
-        if len(text) < 2 or not text[1].isdigit():
-            raise EquipmentResponseError(f"malformed waveform block header: {raw[:32]!r}")
-        ndigits = int(text[1])
-        header_len = 2 + ndigits
-        if ndigits > 0:
-            if len(text) < header_len:
-                raise EquipmentResponseError(f"truncated waveform block header: {raw[:32]!r}")
-            # Digits after ``#N`` are the byte/char count of the payload.
-            text = text[header_len:]
-        else:
-            # ``#0`` means indefinite length until NL — drop the ``#0`` prefix.
-            text = text[2:]
+    text = raw.lstrip()
+    if text.startswith("#0"):
+        # Legacy ASCII-only indefinite framing is delimited by the text reply.
+        text = text[2:]
+    elif text.startswith("#"):
+        try:
+            text = parse_definite_length_block(text.encode("ascii")).decode("ascii")
+        except UnicodeError as exc:
+            raise EquipmentResponseError("waveform block is not ASCII") from exc
     tokens = [t for t in text.replace(",", " ").split() if t]
     values: list[float] = []
     bad: list[str] = []

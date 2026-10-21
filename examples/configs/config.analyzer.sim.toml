@@ -1,0 +1,16 @@
+[io.i2c]
+i2c_id = 1
+driver = "sim"
+address = 0x50
+read_data = "aabb"
+
+[io.analyzer]
+analyzer_id = 1
+driver = "sim"
+protocol = "i2c"
+max_duration_s = 5
+max_records = 100
+records = [
+  { words = [160, 0], time_sop_ticks = 10, duration_ticks = 18, status = 0 },
+  { words = [161, 170, 443], time_sop_ticks = 30, duration_ticks = 27, status = 0 },
+]

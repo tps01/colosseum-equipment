@@ -1,0 +1,85 @@
+# Hardware template: replace serial numbers and qualify the bench wiring.
+# Total Phase: vendor USB driver and Python Software API on PYTHONPATH.
+# USB2ANY: TI SDK 2.7, Windows x86 Python, matching USB2ANY.dll.
+# Target power is disabled. Voltage is not a target-power setting.
+
+[[io.i2c]]
+i2c_id = 1
+driver = "totalphase-aardvark"
+resource = "1234-567890"
+clock_hz = 100000
+address = 0x50
+address_bits = 7
+pullup = true
+target_power = false
+
+[[io.spi]]
+spi_id = 1
+driver = "totalphase-aardvark"
+resource = "1234-567890"
+clock_hz = 1000000
+mode = 0
+chip_select = 0
+
+[[io.spi]]
+spi_id = 2
+driver = "totalphase-cheetah"
+resource = "1234-567891"
+clock_hz = 10000000
+mode = 0
+chip_select = 0
+target_power = false
+
+[[io.i2c]]
+i2c_id = 2
+driver = "ti-usb2any"
+resource = "AF14904609001C00"
+library = "USB2ANY.dll"
+clock_hz = 100000
+address = 0x50
+pullup = true
+target_power = false
+timeout_ms = 25
+
+[[io.spi]]
+spi_id = 3
+driver = "ti-usb2any"
+resource = "AF14904609001C00"
+library = "USB2ANY.dll"
+clock_hz = 1000000
+mode = 0
+chip_select = 0
+target_power = false
+timeout_ms = 25
+
+[[io.analyzer]]
+analyzer_id = 1
+driver = "totalphase-beagle"
+resource = "1234-567892"
+model = "i2c-spi"
+protocol = "i2c"
+sample_rate_hz = 50000000
+pullup = false
+target_power = false
+timeout_ms = 100
+max_duration_s = 60
+max_records = 100000
+max_bytes = 67108864
+
+[[io.analyzer]]
+analyzer_id = 2
+driver = "totalphase-beagle"
+resource = "1234-567893"
+model = "usb-12"
+protocol = "usb"
+timeout_ms = 100
+max_duration_s = 60
+
+[[io.analyzer]]
+analyzer_id = 3
+driver = "totalphase-beagle"
+resource = "1234-567894"
+model = "usb-480"
+protocol = "usb"
+timeout_ms = 100
+max_duration_s = 60
