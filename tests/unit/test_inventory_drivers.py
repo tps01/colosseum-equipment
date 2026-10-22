@@ -421,7 +421,7 @@ def test_afg_uses_native_amplitude_without_apply_output_side_effect():
     assert not any("APPL" in event for event in io.events)
 
 
-def test_genesys_serial_requires_address_and_uses_cr_acknowledgements():
+def test_genesys_serial_uses_cr_acknowledgements_and_optional_address():
     class NativeSerial(RecordingTransport):
         def write_bytes(self, data):
             self.events.append(data)
@@ -431,15 +431,18 @@ def test_genesys_serial_requires_address_and_uses_cr_acknowledgements():
             return self.responses[self.events[-1].decode().strip()]
 
     io = NativeSerial({"ADR 3": "OK\r", "PV 5.000000": "OK\r", "OUT?": "OFF\r", "OUT 1": "E07\r"})
-    config = {"model": "tdk-gen300-5-serial", "driver": "serial", "baudrate": 9600, "device_address": 3, "voltage": 5}
+    config = {"model": "tdk-genesys-serial", "driver": "serial", "baudrate": 9600, "device_address": 3, "voltage": 5}
     psu = build_instrument("psu", 1, config, io)
     assert io.events == [b"ADR 3\r", b"PV 5.000000\r"]
     assert psu.get_output() is False
     with pytest.raises(EquipmentResponseError, match="E07"):
         psu.set_output(True)
     assert all(b"\n" not in command for command in io.events)
+    direct = NativeSerial({"PV 5.000000": "OK\r"})
+    build_instrument("psu", 1, {k: v for k, v in config.items() if k != "device_address"}, direct)
+    assert direct.events == [b"PV 5.000000\r"]
     with pytest.raises(EquipmentCapabilityError):
-        build_instrument("psu", 1, {k: v for k, v in config.items() if k != "device_address"}, io)
+        build_instrument("psu", 1, {k: v for k, v in config.items() if k != "baudrate"}, NativeSerial({}))
 
 
 @pytest.mark.parametrize("raw", ["CWO1,-25.1", "CWO 1,-25.1"])
@@ -812,7 +815,7 @@ def test_pna_sweep_addresses_channel_without_indexing_global_continuous_command(
 @pytest.mark.parametrize("frames", [["OK"], ["OK\r", "5.00"]])
 def test_native_genesys_rejects_unterminated_ack_or_measurement(frames):
     io = FlukeSerialTransport(frames)
-    config = {"model": "tdk-gen300-5-serial", "driver": "serial", "baudrate": 9600, "device_address": 3}
+    config = {"model": "tdk-genesys-serial", "driver": "serial", "baudrate": 9600, "device_address": 3}
     with pytest.raises(EquipmentResponseError, match="incomplete"):
         psu = build_instrument("psu", 1, config, io)
         psu.get_voltage()
@@ -837,7 +840,7 @@ def test_genesys_address_is_never_truncated_to_a_different_device(address):
     io = FlukeSerialTransport(["OK\r"])
     with pytest.raises(ValueError, match="address"):
         build_instrument("psu", 1, {
-            "model": "tdk-gen300-5-serial", "driver": "serial", "baudrate": 9600,
+            "model": "tdk-genesys-serial", "driver": "serial", "baudrate": 9600,
             "device_address": address,
         }, io)
     assert io.events == []

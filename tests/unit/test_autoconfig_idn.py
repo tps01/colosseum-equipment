@@ -103,6 +103,7 @@ def test_inventory_exact_models_resolve_to_registered_builders() -> None:
         "keysight": "Agilent Technologies", "rohde": "Rohde&Schwarz",
         "keithley": "KEITHLEY INSTRUMENTS INC.", "tektronix": "TEKTRONIX",
         "chroma": "CHROMA", "srs": "Stanford Research Systems", "teledyne": "Teledyne LeCroy",
+        "bk": "B&K Precision",
     }
     for token, (kind, model) in _INVENTORY_MODELS.items():
         vendor = manufacturers[model.split("-", 1)[0]]
@@ -116,6 +117,25 @@ def test_inventory_exact_models_resolve_to_registered_builders() -> None:
         assert unknown is None or unknown.model != model
         unrelated = classify_idn(f"UNRELATED,{token},123,1.0")
         assert unrelated is None or unrelated.model != model
+
+
+def test_bk_9115_and_keithley_2260b_identities() -> None:
+    bk = classify_idn("B&K Precision, 9115, 00000000000004, V1.01-V1.00")
+    assert bk is not None
+    assert (bk.kind, bk.model) == ("psu", "bk-9115")
+    at = classify_idn("B&K Precision,9115-AT,1,1.00")
+    assert at is not None
+    assert at.model == "bk-9115"
+    assert classify_idn("ACME,WIDGET,9115,1") is None
+    assert classify_idn("UNRELATED,9115,123,1.0") is None
+    for identity in (
+        "KEITHLEY INSTRUMENTS INC.,MODEL 2260B-30-72,01234567,01.02",
+        "Keithley Instruments, 2260B-80-13, 1, 1.0",
+        "KEITHLEY,2260B-30-36,1,1",
+    ):
+        match = classify_idn(identity)
+        assert match is not None
+        assert (match.kind, match.model) == ("psu", "keithley-2260b")
 
 
 def test_inventory_suffixes_do_not_match_different_hardware() -> None:
