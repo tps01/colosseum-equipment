@@ -1,19 +1,23 @@
-# RF hardware template: dual PSU (VISA/ASRL) and E4407B SA (GPIB).
+# RF hardware template: dual Genesys serial PSUs and E4407B SA (GPIB).
 # Copy to examples/configs/config.local.toml (gitignored) and adjust resources/credentials.
-# driver defaults to visa (PyVISA + SCPI) when omitted.
+# device_address is only needed when several supplies share one RS-485 bus.
 
 [[equipment.psu]]
 psu_id = 1
-model = "tdk-genesys"  # or "generic" if Gen30-50 SCPI differs
+model = "tdk-genesys-serial"
+driver = "serial"
 resource = "ASRL15::INSTR"
+baudrate = 9600
 voltage = 28.0
 ovp = 30.0
 ocp = 5.0
 
 [[equipment.psu]]
 psu_id = 2
-model = "tdk-genesys"
+model = "tdk-genesys-serial"
+driver = "serial"
 resource = "ASRL16::INSTR"
+baudrate = 9600
 voltage = 28.0
 ovp = 30.0
 ocp = 5.0

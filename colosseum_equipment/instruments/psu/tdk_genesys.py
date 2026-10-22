@@ -108,6 +108,20 @@ class TdkGenesysPSU(GenericPSU):
         return _on_off(self._scpi.query(":CURR:PROT:STAT?"), "foldback state")
 
 
+def _device_address(config: dict[str, Any]) -> int | None:
+    if "device_address" not in config:
+        return None
+    token = str(config["device_address"]).strip()
+    if token == "":
+        return None
+    if not token.isdecimal():
+        raise ValueError("Genesys device address must be an integer in 0..30")
+    address = int(token)
+    if not 0 <= address <= 30:
+        raise ValueError("Genesys device address must be an integer in 0..30")
+    return address
+
+
 def _on_off(raw: str, label: str) -> bool:
     value = raw.strip().upper()
     if value in {"ON", "1"}:
@@ -117,33 +131,30 @@ def _on_off(raw: str, label: str) -> bool:
     raise EquipmentResponseError(f"invalid Genesys {label}: {raw!r}")
 
 
-@instrument_model("psu", "tdk-gen300-5-serial")
+@instrument_model("psu", "tdk-genesys-serial")
 @supported_commands(
     "set_voltage", "set_current_limit", "set_output", "get_voltage", "get_current_limit", "get_output",
     "measure_voltage", "measure_current", "measure_power_w", "measure_output_state",
     "set_ovp_v", "get_ovp_v", "wait_for_voltage", "wait_for_current",
 )
-class TdkGen3005Serial(GenericPSU):
-    """Genesys 750/1500W user manual ch.7: addressed CR-terminated native protocol.
+class TdkGenesysSerialPSU(GenericPSU):
+    """Genesys serial family: CR-terminated native protocol.
 
-    https://www.atecorp.com/getmedia/13512e00-f13e-448e-9adc-d54daa8115e8/gen600-2-6-manual.pdf
-    Explicit serial model. A SCPI ``*IDN?`` does not select this profile. A native
-    ``IDN?`` on an ASRL resource does when ``device_address`` is already set.
+    Manual: https://www.atecorp.com/getmedia/13512e00-f13e-448e-9adc-d54daa8115e8/gen600-2-6-manual.pdf
+    One profile for every Genesys rating on RS-232/RS-485, including GEN30-50,
+    GEN30-80, and GEN40-15. A COM/ASRL ``IDN?`` selects this profile. ``*IDN?``
+    selects ``tdk-genesys``. ``ADR n`` is sent only when ``device_address`` is set.
     """
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
-        if config.get("driver") != "serial" or "baudrate" not in config or "device_address" not in config:
-            raise EquipmentCapabilityError("use driver=serial with explicit matching baudrate and device_address")
+        if config.get("driver") != "serial" or "baudrate" not in config:
+            raise EquipmentCapabilityError("use driver=serial with an explicit baudrate")
         if int(config.get("channels") or config.get("channel_count") or 1) != 1:
             raise EquipmentCapabilityError("native serial session addresses one power supply")
-        address_token = str(config["device_address"]).strip()
-        if not address_token.isdecimal():
-            raise ValueError("Genesys device address must be an integer in 0..30")
-        address = int(address_token)
-        if not 0 <= address <= 30:
-            raise ValueError("Genesys device address must be 0..30")
         self._native_transport = transport
-        self._write_native(f"ADR {address}")
+        address = _device_address(config)
+        if address is not None:
+            self._write_native(f"ADR {address}")
         super().__init__(transport, config)
 
     def _exchange(self, command: str) -> str:

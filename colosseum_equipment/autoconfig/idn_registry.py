@@ -27,6 +27,7 @@ _TIER1_RULES: tuple[_PatternRule, ...] = (
     _PatternRule("SSA3032X PLUS", "speca", "siglent-ssa3032x-plus"),
     _PatternRule("SSA3075X PLUS", "speca", "siglent-ssa3075x-plus"),
     _PatternRule("TDK-LAMBDA", "psu", "tdk-genesys"),
+    _PatternRule("2260B", "psu", "keithley-2260b"),
     _PatternRule("LDA-302P-1", "attn", "vaunix-lda-302p-1"),
     _PatternRule("LDA-302P-H", "attn", "vaunix-lda-302p-h"),
     _PatternRule("SDL1020X-E", "eload", "siglent-sdl1020x-e"),
@@ -280,6 +281,8 @@ _INVENTORY_MODELS: dict[str, tuple[str, str]] = {
     "TDS3032B": ("oscope", "tektronix-tds3032b"),
     "TDS3034B": ("oscope", "tektronix-tds3034b"),
     "E5052B": ("phasenoiseanalyzer", "keysight-e5052b"),
+    "9115": ("psu", "bk-9115"),
+    "9115AT": ("psu", "bk-9115"),
     "E3644A": ("psu", "keysight-e3644a"),
     "N6705A": ("psu", "keysight-n6705a"),
     "HMP4040": ("psu", "rohde-hmp4040"),
@@ -326,6 +329,7 @@ _INVENTORY_VENDORS = {
     "anritsu": ("ANRITSU",),
     "gwinstek": ("GWINSTEK", "GOODWILL"),
     "ametek": ("AMETEK", "SORENSEN", "AMREL"),
+    "bk": ("BKPRECISION",),
 }
 
 _LAMBDA_VENDOR = re.compile(r"(?:^|[^A-Z0-9])LAMBDA(?:[^A-Z0-9]|$)")

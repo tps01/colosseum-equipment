@@ -87,11 +87,11 @@ timeout = 60.0
 # Native Genesys serial interface: use the exact fitted interface and panel settings.
 [[equipment.psu]]
 psu_id = 2
-model = "tdk-gen300-5-serial"
+model = "tdk-genesys-serial"
 driver = "serial"
 resource = "COM8"
 baudrate = 9600
-device_address = 6 # Replace with panel address; no broadcast commands are used.
+device_address = 6 # Panel address for multi-drop. Omit for one supply on RS-232.
 timeout = 3.0
 # Disable unsolicited SRQ messages for this request/response subset.
 

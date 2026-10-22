@@ -10,6 +10,10 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
 (instruments, transports, DIO, I2C, SPI). NI USB-6501 and USB-845x adapters
 load the installed NI-DAQmx / NI-845x runtimes via ctypes.
 
+Version 0.7.1 selects the Genesys serial family from a bare `IDN?` on `COM` and
+`ASRL` ports, and adds SCPI drivers for the BK Precision 9115 and Keithley 2260B
+supplies.
+
 Version 0.7.0 opens instrument resources through pyVISA, including `COM` ports
 as `ASRL`. When `model` is omitted, `*IDN?` selects a known driver or the
 generic one for that equipment kind. Genesys LAN and IEEE supplies use

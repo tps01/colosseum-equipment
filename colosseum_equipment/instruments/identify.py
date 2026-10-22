@@ -21,10 +21,10 @@ def instrument_config(kind: str, config: dict[str, Any], model: str) -> dict[str
     """Return a row copy whose ``model`` is the resolved slug."""
     resolved = dict(config)
     resolved["model"] = model
-    if model == "tdk-gen300-5-serial":
+    if model == "tdk-genesys-serial" and kind == "psu":
         resolved["driver"] = "serial"
         if "baudrate" not in resolved:
-            resolved["baudrate"] = 9600 if kind == "gnss" else 115200
+            resolved["baudrate"] = 9600
     return resolved
 
 
@@ -33,6 +33,8 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
 
     A non-empty ``model`` wins and does not query. Otherwise a pyVISA instrument
     is classified from ``*IDN?`` within ``kind``, falling back to ``generic``.
+    A COM or ASRL resource is probed with ``IDN?`` first. A Lambda GEN reply
+    selects ``tdk-genesys-serial``.
     """
     explicit = str(config.get("model") or "").strip().lower()
     if explicit:
@@ -47,16 +49,7 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
     if idn is None:
         return "generic"
     if bare and lambda_gen_identity(idn):
-        if _has_device_address(config):
-            model = "tdk-gen300-5-serial"
-        else:
-            _logger.warning(
-                "equipment.%s identity %r is a native Genesys serial supply; "
-                "set device_address or model. Using generic",
-                kind,
-                idn,
-            )
-            return "generic"
+        model = "tdk-genesys-serial"
     else:
         match = classify_idn(idn)
         if match is None or match.kind != kind:
@@ -79,12 +72,6 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
     return model
 
 
-def _has_device_address(config: dict[str, Any]) -> bool:
-    if "device_address" not in config:
-        return False
-    return str(config["device_address"]).strip() != ""
-
-
 def _uses_asrl(kind: str, config: dict[str, Any]) -> bool:
     driver, address = resolve_connection(kind, config)
     if driver == "serial":
@@ -94,25 +81,32 @@ def _uses_asrl(kind: str, config: dict[str, Any]) -> bool:
 
 
 def _probe_identity(kind: str, config: dict[str, Any], transport: object) -> tuple[str | None, bool]:
+    if _uses_asrl(kind, config):
+        try:
+            bare = _query_bare_idn(transport).strip()
+        except Exception as bare_exc:
+            _logger.warning("equipment.%s IDN? failed: %s", kind, bare_exc)
+            bare = ""
+        if bare and lambda_gen_identity(bare):
+            return bare, True
+        _flush(transport)
     try:
         idn = str(transport.query("*IDN?")).strip()  # type: ignore[attr-defined]
     except Exception as exc:
         _logger.warning("equipment.%s *IDN? failed: %s", kind, exc)
-        if not _uses_asrl(kind, config):
-            return None, False
-        try:
-            return _query_bare_idn(transport).strip(), True
-        except Exception as bare_exc:
-            _logger.warning("equipment.%s IDN? failed: %s", kind, bare_exc)
-            return None, True
+        return None, False
     return idn, False
 
 
-def _query_bare_idn(transport: object) -> str:
+def _flush(transport: object) -> None:
     flush = getattr(transport, "flush", None)
     if callable(flush):
         with contextlib.suppress(Exception):
             flush()
+
+
+def _query_bare_idn(transport: object) -> str:
+    _flush(transport)
     write_bytes = getattr(transport, "write_bytes", None)
     read_until = getattr(transport, "read_until", None)
     if callable(write_bytes) and callable(read_until):

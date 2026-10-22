@@ -1,4 +1,4 @@
-"""Model selection from *IDN? when the config omits model."""
+"""Model selection from *IDN? or serial IDN? when the config omits model."""
 
 from __future__ import annotations
 
@@ -10,9 +10,17 @@ from colosseum_equipment.instruments.identify import (
 
 
 class _Probe:
-    def __init__(self, idn: str = "", *, fail_star: bool = False, bare: str = "") -> None:
+    def __init__(
+        self,
+        idn: str = "",
+        *,
+        fail_star: bool = False,
+        fail_bare: bool = False,
+        bare: str = "",
+    ) -> None:
         self._idn = idn
         self._fail_star = fail_star
+        self._fail_bare = fail_bare
         self._bare = bare
         self.queries: list[str] = []
         self.raw: list[bytes] = []
@@ -31,6 +39,8 @@ class _Probe:
 
     def read_until(self, terminator: bytes) -> str:
         assert terminator == b"\r"
+        if self._fail_bare:
+            raise EquipmentTimeoutError("timeout")
         return self._bare
 
 
@@ -62,21 +72,34 @@ def test_probe_error_uses_generic() -> None:
     assert probe.raw == []
 
 
-def test_asrl_bare_idn_selects_native_serial_when_address_is_set() -> None:
-    probe = _Probe(fail_star=True, bare="LAMBDA, GEN30-50\r")
-    config = {"port": "COM5", "device_address": 3, "baudrate": 9600}
-    assert resolve_instrument_model("psu", config, probe) == "tdk-gen300-5-serial"
-    assert probe.raw == [b"IDN?\r"]
-    resolved = instrument_config("psu", config, "tdk-gen300-5-serial")
-    assert resolved["driver"] == "serial"
-    assert resolved["baudrate"] == 9600
-    assert resolved["model"] == "tdk-gen300-5-serial"
+def test_serial_visa_bare_idn_selects_genesys_serial_without_star() -> None:
+    cases = (
+        ({"port": "COM5", "device_address": 3, "baudrate": 9600}, "LAMBDA, GEN30-50\r"),
+        ({"resource": "ASRL15::INSTR"}, "LAMBDA_GEN30-80\r"),
+        ({"resource": "COM15"}, "LAMBDA,GEN30-80\r"),
+    )
+    for config, identity in cases:
+        probe = _Probe(bare=identity)
+        assert resolve_instrument_model("psu", config, probe) == "tdk-genesys-serial"
+        assert probe.queries == []
+        assert probe.raw == [b"IDN?\r"]
+    addressed = instrument_config("psu", cases[0][0], "tdk-genesys-serial")
+    assert addressed["driver"] == "serial"
+    assert addressed["baudrate"] == 9600
+    assert addressed["model"] == "tdk-genesys-serial"
+    omitted = instrument_config("psu", {"resource": "ASRL15::INSTR"}, "tdk-genesys-serial")
+    assert omitted["driver"] == "serial"
+    assert omitted["baudrate"] == 9600
 
 
-def test_asrl_bare_idn_without_address_stays_generic() -> None:
-    probe = _Probe(fail_star=True, bare="LAMBDA_GEN30-80\r")
-    model = resolve_instrument_model("psu", {"port": "COM5"}, probe)
-    assert model == "generic"
+def test_serial_visa_non_lambda_idn_falls_back_to_star() -> None:
+    failed = _Probe("LAMBDA_GEN40-38-IEEE", fail_bare=True)
+    assert resolve_instrument_model("psu", {"resource": "ASRL15::INSTR"}, failed) == "tdk-genesys"
+    assert failed.raw == [b"IDN?\r"]
+    assert failed.queries == ["*IDN?"]
+    other = _Probe("LAMBDA,GEN60-25-LAN,1,1", bare="ACME,WIDGET\r")
+    assert resolve_instrument_model("psu", {"port": "COM5"}, other) == "tdk-genesys"
+    assert other.queries == ["*IDN?"]
 
 
 def test_sim_http_and_gnss_skip_the_probe() -> None:
