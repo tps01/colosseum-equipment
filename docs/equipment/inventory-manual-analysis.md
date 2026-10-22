@@ -5,8 +5,9 @@ The second implementation pass added 24 identities; the third resolved four more
 Fluke 289 and Fluke 189. The rollout now has **83 identities / 85 kind/model
 registrations** across the same 12 kinds. The two extra registrations are the
 separate Spike spectrum/IQ profiles from the first pass. No equipment category
-was introduced. There are 78 exact-model discovery mappings. Native Fluke and
-Genesys serial profiles, and the two Spike identities, require explicit selection.
+was introduced. There are 78 exact-model discovery mappings. Native Fluke profiles and the two
+Spike identities require explicit selection. A Lambda GEN reply to bare ``IDN?``
+on a COM or ASRL resource selects the Genesys serial profile.
 
 This is documentation-based verification, with synthetic recording-transport
 regressions. No claim of hardware validation is made. Manuals substantiate the
@@ -285,26 +286,29 @@ slugs to use the documented native implementation described here.
 
 ## Power supplies (`psu`)
 
-`tdk-gen300-5-serial` uses the manufacturer-authored
+`tdk-genesys-serial` uses the manufacturer-authored
 [Genesys 750/1500 W user manual, chapter 7](https://www.atecorp.com/getmedia/13512e00-f13e-448e-9adc-d54daa8115e8/gen600-2-6-manual.pdf).
-The model table includes GEN300-5. This is explicitly the native serial
-personality; the existing `tdk-genesys` SCPI family match is not evidence of a
-native interface. No SCPI `*IDN?` discovery rule selects this profile.
+The native CR protocol covers the Genesys serial family, including GEN30-50,
+GEN30-80, and GEN40-15. A SCPI `*IDN?` selects `tdk-genesys`. On a COM or ASRL
+resource, bare `IDN?` is sent first, and a Lambda GEN reply selects
+`tdk-genesys-serial`.
 
-Require `driver="serial"`, an explicit panel-matching `baudrate` and
-`device_address` (0–30). The transport uses 8N1. Write raw ASCII plus CR, select
-`ADR n`, require `OK`, and consume an acknowledgement after every setting.
-Commands are `PV`, `PC`, `OUT`, `MV?`, `MC?` and `OVP`; `OUT?` returns `ON`/`OFF`,
-not a SCPI number. Command/execution errors fail the operation. No broadcast,
-reset, stored-setting recall or automatic output-enable command is sent on
-connection. Disable unsolicited SRQ messages for this synchronous subset.
-Voltage/current-derived power uses separate measurements.
+Require `driver="serial"` and a panel-matching `baudrate` (factory default 9600).
+`device_address` (0–30) is optional. When it is set, write `ADR n` and require
+`OK` before settings. When it is omitted, commands go directly to the single
+supply on the RS-232 link. The transport uses 8N1. Write raw ASCII plus CR and
+consume an acknowledgement after every setting. Commands are `PV`, `PC`, `OUT`,
+`MV?`, `MC?` and `OVP`; `OUT?` returns `ON`/`OFF`. Command/execution errors fail
+the operation. No broadcast, reset, stored-setting recall or automatic
+output-enable command is sent on connection. Disable unsolicited SRQ messages
+for this synchronous subset. Voltage/current-derived power uses separate
+measurements.
 
 The [configuration example](../../examples/configs/config.inventory.hardware.toml.example)
-contains a native serial row. Tests exercise address-before-setting ordering,
-CR rather than LF framing, acknowledgement consumption, textual output state
-and an execution-error reply. GPIB/LAN option personalities require their own
-matching documentation; they are not selected from a serial model name.
+contains a native serial row. Tests exercise direct commands when no address is
+set, address-before-setting when `device_address` is set, CR framing,
+acknowledgement consumption, textual output state and an execution-error reply.
+GPIB/LAN option personalities use `tdk-genesys`.
 
 ## Handheld, clamp and ScopeMeter entries (`dmm` / `oscope`)
 
