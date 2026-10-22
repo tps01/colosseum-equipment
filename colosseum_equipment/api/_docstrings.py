@@ -15,6 +15,16 @@ def _equipment_raises() -> str:
     )
 
 
+def _measurement_raises() -> str:
+    return (
+        ":raises EquipmentConnectionError: Transport or instrument connection failed.\n"
+        ":raises EquipmentCapabilityError: Operation not supported by the configured model.\n\n"
+        "A raised exception is recorded as a measurement ERROR with a null value and "
+        "re-raised unless ``optional=True``. With ``optional=True`` the call returns "
+        "``None`` and the script continues."
+    )
+
+
 def _key_param(domain: str = "equipment") -> str:
     return _sphinx_param(
         "key",
@@ -77,7 +87,7 @@ def measurement_doc(
     )
     return (
         f"{summary}\n\n{params}\n\n:returns: Measured {quantity}.\n"
-        f":rtype: {rtype}\n\n{_equipment_raises()}"
+        f":rtype: {rtype}\n\n{_measurement_raises()}"
     )
 
 
