@@ -13,7 +13,7 @@ For RF, DIO, and serial detail, see the other guides in this site.
 
 Minimal sim TOML (see also ``examples/configs/config.sim.toml``)::
 
-   [[equipment.psu]]
+   [equipment.psu]
    psu_id = 1
    driver = sim
    resource = SIM::PSU1
