@@ -77,3 +77,10 @@ def test_agilent_eload_engage_disengage() -> None:
         "INPUT ON",
         "INPUT OFF",
     ]
+
+
+def test_generic_eload_transient_twid() -> None:
+    transport = RfStubTransport()
+    inst = build_instrument("eload", 1, {"model": "generic"}, transport)
+    inst.set_transient_timer_s(0.01)
+    assert transport.written == ["TRAN:TWID 0.01"]

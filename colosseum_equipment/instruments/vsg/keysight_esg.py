@@ -193,7 +193,20 @@ class KeysightESGVSG(GenericVSG):
         if self._is_vector:
             self._scpi.write(f"DM:STAT {1 if enabled else 0}")
             return
-        if enabled and modulation_type.lower() != "none":
-            self._scpi.write(f"DMODE {modulation_type.upper()}")
+        # Analog ESG: AM/FM/PM + OUTP:MOD (E4400-90622). DMODE is not AM/FM select.
+        mod = modulation_type.strip().upper()
+        if not enabled or mod in ("", "NONE", "OFF"):
+            self._scpi.write("AM:STAT OFF")
+            self._scpi.write("FM:STAT OFF")
+            self._scpi.write("PM:STAT OFF")
+            self._scpi.write("OUTP:MOD OFF")
+            return
+        if mod == "AM":
+            self._scpi.write("AM:STAT ON")
+        elif mod == "FM":
+            self._scpi.write("FM:STAT ON")
+        elif mod in ("PM", "PHAS", "PHASE"):
+            self._scpi.write("PM:STAT ON")
         else:
-            self._scpi.write("DMODE OFF")
+            raise ValueError(f"unsupported analog modulation type: {modulation_type}")
+        self._scpi.write("OUTP:MOD ON")
