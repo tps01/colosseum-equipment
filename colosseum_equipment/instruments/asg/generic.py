@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments._base import ScpiInstrumentMixin
+from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.protocols.scpi import SCPIHelper
 
@@ -23,11 +24,11 @@ _WAVEFORMS = {
 @instrument_model(
     "asg",
     "generic",
-    extra_optional=("frequency", "power_dbm", "output", "channels"),
+    extra_optional=("frequency", "amplitude_vpp", "output", "channels"),
 )
 @best_effort_commands
 class GenericASG(ScpiInstrumentMixin):
-    """Generic analog signal generator using R&S-oriented SCPI mnemonics."""
+    """Generic AFG/ASG using function-generator SCPI (FREQ / VOLT / FUNC:PULS)."""
 
     _model = "generic"
 
@@ -40,6 +41,8 @@ class GenericASG(ScpiInstrumentMixin):
         )
         if "frequency" in config:
             self.set_frequency(float(config["frequency"]))
+        if "amplitude_vpp" in config:
+            self.set_amplitude_vpp(float(config["amplitude_vpp"]))
         if "power_dbm" in config:
             self.set_power(float(config["power_dbm"]))
         if config.get("output"):
@@ -61,7 +64,7 @@ class GenericASG(ScpiInstrumentMixin):
     def set_frequency(self, frequency: float, *, channel: int = 1) -> None:
         ch = self._require_channel(channel)
         if ch == 1:
-            self._scpi.write(f"FREQ:CW {frequency:.6f}")
+            self._scpi.write(f"FREQ {frequency:.6f}")
             return
         self._scpi.write(f"SOUR{ch}:FREQ {frequency:.6f}")
 
@@ -93,11 +96,13 @@ class GenericASG(ScpiInstrumentMixin):
         return self._scpi.query_float(f"OUTP{ch}:LOAD?")
 
     def set_power(self, power_dbm: float, *, channel: int = 1) -> None:
-        ch = self._require_channel(channel)
-        if ch == 1:
-            self._scpi.write(f"POW:AMPL {power_dbm:.3f}")
-            return
-        self._scpi.write(f"SOUR{ch}:POW:AMPL {power_dbm:.3f}")
+        _ = power_dbm
+        _ = self._require_channel(channel)
+        unsupported(
+            self._model,
+            "set_power",
+            detail="AFG amplitude uses set_amplitude_vpp / set_amplitude_vrms, not dBm",
+        )
 
     def set_duty_cycle_pct(self, pct: float, *, channel: int = 1) -> None:
         self._scpi.write(f"{self._source(channel)}FUNC:SQU:DCYC {pct:.3f}")
@@ -120,17 +125,25 @@ class GenericASG(ScpiInstrumentMixin):
         )
 
     def set_pulsegen_output(self, enabled: bool, *, channel: int = 1) -> None:
+        _ = enabled
         _ = self._require_channel(channel)
-        self._scpi.write(":PULGen:STAT ON" if enabled else ":PULGen:STAT OFF")
+        unsupported(
+            self._model,
+            "set_pulsegen_output",
+            detail="RF pulse-mod APIs belong on VSG; use set_waveform('pulse')",
+        )
 
     def set_pulsemod_output(self, enabled: bool, *, channel: int = 1) -> None:
+        _ = enabled
         _ = self._require_channel(channel)
-        self._scpi.write(":PULM:STAT ON" if enabled else ":PULM:STAT OFF")
+        unsupported(
+            self._model,
+            "set_pulsemod_output",
+            detail="RF pulse-mod APIs belong on VSG; use set_waveform('pulse')",
+        )
 
     def set_pulse_period(self, period_s: float, *, channel: int = 1) -> None:
-        _ = self._require_channel(channel)
-        self._scpi.write(f":PULM:PER {period_s:.9f}")
+        self._scpi.write(f"{self._source(channel)}FUNC:PULS:PER {period_s:.9f}")
 
     def set_pulse_width(self, width_s: float, *, channel: int = 1) -> None:
-        _ = self._require_channel(channel)
-        self._scpi.write(f":PULM:WIDt {width_s:.9f}")
+        self._scpi.write(f"{self._source(channel)}FUNC:PULS:WIDT {width_s:.9f}")

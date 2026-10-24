@@ -110,6 +110,28 @@ def test_play_iq_writes_composite_scpi() -> None:
     ]
 
 
+def test_keysight_esg_analog_modulation_uses_am_fm() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4428C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    inst.set_modulation(True, "AM")
+    inst.set_modulation(False)
+    assert transport.written == [
+        "AM:STAT ON",
+        "OUTP:MOD ON",
+        "AM:STAT OFF",
+        "FM:STAT OFF",
+        "PM:STAT OFF",
+        "OUTP:MOD OFF",
+    ]
+
+
+def test_keysight_esg_vector_modulation_uses_dm_stat() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    inst.set_modulation(True, "AM")
+    assert transport.written == ["DM:STAT 1"]
+
+
 def test_upload_waveform_tcp_binary_block(tmp_path) -> None:
     waveform = tmp_path / "iq.bin"
     waveform.write_bytes(b"\x00\x01\x02\x03" * 4)

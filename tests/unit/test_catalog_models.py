@@ -37,7 +37,8 @@ def test_catalog_classes_register_and_build() -> None:
             )
             assert isinstance(built, cls)
             found += 1
-    assert found == 165
+    # Dedicated Mini-Circuits attenuator / Vaunix refuse modules live outside catalog.py.
+    assert found == 155
 
 
 def test_catalog_aliases_use_the_existing_driver() -> None:
