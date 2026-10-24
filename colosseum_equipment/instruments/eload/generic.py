@@ -128,7 +128,8 @@ class GenericEload(ScpiInstrumentMixin):
 
     def set_transient_timer_s(self, seconds: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
-        self._scpi.write(f"TRAN:TWID:2 {seconds}")
+        # Keysight/Agilent load family: TRANsient:TWIDth <time> (no channel node).
+        self._scpi.write(f"TRAN:TWID {seconds}")
 
     def toggle_transient(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)

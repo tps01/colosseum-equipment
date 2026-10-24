@@ -298,15 +298,15 @@ docstring records the manual link.
 | `siglent-sdg3000x` | asg | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `siglent-sdg7000a` | asg | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `tektronix-afg31000` | asg | <https://www.tek.com/en/support/datasheets-manuals-software-downloads> | generic SCPI |
-| `minicircuits-rudat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
-| `minicircuits-rcdat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
-| `minicircuits-rc4dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
-| `minicircuits-rc8dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
-| `minicircuits-zvva` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | generic SCPI |
+| `minicircuits-rudat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:SETATT=` / `:ATT?` dialect |
+| `minicircuits-rcdat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:SETATT=` / `:ATT?` dialect |
+| `minicircuits-rc4dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:CHAN:n:SETATT:` / `:ATT?` |
+| `minicircuits-rc8dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:CHAN:n:SETATT:` / `:ATT?` |
+| `minicircuits-zvva` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:SETATT=` / `:ATT?` dialect |
 | `minicircuits-rcm-ztm` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-Modular_ZTM_RCM.pdf` | generic SCPI |
-| `vaunix-lda-302p-1` | attn | <https://vaunix.com/digital-attenuators/> | generic SCPI |
-| `vaunix-lda-302p-h` | attn | <https://vaunix.com/digital-attenuators/> | generic SCPI |
-| `vaunix-lda` | attn | <https://vaunix.com/digital-attenuators/> | generic SCPI |
+| `vaunix-lda-302p-1` | attn | <https://vaunix.com/digital-attenuators/> | SDK/DLL only (ops refused) |
+| `vaunix-lda-302p-h` | attn | <https://vaunix.com/digital-attenuators/> | SDK/DLL only (ops refused) |
+| `vaunix-lda` | attn | <https://vaunix.com/digital-attenuators/> | SDK/DLL only (ops refused) |
 | `rigol-dm3058` | dmm | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-dm3068` | dmm | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-dm858` | dmm | <https://www.rigolna.com/support/downloads/> | generic SCPI |
@@ -408,13 +408,13 @@ docstring records the manual link.
 | `keysight-u2004a` | pwrmeter | <https://www.keysight.com/zz/en/assets/9018-01701/programming-guides/9018-01701.pdf> | alias of `keysight-u2001a` |
 | `minicircuits-rc` | rfswitch | `https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf` | existing driver |
 | `minicircuits-ztrc` | rfswitch | `https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf` | existing driver |
-| `minicircuits-usb-switch` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
-| `minicircuits-u2c` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
-| `minicircuits-rcs` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
-| `minicircuits-esb` | rfswitch | <https://www.minicircuits.com/softwaredownload/solidstate.html> | generic SCPI |
-| `minicircuits-ztvx` | rfswitch | <https://www.minicircuits.com/softwaredownload/ztvx.html> | generic SCPI |
-| `vaunix-lsw-802pdt` | rfswitch | <https://vaunix.com/support/> | generic SCPI |
-| `vaunix-lsw-203pdt` | rfswitch | <https://vaunix.com/support/> | generic SCPI |
+| `minicircuits-usb-switch` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf> | `SETA=` / `SWPORT?` (RC dialect) |
+| `minicircuits-u2c` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf> | `SETA=` / `SWPORT?` (RC dialect) |
+| `minicircuits-rcs` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf> | `SETA=` / `SWPORT?` (RC dialect) |
+| `minicircuits-esb` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-2-Switch.pdf> | `SETA=` / `SWPORT?` (RC dialect) |
+| `minicircuits-ztvx` | rfswitch | <https://www.minicircuits.com/softwaredownload/Prog_Manual-ZT-Custom.pdf> | PATH dialect refused until implemented |
+| `vaunix-lsw-802pdt` | rfswitch | <https://vaunix.com/support/> | SDK/DLL only (ops refused) |
+| `vaunix-lsw-203pdt` | rfswitch | <https://vaunix.com/support/> | SDK/DLL only (ops refused) |
 | `rigol-rsa3030` | rtsa | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-rsa3045` | rtsa | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-rsa3065` | rtsa | <https://www.rigolna.com/support/downloads/> | generic SCPI |
