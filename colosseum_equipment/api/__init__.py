@@ -22,6 +22,7 @@ from . import (
     vsg,
 )
 from ._autoconfig import autoconfig
+from .calibration import load_calibration
 
 __all__ = [
     "asg",
@@ -31,6 +32,7 @@ __all__ = [
     "eload",
     "freqcounter",
     "gnss",
+    "load_calibration",
     "oscope",
     "phasenoiseanalyzer",
     "psu",

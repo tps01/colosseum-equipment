@@ -88,10 +88,23 @@ class KeysightE4407BSpecA(GenericSpecA):
         save_plot: bool = False,
         plot_path: str | None = None,
         key: str = "",
+        calibration: str | None = None,
     ) -> Path:
         from colosseum_equipment.evidence import record_artifact
 
         frequencies, amplitudes = self._fetch_trace(trace, include_frequency=include_frequency)
+        if calibration is not None:
+            from colosseum_equipment import calibration as path_cal
+
+            if not include_frequency:
+                raise path_cal.CalibrationError(
+                    "save_trace_data with calibration= requires include_frequency=True",
+                )
+            amplitudes = path_cal.correct_trace_amplitudes(
+                frequencies,
+                amplitudes,
+                key=calibration,
+            )
         center = (frequencies[0] + frequencies[-1]) / 2.0 if frequencies else 0.0
         span = frequencies[-1] - frequencies[0] if len(frequencies) > 1 else 0.0
         artifact_path = resolve_artifact_path(path)

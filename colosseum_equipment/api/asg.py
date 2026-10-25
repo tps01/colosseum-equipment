@@ -11,6 +11,7 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment import calibration as _cal
 from colosseum_equipment.connections import get_cached_instrument
 
 
@@ -19,8 +20,18 @@ def _inst(asg_id: int) -> Any:
 
 
 @command
-def set_frequency(*, asg_id: int, frequency: float, channel: int = 1) -> None:
+def set_frequency(
+    *,
+    asg_id: int,
+    frequency: float,
+    channel: int = 1,
+    calibration: str | None = None,
+) -> None:
     """Set CW output frequency in hertz.
+
+    When ``calibration`` is set, retunes programmed power so the post-cal
+    (desired) output level from the last ``set_power(..., calibration=)`` is
+    held at the new frequency.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
     :type asg_id: int
@@ -28,13 +39,22 @@ def set_frequency(*, asg_id: int, frequency: float, channel: int = 1) -> None:
     :type frequency: float
     :param channel: Source channel index (1-based).
     :type channel: int
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    _inst(asg_id).set_frequency(frequency, channel=channel)
+    inst = _inst(asg_id)
+    inst.set_frequency(frequency, channel=channel)
+    _cal.bind_frequency(inst, frequency, channel=channel)
+    if calibration is not None:
+        desired = _cal.require_desired_power(inst, channel=channel)
+        programmed = _cal.programmed_power_dbm(desired, key=calibration, frequency_hz=frequency)
+        inst.set_power(programmed, channel=channel)
+        _cal.remember_desired_power(inst, desired, key=calibration, channel=channel)
 
 
 @command
@@ -154,22 +174,41 @@ def get_load_ohms(*, asg_id: int, channel: int = 1, key: str) -> float:
 
 
 @command
-def set_power(*, asg_id: int, power_dbm: float, channel: int = 1) -> None:
+def set_power(
+    *,
+    asg_id: int,
+    power_dbm: float,
+    channel: int = 1,
+    calibration: str | None = None,
+) -> None:
     """Set output power in dBm.
+
+    With ``calibration``, ``power_dbm`` is the desired post-path level; the
+    instrument is programmed to ``power_dbm - loss_db`` at the last-set frequency.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
     :type asg_id: int
-    :param power_dbm: Output power in dBm.
+    :param power_dbm: Output power in dBm (post-cal desired when ``calibration`` is set).
     :type power_dbm: float
     :param channel: Source channel index (1-based).
     :type channel: int
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    _inst(asg_id).set_power(power_dbm, channel=channel)
+    inst = _inst(asg_id)
+    if calibration is None:
+        _cal.clear_desired_power(inst, channel=channel)
+        inst.set_power(power_dbm, channel=channel)
+        return
+    frequency = _cal.require_frequency(inst, channel=channel, what="set_power")
+    programmed = _cal.programmed_power_dbm(power_dbm, key=calibration, frequency_hz=frequency)
+    inst.set_power(programmed, channel=channel)
+    _cal.remember_desired_power(inst, power_dbm, key=calibration, channel=channel)
 
 
 @command
