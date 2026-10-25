@@ -33,14 +33,26 @@ def test_load_config_rf_bench(bench_rf, isolated_cwd) -> None:
 
 
 def test_vsg_set_frequency_and_output(bench_rf, isolated_cwd) -> None:
-    from colosseum_equipment.api import scpi, vsg
+    from colosseum_equipment.api import vsg
 
     load_config(bench_rf)
     vsg.set_frequency(vsg_id=1, frequency=2.4e9)
     vsg.set_power(vsg_id=1, power_dbm=-5.0)
     vsg.set_output(vsg_id=1, enabled=True)
-    assert float(scpi.query(command="FREQ:CW?", vsg_id=1)) == pytest.approx(2.4e9)
-    assert float(scpi.query(command="OUTP:STAT?", vsg_id=1)) == pytest.approx(1.0)
+    assert vsg.measure_frequency(vsg_id=1, key="cw_hz") == pytest.approx(2.4e9)
+    assert vsg.measure_power_dbm(vsg_id=1, key="cw_dbm") == pytest.approx(-5.0)
+    assert vsg.measure_output_state(vsg_id=1, key="rf_on") == pytest.approx(1.0)
+    vsg.set_output(vsg_id=1, enabled=False)
+    assert vsg.measure_output_state(vsg_id=1, key="rf_off") == pytest.approx(0.0)
+
+
+def test_vector_esg_wlan_modulation_is_unsupported(bench_rf, isolated_cwd) -> None:
+    from colosseum_equipment.api import vsg
+    from colosseum_equipment.exceptions import EquipmentCapabilityError
+
+    load_config(bench_rf)
+    with pytest.raises(EquipmentCapabilityError, match="WLAN"):
+        vsg.set_modulation(vsg_id=1, enabled=True, modulation_type="WLAN")
 
 
 def test_speca_peak_and_marker_power(bench_rf, isolated_cwd) -> None:

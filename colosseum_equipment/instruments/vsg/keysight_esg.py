@@ -183,14 +183,28 @@ class KeysightESGVSG(GenericVSG):
             power_values = ",".join(str(value) for value in powers)
             self._scpi.write(f"LIST:POW {power_values}")
 
+    def set_output(self, enabled: bool) -> None:
+        self._scpi.write(f"OUTP:STAT {1 if enabled else 0}")
+
     def measure_frequency(self) -> float:
-        return self._scpi.query_float(":FREQ:CW?")
+        return self._scpi.query_float("FREQ:CW?")
 
     def measure_power_dbm(self) -> float:
-        return self._scpi.query_float(":POW:AMPL?")
+        return self._scpi.query_float("POW:AMPL?")
 
     def set_modulation(self, enabled: bool, modulation_type: str = "none") -> None:
         if self._is_vector:
+            kind = modulation_type.lower()
+            # "am" stays accepted: vector boxes have always mapped that call to DM:STAT.
+            if kind not in {"none", "off", "dm", "digital", "am"}:
+                unsupported(
+                    self._model,
+                    "set_modulation",
+                    detail=(
+                        f"modulation type {modulation_type!r} is not programmed; "
+                        "vector path only toggles DM:STAT"
+                    ),
+                )
             self._scpi.write(f"DM:STAT {1 if enabled else 0}")
             return
         # Analog ESG: AM/FM/PM + OUTP:MOD (E4400-90622). DMODE is not AM/FM select.
