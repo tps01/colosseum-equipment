@@ -136,6 +136,43 @@ def test_vsg_set_power_and_frequency_retune(unit_runtime_context, tmp_path: Path
         assert any(cmd.startswith("POW:AMPL 15.000") for cmd in transport.written)
 
 
+def test_play_iq_records_carrier_and_applies_calibration(
+    unit_runtime_context, tmp_path: Path,
+) -> None:
+    path = _write_csv(tmp_path / "cal.csv")
+    cal_api.load_calibration(filename=str(path), key="cable")
+    transport = RfStubTransport({})
+    inst = build_instrument("vsg", 1, {"model": "generic"}, transport)
+
+    with patch("colosseum_equipment.api.vsg.get_cached_instrument", return_value=inst):
+        vsg_api.play_iq(
+            vsg_id=1,
+            filename="WFM1:IQ.bin",
+            center_freq_hz=1e9,
+            amplitude_dbm=0.0,
+            sample_clock_hz=100e6,
+            calibration="cable",
+        )
+        assert any(cmd.startswith("POW:AMPL 10.000") for cmd in transport.written)
+
+        transport.written.clear()
+        vsg_api.set_frequency(vsg_id=1, frequency=2e9, calibration="cable")
+        assert any(cmd.startswith("POW:AMPL 15.000") for cmd in transport.written)
+
+        transport.written.clear()
+        vsg_api.play_iq(
+            vsg_id=1,
+            filename="WFM1:IQ.bin",
+            center_freq_hz=1e9,
+            amplitude_dbm=-5.0,
+            sample_clock_hz=100e6,
+        )
+        assert any(cmd.startswith("POW:AMPL -5.000") for cmd in transport.written)
+        transport.written.clear()
+        vsg_api.set_power(vsg_id=1, power_dbm=0.0, calibration="cable")
+        assert any(cmd.startswith("POW:AMPL 10.000") for cmd in transport.written)
+
+
 def test_vsg_set_frequency_calibration_requires_prior_desired(
     unit_runtime_context, tmp_path: Path,
 ) -> None:
