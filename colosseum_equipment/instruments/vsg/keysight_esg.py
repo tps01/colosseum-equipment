@@ -195,7 +195,8 @@ class KeysightESGVSG(GenericVSG):
     def set_modulation(self, enabled: bool, modulation_type: str = "none") -> None:
         if self._is_vector:
             kind = modulation_type.lower()
-            if kind not in {"none", "dm", "digital"}:
+            # "am" stays accepted: vector boxes have always mapped that call to DM:STAT.
+            if kind not in {"none", "off", "dm", "digital", "am"}:
                 unsupported(
                     self._model,
                     "set_modulation",
