@@ -317,8 +317,14 @@ def play_iq(
     center_freq_hz: float,
     amplitude_dbm: float,
     sample_clock_hz: float,
+    calibration: str | None = None,
 ) -> None:
     """Select an uploaded IQ waveform and start playback at the given carrier and sample clock.
+
+    The carrier and amplitude are recorded for a later ``set_power`` or
+    ``set_frequency`` that passes ``calibration``. With ``calibration``,
+    ``amplitude_dbm`` is the desired post-path level and the instrument is
+    programmed to ``amplitude_dbm - loss_db``, the same offset ``set_power`` uses.
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
@@ -326,22 +332,29 @@ def play_iq(
     :type filename: str
     :param center_freq_hz: Carrier center frequency in hertz.
     :type center_freq_hz: float
-    :param amplitude_dbm: Output amplitude in dBm.
+    :param amplitude_dbm: Output amplitude in dBm (post-cal desired when ``calibration`` is set).
     :type amplitude_dbm: float
     :param sample_clock_hz: IQ sample clock rate in hertz.
     :type sample_clock_hz: float
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("vsg", vsg_id).play_iq(
-        filename,
-        center_freq_hz,
-        amplitude_dbm,
-        sample_clock_hz,
-    )
+    inst = get_cached_instrument("vsg", vsg_id)
+    programmed = amplitude_dbm
+    if calibration is not None:
+        programmed = _cal.programmed_power_dbm(
+            amplitude_dbm,
+            key=calibration,
+            frequency_hz=center_freq_hz,
+        )
+    inst.play_iq(filename, center_freq_hz, programmed, sample_clock_hz)
+    _cal.bind_frequency(inst, center_freq_hz)
+    _cal.remember_desired_power(inst, amplitude_dbm, key=calibration or "")
 
 
 @command
