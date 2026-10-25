@@ -26,7 +26,7 @@ equipment.asg
    visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
    sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
    frequency = 1000.0                         # optional; set_frequency at connect when present
-   power_dbm = 0.0                            # optional; set_power at connect when present
+   amplitude_vpp = 1.0                        # optional; set_amplitude_vpp at connect when present
    output = true                              # optional; set_output(True) at connect when truthy
    channels = 1                               # optional; channel count; default 1; also reads channel_count
 
