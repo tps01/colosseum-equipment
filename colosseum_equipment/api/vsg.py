@@ -25,7 +25,8 @@ def set_frequency(*, vsg_id: int, frequency: float, calibration: str | None = No
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
-    :param frequency: Output frequency in hertz.
+    :param frequency: Output frequency in hertz. A number is hertz; a string may
+        use a ``Hz``, ``kHz``, ``MHz``, or ``GHz`` suffix (``1GHz``, ``10 MHz``).
     :type frequency: float
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
     :type calibration: str | None, optional

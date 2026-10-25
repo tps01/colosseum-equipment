@@ -32,6 +32,18 @@ def test_load_config_rf_bench(bench_rf, isolated_cwd) -> None:
     assert rtsa and rtsa[0].get("model") == "tektronix-rsa5100b"
 
 
+def test_malformed_frequency_write_does_not_shift_later_queries(bench_rf, isolated_cwd) -> None:
+    """A rejected numeric write must not leave ERROR sitting in front of the next query."""
+    from colosseum_equipment.api import scpi
+
+    load_config(bench_rf)
+    assert float(scpi.query(vsg_id=1, command="FREQ:CW?")) == pytest.approx(1_000_000_000)
+    assert float(scpi.query(vsg_id=1, command="POW:AMPL?")) == pytest.approx(-10)
+    scpi.write(vsg_id=1, command="FREQ:CW wrong-type")
+    assert scpi.query_float(vsg_id=1, command="FREQ:CW?") == pytest.approx(1_000_000_000)
+    assert scpi.query_float(vsg_id=1, command="POW:AMPL?") == pytest.approx(-10)
+
+
 def test_vsg_set_frequency_and_output(bench_rf, isolated_cwd) -> None:
     from colosseum_equipment.api import vsg
 
