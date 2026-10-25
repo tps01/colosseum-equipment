@@ -49,6 +49,11 @@ API_MODULES: tuple[tuple[str, str, str], ...] = (
 # Optional single-function pages: (rst_stem, "module:qualname", displayed name)
 API_FUNCTIONS: tuple[tuple[str, str, str], ...] = (
     ('autoconfig', 'colosseum_equipment.api._autoconfig.autoconfig', 'col.equipment.autoconfig'),
+    (
+        'load_calibration',
+        'colosseum_equipment.api.calibration.load_calibration',
+        'col.equipment.load_calibration',
+    ),
 )
 GUIDES: tuple[str, ...] = (
     'docs/sphinx/source/guides/getting_started.rst',
