@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.asg.generic import GenericASG
 from colosseum_equipment.instruments.factory import build_instrument
 
@@ -18,22 +20,30 @@ def test_generic_asg_setters_write_scpi() -> None:
     inst = build_instrument("asg", 1, {"model": "generic"}, transport)
 
     inst.set_frequency(2.4e9)
-    inst.set_power(-10.0)
+    inst.set_amplitude_vpp(1.0)
     inst.set_output(True)
-    inst.set_pulsegen_output(True)
-    inst.set_pulsemod_output(False)
     inst.set_pulse_period(0.001)
     inst.set_pulse_width(0.0001)
 
     assert transport.written == [
-        "FREQ:CW 2400000000.000000",
-        "POW:AMPL -10.000",
+        "FREQ 2400000000.000000",
+        "SOUR1:VOLT:UNIT VPP",
+        "SOUR1:VOLT 1.000000",
         "OUTP ON",
-        ":PULGen:STAT ON",
-        ":PULM:STAT OFF",
-        ":PULM:PER 0.001000000",
-        ":PULM:WIDt 0.000100000",
+        "SOUR1:FUNC:PULS:PER 0.001000000",
+        "SOUR1:FUNC:PULS:WIDT 0.000100000",
     ]
+
+
+def test_generic_asg_refuses_rf_pulse_and_dbm() -> None:
+    transport = RfStubTransport()
+    inst = build_instrument("asg", 1, {"model": "generic"}, transport)
+    with pytest.raises(EquipmentCapabilityError, match="set_power"):
+        inst.set_power(-10.0)
+    with pytest.raises(EquipmentCapabilityError, match="set_pulsegen_output"):
+        inst.set_pulsegen_output(True)
+    with pytest.raises(EquipmentCapabilityError, match="set_pulsemod_output"):
+        inst.set_pulsemod_output(False)
 
 
 def test_generic_asg_config_bootstrap() -> None:
@@ -41,11 +51,12 @@ def test_generic_asg_config_bootstrap() -> None:
     build_instrument(
         "asg",
         1,
-        {"model": "generic", "frequency": 1e9, "power_dbm": -5.0, "output": True},
+        {"model": "generic", "frequency": 1e9, "amplitude_vpp": 2.0, "output": True},
         transport,
     )
     assert transport.written == [
-        "FREQ:CW 1000000000.000000",
-        "POW:AMPL -5.000",
+        "FREQ 1000000000.000000",
+        "SOUR1:VOLT:UNIT VPP",
+        "SOUR1:VOLT 2.000000",
         "OUTP ON",
     ]

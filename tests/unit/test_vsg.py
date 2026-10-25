@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
@@ -96,6 +98,47 @@ def test_keysight_vsg_control_commands_write_scpi() -> None:
     ]
 
 
+def test_vector_esg_queries_frequency_and_power_without_a_leading_colon() -> None:
+    transport = RfStubTransport(
+        {
+            "*IDN?": "Agilent Technologies,E4438C,1,1",
+            "FREQ:CW?": "2437000000.000000",
+            "POW:AMPL?": "-20.000",
+        },
+    )
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    assert isinstance(inst, KeysightESGVSG)
+    assert inst.measure_frequency() == pytest.approx(2.437e9)
+    assert inst.measure_power_dbm() == pytest.approx(-20.0)
+
+
+def test_vector_esg_output_command_is_numeric() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    assert isinstance(inst, KeysightESGVSG)
+    inst.set_output(True)
+    inst.set_output(False)
+    assert transport.written == ["OUTP:STAT 1", "OUTP:STAT 0"]
+
+
+def test_vector_esg_rejects_unprogrammed_modulation() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    assert isinstance(inst, KeysightESGVSG)
+    with pytest.raises(EquipmentCapabilityError, match="WLAN"):
+        inst.set_modulation(True, "WLAN")
+    assert transport.written == []
+
+
+def test_vector_esg_digital_mod_toggles_dm_stat() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    assert isinstance(inst, KeysightESGVSG)
+    inst.set_modulation(True, "none")
+    inst.set_modulation(False, "dm")
+    assert transport.written == ["DM:STAT 1", "DM:STAT 0"]
+
+
 def test_play_iq_writes_composite_scpi() -> None:
     transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1"})
     inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
@@ -108,6 +151,28 @@ def test_play_iq_writes_composite_scpi() -> None:
         "RAD:ARB:STAT 1",
         "OUTP:MOD ON",
     ]
+
+
+def test_keysight_esg_analog_modulation_uses_am_fm() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4428C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    inst.set_modulation(True, "AM")
+    inst.set_modulation(False)
+    assert transport.written == [
+        "AM:STAT ON",
+        "OUTP:MOD ON",
+        "AM:STAT OFF",
+        "FM:STAT OFF",
+        "PM:STAT OFF",
+        "OUTP:MOD OFF",
+    ]
+
+
+def test_keysight_esg_vector_modulation_uses_dm_stat() -> None:
+    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1"})
+    inst = build_instrument("vsg", 1, {"model": "keysight-esg"}, transport)
+    inst.set_modulation(True, "AM")
+    assert transport.written == ["DM:STAT 1"]
 
 
 def test_upload_waveform_tcp_binary_block(tmp_path) -> None:

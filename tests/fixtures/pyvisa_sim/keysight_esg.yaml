@@ -17,15 +17,13 @@ devices:
         r: "0,No error"
       - q: "RAD:ARB:STAT 1"
       - q: "RAD:ARB:STAT 0"
-      - q: "OUTP ON"
-      - q: "OUTP OFF"
       # The advertised example uploads exactly this eight-byte fixture.
       - q: 'MMEM:DATA "WFM1:IQ.bin" #18deadbeef'
       - q: 'RAD:ARB:WAV "WFM1:IQ.bin"'
       - q: "RAD:ARB:SCLock:RATE 100000000.000000"
       - q: "OUTP:MOD ON"
-      - q: "OUTP:STAT?"
-        r: "1"
+      - q: "DM:STAT 1"
+      - q: "DM:STAT 0"
     properties:
       cw_freq:
         default: 1000000000.0
@@ -45,6 +43,16 @@ devices:
           q: "POW:AMPL {:.3f}"
         specs:
           type: float
+      output_state:
+        default: 0
+        getter:
+          q: "OUTP:STAT?"
+          r: "{:.0f}"
+        setter:
+          q: "OUTP:STAT {:d}"
+        specs:
+          type: int
+          valid: [0, 1]
       alc_state:
         default: 1
         getter:

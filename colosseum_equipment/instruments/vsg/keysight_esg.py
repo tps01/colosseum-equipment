@@ -183,17 +183,44 @@ class KeysightESGVSG(GenericVSG):
             power_values = ",".join(str(value) for value in powers)
             self._scpi.write(f"LIST:POW {power_values}")
 
+    def set_output(self, enabled: bool) -> None:
+        self._scpi.write(f"OUTP:STAT {1 if enabled else 0}")
+
     def measure_frequency(self) -> float:
-        return self._scpi.query_float(":FREQ:CW?")
+        return self._scpi.query_float("FREQ:CW?")
 
     def measure_power_dbm(self) -> float:
-        return self._scpi.query_float(":POW:AMPL?")
+        return self._scpi.query_float("POW:AMPL?")
 
     def set_modulation(self, enabled: bool, modulation_type: str = "none") -> None:
         if self._is_vector:
+            kind = modulation_type.lower()
+            # "am" stays accepted: vector boxes have always mapped that call to DM:STAT.
+            if kind not in {"none", "off", "dm", "digital", "am"}:
+                unsupported(
+                    self._model,
+                    "set_modulation",
+                    detail=(
+                        f"modulation type {modulation_type!r} is not programmed; "
+                        "vector path only toggles DM:STAT"
+                    ),
+                )
             self._scpi.write(f"DM:STAT {1 if enabled else 0}")
             return
-        if enabled and modulation_type.lower() != "none":
-            self._scpi.write(f"DMODE {modulation_type.upper()}")
+        # Analog ESG: AM/FM/PM + OUTP:MOD (E4400-90622). DMODE is not AM/FM select.
+        mod = modulation_type.strip().upper()
+        if not enabled or mod in ("", "NONE", "OFF"):
+            self._scpi.write("AM:STAT OFF")
+            self._scpi.write("FM:STAT OFF")
+            self._scpi.write("PM:STAT OFF")
+            self._scpi.write("OUTP:MOD OFF")
+            return
+        if mod == "AM":
+            self._scpi.write("AM:STAT ON")
+        elif mod == "FM":
+            self._scpi.write("FM:STAT ON")
+        elif mod in ("PM", "PHAS", "PHASE"):
+            self._scpi.write("PM:STAT ON")
         else:
-            self._scpi.write("DMODE OFF")
+            raise ValueError(f"unsupported analog modulation type: {modulation_type}")
+        self._scpi.write("OUTP:MOD ON")

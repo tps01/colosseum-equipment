@@ -40,7 +40,8 @@ class GenericDMM(ScpiInstrumentMixin):
 
     def get_function(self, *, channel: int = 1) -> str:
         self._require_channel(channel)
-        return self._scpi.query("FUNC?").strip()
+        # Prefer SENSe:FUNCtion? (34401A and most bench DMMs); strip quotes if present.
+        return self._scpi.query("SENS:FUNC?").strip().strip('"')
 
     def set_range(self, value: float, *, channel: int = 1) -> None:
         self._require_channel(channel)
