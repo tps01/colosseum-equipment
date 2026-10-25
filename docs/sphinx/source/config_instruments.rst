@@ -351,3 +351,7 @@ equipment.vsg
    frequency = 1000000000.0                   # optional; set_frequency at connect when present
    power_dbm = 0.0                            # optional; set_power at connect when present
    output = true                              # optional; set_output(True) at connect when truthy
+   upload_method = "auto"                     # optional; auto, ftp, or tcpip; used when upload_waveform leaves method="auto"
+   ftp_host = "192.0.2.10"                    # optional; waveform FTP host; default is the host in a TCPIP resource
+   ftp_user = "anonymous"                     # optional; waveform FTP user; default anonymous
+   ftp_password = ""                          # optional; waveform FTP password; default empty

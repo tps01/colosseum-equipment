@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
-from colosseum_equipment.exceptions import EquipmentCapabilityError
+import pyvisa
+from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
+from colosseum_equipment.transports.visa import VISATransport
 
 from tests.support.stubs import RfStubTransport
 
@@ -175,58 +178,175 @@ def test_keysight_esg_vector_modulation_uses_dm_stat() -> None:
     assert transport.written == ["DM:STAT 1"]
 
 
-def test_upload_waveform_tcp_binary_block(tmp_path) -> None:
-    waveform = tmp_path / "iq.bin"
-    waveform.write_bytes(b"\x00\x01\x02\x03" * 4)
-    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1", "*OPC?": "1"})
-    config = {
-        "model": "keysight-esg",
-        "resource": "TCPIP0::192.168.0.10::inst0::INSTR",
-    }
-    inst = build_instrument("vsg", 1, config, transport)
-    inst.upload_waveform(str(waveform), "WFM1:IQ.bin")
-    assert transport.raw_written
-    assert b'MMEM:DATA "WFM1:IQ.bin" ' in transport.raw_written[0]
-    assert transport.raw_written[0].endswith(b"\n")
+def _waveform(tmp_path, payload: bytes):
+    path = tmp_path / "iq.bin"
+    path.write_bytes(payload)
+    return path
 
 
-def test_upload_waveform_ftp_fallback(tmp_path) -> None:
-    waveform = tmp_path / "iq.bin"
-    waveform.write_bytes(b"\x00\x01\x02\x03" * 4)
-    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1", "*OPC?": "1"})
-    config = {
-        "model": "keysight-esg",
-        "resource": "GPIB::19::INSTR",
-        "ftp_host": "10.0.0.5",
-    }
-    inst = build_instrument("vsg", 1, config, transport)
+def _esg(config: dict, transport: RfStubTransport | None = None):
+    responses = {"*IDN?": "Agilent Technologies,E4438C,1,1", "*OPC?": "1"}
+    inst_transport = transport or RfStubTransport(responses)
+    if transport is not None and not transport._responses:
+        transport._responses.update(responses)
+    return build_instrument("vsg", 1, {"model": "keysight-esg", **config}, inst_transport), inst_transport
+
+
+def _pump_ftp(store: dict):
+    def _store(cmd, fp, blocksize=8192, callback=None, rest=None):
+        sent = bytearray()
+        while True:
+            chunk = fp.read(blocksize)
+            if not chunk:
+                break
+            sent.extend(chunk)
+            if callback is not None:
+                callback(chunk)
+        store["cmd"] = cmd
+        store["blocksize"] = blocksize
+        store["sent"] = bytes(sent)
 
     mock_ftp = MagicMock()
     mock_ftp.__enter__.return_value = mock_ftp
-    with (
-        patch(
-            "colosseum_equipment.instruments.vsg.waveform_upload._supports_scpi_binary_upload",
-            return_value=False,
-        ),
-        patch("colosseum_equipment.instruments.vsg.waveform_upload.ftplib.FTP", return_value=mock_ftp),
+    mock_ftp.storbinary.side_effect = _store
+    return mock_ftp
+
+
+def test_upload_waveform_tcp_binary_block(tmp_path) -> None:
+    payload = b"\x00\x01\x02\x03" * 4
+    waveform = _waveform(tmp_path, payload)
+    transport = RfStubTransport()
+    seen: dict[str, int] = {}
+
+    @contextmanager
+    def large_binary_write(nbytes: int):
+        seen["nbytes"] = nbytes
+        seen["chunk_size"] = nbytes
+        yield
+
+    transport.large_binary_write = large_binary_write  # type: ignore[method-assign]
+    inst, transport = _esg(
+        {"resource": "TCPIP0::192.168.0.10::inst0::INSTR"},
+        transport,
+    )
+    inst.upload_waveform(str(waveform), "WFM1:IQ.bin", method="tcpip")
+    assert len(transport.raw_written) == 1
+    assert b'MMEM:DATA "WFM1:IQ.bin" ' in transport.raw_written[0]
+    assert transport.raw_written[0].endswith(b"\n")
+    assert seen["chunk_size"] == seen["nbytes"] == len(transport.raw_written[0])
+
+
+def test_large_binary_write_sets_chunk_size_and_nodelay() -> None:
+    transport = VISATransport.__new__(VISATransport)
+    session = MagicMock()
+    session.chunk_size = 20480
+    session.get_visa_attribute.return_value = 0
+    transport._inst = session
+    transport._timeout = 5.0
+    transport._resource = "TCPIP0::10.0.0.5::inst0::INSTR"
+    with transport.large_binary_write(1_000_000):
+        assert session.chunk_size == 1_000_000
+        assert transport._timeout > 5.0
+    assert session.chunk_size == 20480
+    assert transport._timeout == 5.0
+    session.set_visa_attribute.assert_any_call(
+        pyvisa.constants.VI_ATTR_TCPIP_NODELAY,
+        pyvisa.constants.VI_TRUE,
+    )
+
+
+def test_upload_waveform_auto_tcpip_uses_ftp(tmp_path) -> None:
+    payload = b"\x00\x01\x02\x03" * 4
+    waveform = _waveform(tmp_path, payload)
+    inst, transport = _esg({"resource": "TCPIP0::192.168.0.10::inst0::INSTR"})
+    store: dict = {}
+    mock_ftp = _pump_ftp(store)
+    with patch(
+        "colosseum_equipment.instruments.vsg.waveform_upload.ftplib.FTP",
+        return_value=mock_ftp,
     ):
         inst.upload_waveform(str(waveform), "WFM1:IQ.bin")
-
+    assert transport.raw_written == []
+    assert store["cmd"] == "STOR /USER/BBG1/WAVEFORM/IQ.bin"
+    assert store["blocksize"] == 8192
+    assert store["sent"] == payload
     mock_ftp.login.assert_called_once_with(user="anonymous", passwd="")
-    mock_ftp.storbinary.assert_called_once()
-    assert mock_ftp.storbinary.call_args.args[0] == "STOR /USER/BBG1/WAVEFORM/IQ.bin"
+
+
+def test_upload_waveform_auto_without_ftp_host_uses_scpi(tmp_path) -> None:
+    waveform = _waveform(tmp_path, b"\x00\x01\x02\x03" * 4)
+    inst, transport = _esg({"resource": "GPIB::19::INSTR"})
+    inst.upload_waveform(str(waveform), "WFM1:IQ.bin")
+    assert len(transport.raw_written) == 1
+    assert b"MMEM:DATA" in transport.raw_written[0]
+
+
+def test_upload_waveform_ftp_fallback(tmp_path) -> None:
+    payload = b"\x00\x01\x02\x03" * 4
+    waveform = _waveform(tmp_path, payload)
+    inst, _transport = _esg({"resource": "GPIB::19::INSTR", "ftp_host": "10.0.0.5"})
+    store: dict = {}
+    mock_ftp = _pump_ftp(store)
+    with patch(
+        "colosseum_equipment.instruments.vsg.waveform_upload.ftplib.FTP",
+        return_value=mock_ftp,
+    ):
+        inst.upload_waveform(str(waveform), "WFM1:IQ.bin")
+    assert store["cmd"] == "STOR /USER/BBG1/WAVEFORM/IQ.bin"
+    assert store["blocksize"] == 8192
+    assert store["sent"] == payload
+
+
+def test_upload_method_config_selects_tcpip(tmp_path) -> None:
+    waveform = _waveform(tmp_path, b"\x00\x01\x02\x03" * 4)
+    inst, transport = _esg(
+        {
+            "resource": "TCPIP0::192.168.0.10::inst0::INSTR",
+            "upload_method": "tcpip",
+        },
+    )
+    inst.upload_waveform(str(waveform), "WFM1:IQ.bin")
+    assert len(transport.raw_written) == 1
+    assert b"MMEM:DATA" in transport.raw_written[0]
+
+
+def test_upload_method_call_overrides_config(tmp_path) -> None:
+    payload = b"\x00\x01\x02\x03" * 4
+    waveform = _waveform(tmp_path, payload)
+    inst, transport = _esg(
+        {
+            "resource": "GPIB::19::INSTR",
+            "ftp_host": "10.0.0.5",
+            "upload_method": "tcpip",
+        },
+    )
+    store: dict = {}
+    mock_ftp = _pump_ftp(store)
+    with patch(
+        "colosseum_equipment.instruments.vsg.waveform_upload.ftplib.FTP",
+        return_value=mock_ftp,
+    ):
+        inst.upload_waveform(str(waveform), "WFM1:IQ.bin", method="ftp")
+    assert transport.raw_written == []
+    assert store["sent"] == payload
+    assert store["blocksize"] == 8192
+
+
+def test_upload_waveform_tcpip_without_write_raw_raises(tmp_path) -> None:
+    waveform = _waveform(tmp_path, b"\x00\x01\x02\x03" * 4)
+
+    class _TextOnly(RfStubTransport):
+        write_raw = None  # type: ignore[assignment]
+
+    inst, _transport = _esg({"resource": "GPIB::19::INSTR"}, _TextOnly())
+    with pytest.raises(EquipmentResponseError, match="write_raw"):
+        inst.upload_waveform(str(waveform), "WFM1:IQ.bin", method="tcpip")
 
 
 def test_upload_waveform_first_last_blanking(tmp_path) -> None:
-    waveform = tmp_path / "iq.bin"
-    waveform.write_bytes(b"\x00\x01\x02\x03" * 5)
-    transport = RfStubTransport({"*IDN?": "Agilent Technologies,E4438C,1,1", "*OPC?": "1"})
-    config = {
-        "model": "keysight-esg",
-        "resource": "TCPIP0::192.168.0.10::inst0::INSTR",
-    }
-    inst = build_instrument("vsg", 1, config, transport)
-    inst.upload_waveform(str(waveform), "WFM1:IQ.bin", first_last_blanking=True)
+    waveform = _waveform(tmp_path, b"\x00\x01\x02\x03" * 5)
+    inst, transport = _esg({"resource": "TCPIP0::192.168.0.10::inst0::INSTR"})
+    inst.upload_waveform(str(waveform), "WFM1:IQ.bin", first_last_blanking=True, method="tcpip")
     assert 'RAD:ARB:MARK:CLEAR:ALL "WFM1:IQ.bin",1' in transport.written
     assert 'RAD:ARB:MARK:SET "WFM1:IQ.bin",1,1,1,1,0' in transport.written
     assert 'RAD:ARB:MARK:SET "WFM1:IQ.bin",1,5,1,1,0' in transport.written

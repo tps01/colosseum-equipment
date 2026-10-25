@@ -12,7 +12,19 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
-@instrument_model("vsg", "generic", extra_optional=("frequency", "power_dbm", "output"))
+@instrument_model(
+    "vsg",
+    "generic",
+    extra_optional=(
+        "frequency",
+        "power_dbm",
+        "output",
+        "upload_method",
+        "ftp_host",
+        "ftp_user",
+        "ftp_password",
+    ),
+)
 @best_effort_commands
 class GenericVSG(ScpiInstrumentMixin):
     """Generic SCPI vector/signal generator (IEEE 488.2 + SCPI-99 mnemonics)."""
@@ -64,6 +76,7 @@ class GenericVSG(ScpiInstrumentMixin):
         remote_name: str,
         *,
         first_last_blanking: bool = False,
+        method: str = "auto",
     ) -> None:
         upload_waveform_file(
             self._scpi,
@@ -72,6 +85,7 @@ class GenericVSG(ScpiInstrumentMixin):
             local_path,
             remote_name,
             first_last_blanking=first_last_blanking,
+            method=method,
         )
 
     def delete_waveform(self, remote_name: str) -> None:

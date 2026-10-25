@@ -11,8 +11,9 @@ from colosseum_equipment import calibration as _cal
 def load_calibration(*, filename: str, key: str) -> None:
     """Load a VNA S21/S12 sweep file into the run database under ``key``.
 
-    Accepts CSV / TXT (``frequency_hz,value`` or headerless frequency/loss) and
-    Touchstone ``.s2p`` (single-parameter or full 2-port; S21 magnitude is used).
+    Accepts CSV / TXT (a ``frequency_hz,value`` header, or headerless
+    ``frequency_hz,loss_db`` with any later columns ignored) and Touchstone
+    ``.s2p`` (single-parameter or full 2-port; S21 magnitude is used).
     Later ASG / VSG / SpecA / power-meter calls pass ``calibration=key`` to apply
     nearest-bin path-loss offsets.
 

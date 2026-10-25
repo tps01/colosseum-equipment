@@ -197,11 +197,20 @@ def upload_waveform(
     local_path: str,
     remote_name: str,
     first_last_blanking: bool = False,
+    method: str = "auto",
 ) -> None:
     """Upload an IQ waveform to instrument memory (``.bin``, ``.mat``, or ``.iq.tar``).
 
-    Local files are converted to 16-bit interleaved I/Q before upload. Uses SCPI
-    binary block over TCPIP when available; otherwise FTP to the instrument.
+    Local files are converted to 16-bit interleaved I/Q before upload.
+    ``method="auto"`` uses FTP when ``ftp_host`` is set or the VISA resource is
+    TCPIP, and otherwise sends one SCPI ``MMEM:DATA`` block. ``method="ftp"``
+    always stores the file in ``/USER/BBG1/WAVEFORM`` in 8192-byte blocks and
+    draws a progress line on a terminal. ``method="tcpip"`` sends that block in
+    one write. A ``TCPIP0::host::5025::SOCKET`` resource is the faster SCPI
+    choice; ``inst0::INSTR`` stays near 60 kbit/s because VXI-11 acknowledges
+    small payloads. A bench ``upload_method`` is used only when this call leaves
+    ``method="auto"``.
+
     Set ``first_last_blanking=True`` to configure first/last-sample RF blanking
     for IQ loop playback. Call ``play_iq`` with the remote filename after upload.
 
@@ -215,16 +224,20 @@ def upload_waveform(
     :type remote_name: str
     :param first_last_blanking: When True, configure first/last-sample RF blanking for IQ playback.
     :type first_last_blanking: bool, optional
+    :param method: ``auto``, ``ftp``, or ``tcpip``. Call value wins over config ``upload_method``.
+    :type method: str, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises EquipmentResponseError: Unknown method, or TCPIP selected without ``write_raw``.
     """
     get_cached_instrument("vsg", vsg_id).upload_waveform(
         local_path,
         remote_name,
         first_last_blanking=first_last_blanking,
+        method=method,
     )
 
 

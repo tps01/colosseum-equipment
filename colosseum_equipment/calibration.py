@@ -1,7 +1,8 @@
 """Path-loss calibration from VNA S21/S12 sweeps.
 
 ``load_calibration`` parses CSV/TXT/S2P into the run measurements DB. Source and
-measure APIs look up nearest-bin loss via ``calibration=<key>``.
+measure APIs look up nearest-bin loss via ``calibration=<key>``. Headerless CSV
+and TXT rows are ``frequency_hz,loss_db``. Later columns are ignored.
 
 Convention: ``loss_db`` is S21/S12 magnitude in dB (typically ≤ 0).
 Programmed generator power is ``desired_dbm - loss_db``; corrected readings are
