@@ -114,14 +114,14 @@ def insert_verify(
     status: str = "PASS",
     optional: bool = False,
     message: str = "",
-    step_name: str = "",
+    description: str = "",
     timestamp: str,
 ) -> None:
     cur.execute(
         """
         INSERT INTO verifications
         (domain, command, key, expected_json, actual_json, tolerance_json, compare_op,
-         status, optional, message, step_name, timestamp)
+         status, optional, message, description, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
@@ -135,7 +135,7 @@ def insert_verify(
             status,
             1 if optional else 0,
             message,
-            step_name,
+            description,
             timestamp,
         ),
     )
@@ -492,7 +492,7 @@ def fabricate_gnss_epochs(cur: sqlite3.Cursor, base: datetime) -> None:
         tolerance=None,
         compare_op=">=",
         status="PASS",
-        step_name="soak_continuity",
+        description="soak_continuity",
         timestamp=_ts(base, 63.5),
     )
     insert_verify(
@@ -505,7 +505,7 @@ def fabricate_gnss_epochs(cur: sqlite3.Cursor, base: datetime) -> None:
         tolerance=None,
         compare_op="<=",
         status="PASS",
-        step_name="soak_continuity",
+        description="soak_continuity",
         timestamp=_ts(base, 63.6),
     )
     insert_verify(
@@ -517,7 +517,7 @@ def fabricate_gnss_epochs(cur: sqlite3.Cursor, base: datetime) -> None:
         actual=44.0,
         compare_op=">=",
         status="PASS",
-        step_name="rf_presence",
+        description="rf_presence",
         timestamp=_ts(base, 63.7),
     )
     insert_verify(
@@ -529,7 +529,7 @@ def fabricate_gnss_epochs(cur: sqlite3.Cursor, base: datetime) -> None:
         actual=0.9,
         compare_op="<=",
         status="PASS",
-        step_name="geometry",
+        description="geometry",
         timestamp=_ts(base, 63.8),
     )
 
@@ -640,7 +640,7 @@ def fabricate_oscope(cur: sqlite3.Cursor, base: datetime) -> None:
         actual=3.28,
         tolerance=0.15,
         status="PASS",
-        step_name="scope_capture",
+        description="scope_capture",
         timestamp=_ts(base, t0 + 1.7),
     )
 
@@ -693,7 +693,7 @@ def fabricate_power_bench(cur: sqlite3.Cursor, base: datetime) -> None:
         actual=4.998,
         tolerance=0.05,
         status="PASS",
-        step_name="psu_rail",
+        description="psu_rail",
         timestamp=_ts(base, t0 + 1.2),
     )
 
@@ -873,7 +873,7 @@ def fabricate_stimulus(cur: sqlite3.Cursor, base: datetime) -> None:
         actual=-12.35,
         tolerance=1.0,
         status="PASS",
-        step_name="tx_power",
+        description="tx_power",
         timestamp=_ts(base, t0 + 4.5),
     )
 
