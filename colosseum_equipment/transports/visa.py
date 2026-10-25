@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum.logging import get_logger
 
@@ -11,6 +11,9 @@ from colosseum_equipment._cache import cached_resource
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.base import Transport
 from colosseum_equipment.transports.visa_errors import map_visa_exception, raise_mapped_visa_error
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 _logger = get_logger("colosseum.equipment")
 
@@ -79,6 +82,19 @@ def _new_resource_manager(visa_library: str | None, sim_path: str | None) -> Any
     if visa_library:
         return pyvisa.ResourceManager(visa_library)
     return pyvisa.ResourceManager()
+
+
+def _enable_tcp_nodelay(session: Any) -> tuple[object | None, object | None]:  # noqa: ANN401
+    """Return ``(attribute, previous)`` after enabling TCP no-delay, or ``(None, None)``."""
+    try:
+        import pyvisa
+
+        attribute = pyvisa.constants.VI_ATTR_TCPIP_NODELAY
+        previous = session.get_visa_attribute(attribute)
+        session.set_visa_attribute(attribute, pyvisa.constants.VI_TRUE)
+    except Exception:
+        return None, None
+    return attribute, previous
 
 
 def _release_failed_open(session: object, manager: object, *, shared: bool) -> None:
@@ -243,6 +259,34 @@ class VISATransport(Transport):
         self._timeout = float(timeout_s)
         if getattr(self, "_inst", None) is not None:
             self._inst.timeout = int(float(timeout_s) * 1000)
+
+    @contextlib.contextmanager
+    def large_binary_write(self, nbytes: int) -> Iterator[None]:
+        """Send one SCPI block without the default 20 KiB VISA chunks.
+
+        ``chunk_size`` becomes the full message so ``write_raw`` is a single
+        ``viWrite``. TCP no-delay is enabled for that write, and the timeout
+        covers a slow ingest instead of the 5 s session default.
+        """
+        session = self._inst
+        previous_chunk = int(session.chunk_size)
+        previous_timeout = self._timeout
+        nodelay_attr: object | None = None
+        previous_nodelay: object | None = None
+        try:
+            session.chunk_size = max(previous_chunk, int(nbytes))
+            needed_s = max(previous_timeout, (int(nbytes) * 8) / 50_000 + 30.0)
+            self.set_timeout_s(needed_s)
+            nodelay_attr, previous_nodelay = _enable_tcp_nodelay(session)
+            yield
+        finally:
+            with contextlib.suppress(Exception):
+                session.chunk_size = previous_chunk
+            with contextlib.suppress(Exception):
+                self.set_timeout_s(previous_timeout)
+            if nodelay_attr is not None and previous_nodelay is not None:
+                with contextlib.suppress(Exception):
+                    session.set_visa_attribute(nodelay_attr, previous_nodelay)
 
     def close(self) -> None:
         with contextlib.suppress(Exception):

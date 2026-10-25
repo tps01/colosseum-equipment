@@ -54,6 +54,40 @@ def test_parse_vna_csv_and_headerless_txt(tmp_path: Path) -> None:
     assert losses == pytest.approx([-10.0, -15.0])
 
 
+def test_parse_headerless_three_column_csv(tmp_path: Path) -> None:
+    path = tmp_path / "vna.csv"
+    path.write_text(
+        "\n".join(
+            (
+                "10000000.0,-81.303819364,0.0",
+                "20000000.0,-78.5753999207,0.0",
+                "30000000.0,-74.4278824295,0.0",
+                "40000000.0,-71.3905785337,0.0",
+                "50000000.0,-75.6961723422,0.0",
+                "60000000.0,-73.1089174359,0.0",
+                "70000000.0,-68.9387572937,0.0",
+                "80000000.0,-67.6583405168,0.0",
+                "90000000.0,-66.9855173146,0.0",
+                "100000000.0,-66.782563527,0.0",
+                "110000000.0,-66.6548910549,0.0",
+                "120000000.0,-65.1527723434,0.0",
+                "130000000.0,-65.3911145084,0.0",
+                "140000000.0,-63.735569749,0.0",
+                "150000000.0,-63.7311648577,0.0",
+                "160000000.0,-63.212330925,0.0",
+            ),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    freqs, losses = path_cal.parse_calibration_file(path)
+    assert freqs[:2] == pytest.approx([10_000_000.0, 20_000_000.0])
+    assert losses[:2] == pytest.approx([-81.303819364, -78.5753999207])
+    assert len(freqs) == len(losses) == 16
+    assert freqs[-1] == pytest.approx(160_000_000.0)
+    assert losses[-1] == pytest.approx(-63.212330925)
+
+
 def test_parse_s2p_single_param_and_full_two_port(tmp_path: Path) -> None:
     single = tmp_path / "s21.s2p"
     single.write_text(

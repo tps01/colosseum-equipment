@@ -48,6 +48,7 @@ class KeysightESGVSG(GenericVSG):
         remote_name: str,
         *,
         first_last_blanking: bool = False,
+        method: str = "auto",
     ) -> None:
         self._require_vector("upload_waveform")
         upload_waveform_file(
@@ -57,6 +58,7 @@ class KeysightESGVSG(GenericVSG):
             local_path,
             remote_name,
             first_last_blanking=first_last_blanking,
+            method=method,
         )
 
     def delete_waveform(self, remote_name: str) -> None:
