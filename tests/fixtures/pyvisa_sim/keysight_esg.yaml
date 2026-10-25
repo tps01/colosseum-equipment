@@ -5,7 +5,11 @@ devices:
       GPIB INSTR:
         q: "\n"
         r: "\n"
-    error: ERROR
+    # A rejected write must not occupy the next read. A query that does not
+    # match still answers ERROR, because that response belongs to the query.
+    error:
+      response:
+        query_error: ERROR
     dialogues:
       - q: "*IDN?"
         r: "Agilent Technologies,E4438C,MY00000002,A.15.00"
