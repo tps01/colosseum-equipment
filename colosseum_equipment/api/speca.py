@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from colosseum.decorators import VerificationResult, command, measurement, verification
 
+from colosseum_equipment import calibration as _cal
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 from colosseum_equipment.tools.mask_apply import apply_speca_mask_setup
@@ -18,20 +19,32 @@ from colosseum_equipment.tools.mask_verify import verification_from_mask
 
 
 @command
-def set_center_frequency(*, speca_id: int, frequency: float) -> None:
+def set_center_frequency(
+    *,
+    speca_id: int,
+    frequency: float,
+    calibration: str | None = None,
+) -> None:
     """Set spectrum center frequency in hertz.
+
+    ``calibration`` binds the frequency for later measure/trace path-loss lookups.
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
     :param frequency: Center frequency in hertz.
     :type frequency: float
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("speca", speca_id).set_center_frequency(frequency)
+    _ = calibration
+    inst = get_cached_instrument("speca", speca_id)
+    inst.set_center_frequency(frequency)
+    _cal.bind_frequency(inst, frequency)
 
 
 @command
@@ -209,7 +222,13 @@ def set_marker_frequency(*, speca_id: int, marker: int, frequency_hz: float) -> 
 
 
 @measurement
-def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
+def measure_marker_power(
+    *,
+    speca_id: int,
+    marker: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
     """Read marker amplitude in dBm from the last completed sweep (does not re-arm).
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
@@ -219,6 +238,8 @@ def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Marker amplitude in dBm.
     :rtype: float
@@ -227,7 +248,12 @@ def measure_marker_power(*, speca_id: int, marker: int = 1, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(get_cached_instrument("speca", speca_id).measure_marker_power(marker))
+    inst = get_cached_instrument("speca", speca_id)
+    raw = float(inst.measure_marker_power(marker))
+    if calibration is None:
+        return raw
+    frequency = float(inst.measure_marker_frequency(marker))
+    return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=frequency)
 
 
 @measurement
@@ -274,6 +300,7 @@ def measure_trace_power_at_frequency(
     frequency_hz: float,
     key: str,
     trace_path: str | None = None,
+    calibration: str | None = None,
 ) -> float:
     """Read trace power (dBm) at ``frequency_hz`` using the nearest CSV frequency bin.
 
@@ -286,6 +313,8 @@ def measure_trace_power_at_frequency(
     :type key: str
     :param trace_path: Optional relative path to a prior trace CSV under the run directory.
     :type trace_path: str | None, optional
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Trace power in dBm at the nearest frequency bin.
     :rtype: float
@@ -294,13 +323,16 @@ def measure_trace_power_at_frequency(
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    power_dbm, _actual_hz = get_cached_instrument(
+    power_dbm, actual_hz = get_cached_instrument(
         "speca", speca_id,
     ).measure_trace_power_at_frequency(
         frequency_hz,
         trace_path=trace_path,
     )
-    return float(power_dbm)
+    raw = float(power_dbm)
+    if calibration is None:
+        return raw
+    return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=float(actual_hz))
 
 
 verify_trace_power_at_frequency = tolerance_verifier(
@@ -321,8 +353,12 @@ def save_trace_data(
     save_plot: bool = False,
     plot_path: str | None = None,
     key: str = "",
+    calibration: str | None = None,
 ) -> None:
     """Export trace data to CSV after a new single sweep (see ``single_sweep`` / ``arm_sweep``).
+
+    With ``calibration``, each bin is corrected by nearest-bin path loss before
+    the CSV (and optional plot) is written.
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
     :type speca_id: int
@@ -338,6 +374,8 @@ def save_trace_data(
     :type plot_path: str | None, optional
     :param key: Evidence key for later ``verify_mask`` (default ``speca_trace_<n>``).
     :type key: str, optional
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
@@ -351,6 +389,7 @@ def save_trace_data(
         save_plot=save_plot,
         plot_path=plot_path,
         key=key,
+        calibration=calibration,
     )
 
 
@@ -846,7 +885,13 @@ def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> f
 
 
 @measurement
-def measure_channel_power_dbm(*, speca_id: int, marker: int = 1, key: str) -> float:
+def measure_channel_power_dbm(
+    *,
+    speca_id: int,
+    marker: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
     """Read channel power in dBm when instrument CALC supports it (fetch; no new sweep).
 
     :param speca_id: Configured ``equipment.speca`` id from config TOML.
@@ -855,12 +900,19 @@ def measure_channel_power_dbm(*, speca_id: int, marker: int = 1, key: str) -> fl
     :type marker: int, optional
     :param key: Unique measurement key within domain ``equipment``.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Channel power in dBm.
     :rtype: float
     """
     _ = key
-    return float(get_cached_instrument("speca", speca_id).measure_channel_power_dbm(marker))
+    inst = get_cached_instrument("speca", speca_id)
+    raw = float(inst.measure_channel_power_dbm(marker))
+    if calibration is None:
+        return raw
+    frequency = _cal.require_frequency(inst, what="measure_channel_power_dbm")
+    return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=frequency)
 
 
 @measurement

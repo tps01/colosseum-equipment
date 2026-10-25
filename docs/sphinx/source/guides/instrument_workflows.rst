@@ -227,6 +227,28 @@ performs a single sweep. See its API/driver notes before correlating trace and
 scalar evidence. Mask setup uses the same CWD → parameters-file directory → run
 directory lookup order as verification. File exports require artifacts enabled.
 
+Path-loss calibration from a VNA sweep
+--------------------------------------
+
+Capture fixture/cable loss on a VNA (S21 or S12), then reuse it on sources and
+power measurements. CSV / TXT (``frequency_hz,value`` or headerless
+frequency/loss) and Touchstone ``.s2p`` are accepted. Loss is nearest-bin only;
+``programmed = desired - loss_db`` and ``corrected = raw - loss_db``::
+
+   col.equipment.vna.set_trace_parameters(vna_id=1, trace=1, parameter="S21", format="MLOG")
+   col.equipment.vna.save_trace_data(vna_id=1, path="vna/s21.csv", parameter="S21")
+   col.equipment.load_calibration(filename="outputs/.../vna/s21.csv", key="fixture_a")
+   col.equipment.vsg.set_frequency(vsg_id=1, frequency=1e9)
+   col.equipment.vsg.set_power(vsg_id=1, power_dbm=0.0, calibration="fixture_a")
+   # Retune instrument power so post-cal 0 dBm is held at the new frequency:
+   col.equipment.vsg.set_frequency(vsg_id=1, frequency=2e9, calibration="fixture_a")
+   col.equipment.speca.save_trace_data(speca_id=1, path="traces/dut.csv", calibration="fixture_a")
+
+``set_power(..., calibration=)`` stores the desired post-path level.
+``set_frequency(..., calibration=)`` on ASG/VSG requires that prior desired
+level. SpecA / power-meter frequency setters only bind the lookup frequency;
+measure and trace APIs subtract loss when ``calibration=`` is passed.
+
 VNA and phase-noise results
 ---------------------------
 

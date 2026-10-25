@@ -10,42 +10,69 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment import calibration as _cal
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
 @command
-def set_frequency(*, vsg_id: int, frequency: float) -> None:
+def set_frequency(*, vsg_id: int, frequency: float, calibration: str | None = None) -> None:
     """Set CW output frequency in hertz.
+
+    When ``calibration`` is set, retunes programmed power so the post-cal
+    (desired) output level from the last ``set_power(..., calibration=)`` is
+    held at the new frequency.
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
     :param frequency: Output frequency in hertz.
     :type frequency: float
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("vsg", vsg_id).set_frequency(frequency)
+    inst = get_cached_instrument("vsg", vsg_id)
+    inst.set_frequency(frequency)
+    _cal.bind_frequency(inst, frequency)
+    if calibration is not None:
+        desired = _cal.require_desired_power(inst)
+        programmed = _cal.programmed_power_dbm(desired, key=calibration, frequency_hz=frequency)
+        inst.set_power(programmed)
+        _cal.remember_desired_power(inst, desired, key=calibration)
 
 
 @command
-def set_power(*, vsg_id: int, power_dbm: float) -> None:
+def set_power(*, vsg_id: int, power_dbm: float, calibration: str | None = None) -> None:
     """Set output power in dBm.
+
+    With ``calibration``, ``power_dbm`` is the desired post-path level; the
+    instrument is programmed to ``power_dbm - loss_db`` at the last-set frequency.
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
-    :param power_dbm: Output power in dBm.
+    :param power_dbm: Output power in dBm (post-cal desired when ``calibration`` is set).
     :type power_dbm: float
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("vsg", vsg_id).set_power(power_dbm)
+    inst = get_cached_instrument("vsg", vsg_id)
+    if calibration is None:
+        _cal.clear_desired_power(inst)
+        inst.set_power(power_dbm)
+        return
+    frequency = _cal.require_frequency(inst, what="set_power")
+    programmed = _cal.programmed_power_dbm(power_dbm, key=calibration, frequency_hz=frequency)
+    inst.set_power(programmed)
+    _cal.remember_desired_power(inst, power_dbm, key=calibration)
 
 
 @command
@@ -612,14 +639,19 @@ verify_frequency = tolerance_verifier(
 
 
 @measurement
-def measure_power_dbm(*, vsg_id: int, key: str) -> float:
+def measure_power_dbm(*, vsg_id: int, key: str, calibration: str | None = None) -> float:
     """Read output power.
+
+    With ``calibration``, subtracts nearest-bin path loss at the last-set frequency
+    so the returned value is the post-path level.
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Measured power in dBm.
     :rtype: float
@@ -628,7 +660,12 @@ def measure_power_dbm(*, vsg_id: int, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(get_cached_instrument("vsg", vsg_id).measure_power_dbm())
+    inst = get_cached_instrument("vsg", vsg_id)
+    raw = float(inst.measure_power_dbm())
+    if calibration is None:
+        return raw
+    frequency = _cal.require_frequency(inst, what="measure_power_dbm")
+    return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=frequency)
 
 
 verify_power_dbm = tolerance_verifier(

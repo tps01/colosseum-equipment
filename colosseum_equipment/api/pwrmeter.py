@@ -6,6 +6,7 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment import calibration as _cal
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
@@ -14,9 +15,25 @@ def _inst(pwrmeter_id: int) -> Any:
     return get_cached_instrument("pwrmeter", pwrmeter_id)
 
 
+def _correct_dbm(inst: Any, raw_dbm: float, *, channel: int, calibration: str | None) -> float:
+    if calibration is None:
+        return float(raw_dbm)
+    frequency = _cal.require_frequency(inst, channel=channel, what="measure_power")
+    return _cal.correct_power_dbm(raw_dbm, key=calibration, frequency_hz=frequency)
+
+
 @command
-def set_frequency(*, pwrmeter_id: int, frequency_hz: float, channel: int = 1) -> None:
+def set_frequency(
+    *,
+    pwrmeter_id: int,
+    frequency_hz: float,
+    channel: int = 1,
+    calibration: str | None = None,
+) -> None:
     """Set the calibration frequency.
+
+    ``calibration`` only binds the frequency for later ``measure_*`` path-loss
+    correction (sensor frequency is still programmed on the instrument).
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
     :type pwrmeter_id: int
@@ -24,13 +41,18 @@ def set_frequency(*, pwrmeter_id: int, frequency_hz: float, channel: int = 1) ->
     :type frequency_hz: float
     :param channel: Sensor channel index (1-based).
     :type channel: int
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: None
 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    _inst(pwrmeter_id).set_frequency(frequency_hz, channel=channel)
+    _ = calibration
+    inst = _inst(pwrmeter_id)
+    inst.set_frequency(frequency_hz, channel=channel)
+    _cal.bind_frequency(inst, frequency_hz, channel=channel)
 
 
 @command
@@ -132,7 +154,13 @@ def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
 
 
 @measurement
-def measure_power_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
+def measure_power_dbm(
+    *,
+    pwrmeter_id: int,
+    channel: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
     """Measure RF power in dBm.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -142,6 +170,8 @@ def measure_power_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Measured power in dBm.
     :rtype: float
@@ -150,7 +180,13 @@ def measure_power_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(_inst(pwrmeter_id).measure_power_dbm(channel=channel))
+    inst = _inst(pwrmeter_id)
+    return _correct_dbm(
+        inst,
+        inst.measure_power_dbm(channel=channel),
+        channel=channel,
+        calibration=calibration,
+    )
 
 
 verify_power_dbm = tolerance_verifier(
@@ -162,7 +198,13 @@ verify_power_dbm = tolerance_verifier(
 
 
 @measurement
-def measure_power(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
+def measure_power(
+    *,
+    pwrmeter_id: int,
+    channel: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
     """Measure RF power in dBm (alias of :func:`measure_power_dbm`).
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -172,6 +214,8 @@ def measure_power(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Measured power in dBm.
     :rtype: float
@@ -180,7 +224,13 @@ def measure_power(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(_inst(pwrmeter_id).measure_power(channel=channel))
+    inst = _inst(pwrmeter_id)
+    return _correct_dbm(
+        inst,
+        inst.measure_power(channel=channel),
+        channel=channel,
+        calibration=calibration,
+    )
 
 
 verify_power = tolerance_verifier(
@@ -210,7 +260,13 @@ def measure_power_w(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
 
 
 @measurement
-def measure_power_peak_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
+def measure_power_peak_dbm(
+    *,
+    pwrmeter_id: int,
+    channel: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
     """Measure peak RF power in dBm.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -219,6 +275,8 @@ def measure_power_peak_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> f
     :type channel: int
     :param key: Unique measurement key within domain ``equipment`` and this command name.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Peak power in dBm.
     :rtype: float
@@ -227,11 +285,23 @@ def measure_power_peak_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> f
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(_inst(pwrmeter_id).measure_power_peak_dbm(channel=channel))
+    inst = _inst(pwrmeter_id)
+    return _correct_dbm(
+        inst,
+        inst.measure_power_peak_dbm(channel=channel),
+        channel=channel,
+        calibration=calibration,
+    )
 
 
 @measurement
-def measure_power_avg_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
+def measure_power_avg_dbm(
+    *,
+    pwrmeter_id: int,
+    channel: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
     """Measure averaged RF power in dBm.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -240,6 +310,8 @@ def measure_power_avg_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> fl
     :type channel: int
     :param key: Unique measurement key within domain ``equipment`` and this command name.
     :type key: str
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :type calibration: str | None, optional
 
     :returns: Averaged power in dBm.
     :rtype: float
@@ -248,4 +320,10 @@ def measure_power_avg_dbm(*, pwrmeter_id: int, channel: int = 1, key: str) -> fl
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(_inst(pwrmeter_id).measure_power_avg_dbm(channel=channel))
+    inst = _inst(pwrmeter_id)
+    return _correct_dbm(
+        inst,
+        inst.measure_power_avg_dbm(channel=channel),
+        channel=channel,
+        calibration=calibration,
+    )
