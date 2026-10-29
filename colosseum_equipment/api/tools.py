@@ -55,12 +55,27 @@ def create_mask(
 
 
 def load_mask(*, path: str) -> dict[str, Any]:
-    """Parse and validate a mask JSON file (no GUI)."""
+    """Parse and validate a mask JSON file (no GUI).
+
+    :param path: Existing input file path, absolute or relative to the process working
+        directory.
+
+    :returns: Validated, normalized mask dictionary. This helper does not record evidence.
+    """
     return _load_mask(path)
 
 
 def save_mask(*, path: str, mask: dict[str, Any]) -> str:
-    """Validate and write a mask JSON file."""
+    """Validate and write a mask JSON file.
+
+    :param path: Destination file path, absolute or relative to the process working directory.
+        This offline helper does not require an active run.
+    :param mask: Mask definition used by this operation; see the mask workflow for supported
+        structure and units.
+
+    :returns: Saved path as a string, preserving relative or absolute form. This helper does not
+        record evidence.
+    """
     return str(_save_mask(path, mask))
 
 
