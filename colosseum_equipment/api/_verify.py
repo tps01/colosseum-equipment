@@ -132,7 +132,15 @@ def limit_verifier(
     verify.__name__ = name
     verify.__qualname__ = name
     verify.__module__ = caller_module
-    verify.__doc__ = f"Verify ``{source_command}`` against a {'upper' if upper else 'lower'} limit."
+    verify.__doc__ = f"""Verify ``{source_command}`` against an inclusive {'upper' if upper else 'lower'} limit.
+
+    :param key: Key of a prior ``{source_command}`` measurement (row 0).
+    :param limit: {'Maximum' if upper else 'Minimum'} accepted value{f' in {unit}' if unit else
+        ', in the measurement units'}.
+    :param optional: False by default; true retains FAIL/ERROR/BLOCKED without failing the run.
+    :returns: VerificationResult with actual numeric value and PASS/FAIL, or ERROR/BLOCKED when
+        evidence is missing.
+    """
     return cast("Callable[..., VerificationResult]", verification(verify))
 
 
@@ -174,5 +182,12 @@ def minimum_verifier(
     verify.__name__ = name
     verify.__qualname__ = name
     verify.__module__ = caller_module
-    verify.__doc__ = f"Verify ``{source_command}`` is at least ``limit``."
+    verify.__doc__ = f"""Verify ``{source_command}`` is at least ``limit`` (inclusive).
+
+    :param key: Key of a prior ``{source_command}`` measurement (row 0).
+    :param limit: Minimum accepted value{f' in {unit}' if unit else ', in the measurement units'}.
+    :param optional: False by default; true retains FAIL/ERROR/BLOCKED without failing the run.
+    :returns: VerificationResult with actual numeric value and PASS/FAIL, or ERROR/BLOCKED when
+        evidence is missing.
+    """
     return cast("Callable[..., VerificationResult]", verification(verify))

@@ -415,6 +415,21 @@ def verify_mask(
     """Verify a prior ``save_trace_data`` CSV against a mask JSON file.
 
     ``mask`` may come from ``parameters.toml`` for ``key``.
+
+    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
+        evidence lookup rules in the core guide.
+    :param mask: Mask definition used by this operation; see the mask workflow for supported
+        structure and units. Default: ``''``.
+    :param optional: When true, retain an unsuccessful outcome without failing the aggregate
+        result. Commands and measurements also suppress their operation exception; a failed
+        measurement returns None. Defaults to false.
+
+    :returns: Recorded verification outcome (PASS, FAIL, ERROR, or BLOCKED), including the
+        actual value when available.
+
+    :raises EquipmentCapabilityError: The configured model does not implement this operation or
+        channel.
+    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     return verification_from_mask(
         key=key,

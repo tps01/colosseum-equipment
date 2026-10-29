@@ -10,20 +10,12 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
 (instruments, transports, DIO, I2C, SPI). NI USB-6501 and USB-845x adapters
 load the installed NI-DAQmx / NI-845x runtimes via ctypes.
 
-Version 0.7.1 selects the Genesys serial family from a bare `IDN?` on `COM` and
-`ASRL` ports, and adds SCPI drivers for the BK Precision 9115 and Keithley 2260B
-supplies.
-
-Version 0.7.0 opens instrument resources through pyVISA, including `COM` ports
-as `ASRL`. When `model` is omitted, `*IDN?` selects a known driver or the
-generic one for that equipment kind. Genesys LAN and IEEE supplies use
-`OUTP:STAT`.
-
-Version 0.6.0 adds USB2ANY and Aardvark I2C/SPI masters, Cheetah SPI, and
-Beagle I2C/SPI, USB 12, and USB 480 capture through `col.io.analyzer`.
-Vendor runtimes are installed separately and are not distributed in the wheel.
-See the [adapter guide](docs/sphinx/source/guides/io_digital.rst) for setup,
-capture limits, and hardware qualification requirements.
+Instrument resources open through pyVISA, including COM ports normalized to
+ASRL. When `model` is omitted, identity queries select a matching driver or the
+generic driver for the equipment kind. See the
+[transport and driver guide](https://tps01.github.io/colosseum-equipment/guides/transports_support.html)
+for fallback behavior and qualification status. Vendor adapter runtimes are
+installed separately; see the [adapter guide](https://tps01.github.io/colosseum-equipment/guides/io_digital.html).
 
 ## Install
 
@@ -56,12 +48,10 @@ col.endex()
 
 ## Inventory coverage
 
-The 0.6.0 inventory expansion adds bounded drivers in 12 existing equipment
-kinds. See [implemented models, limits and remaining category work](docs/equipment/inventory-rollout.md),
-[manual analysis of the remaining categories](docs/equipment/inventory-manual-analysis.md),
-and [hardware configuration examples](examples/configs/config.inventory.hardware.toml.example).
-These additions have command-level regression tests; physical hardware
-qualification remains outstanding.
+Model registrations describe implemented command subsets. They do not prove
+hardware qualification or support for every function. The
+[support matrix](https://tps01.github.io/colosseum-equipment/guides/transports_support.html)
+links the model-by-model limits and qualification evidence.
 
 ## Trace / waveform masks
 
@@ -86,14 +76,11 @@ col.shared.regex.verify_match(key="boot", pattern=r"OK")
 col.equipment.scpi.query(serial_id=2, command="*IDN?")
 ```
 
-## Expected artifacts
+## Results
 
-Normal CLI runs write `summary.json`, `summary.txt`, `execution.sqlite`, and
-`debug.log` under the run output directory. Reports are opt-in: add
-`--report wats` to the run command to write `wats_<datetime>_<script>.json`,
-or `--report junit` for `junit.xml`. Loading `metadata.yaml` enriches an
-enabled report; it does not enable reporting. See the
-[core reporting guide](https://tps01.github.io/colosseum-core/guides/output_artifacts.html).
+The plugin uses Colosseum's standard run artifacts. See the
+[core output guide](https://tps01.github.io/colosseum-core/guides/output_artifacts.html)
+for summaries, evidence queries, and opt-in reports.
 
 ## Develop
 
@@ -105,18 +92,5 @@ ruff check colosseum_equipment
 mypy
 ```
 
-### External events after arming (0.5.0+)
 
-Use `col.equipment.oscope.arm_single(oscope_id=...)` when the procedure must
-create a load step or other event after the scope is armed. It returns without
-waiting for that event. Generate the event, then call
-`wait_complete(oscope_id=..., timeout_s=...)` before fetching. `acquire` remains
-the blocking arm-and-wait operation for an already running/repetitive stimulus.
-Generic SCPI arming is best effort; qualify the command dialect and trigger
-readiness on the configured model. Tek MDO4000 has an explicit implementation.
-
-Power sensors also expose `pwrmeter.acquire(pwrmeter_id=..., channel=...)` in
-0.5.0 to complete a new acquisition before fetch-style peak/average statistics.
-Use a qualified sensor mode/trigger/gate and transport timeout. U2000-series
-average-only sensors explicitly refuse envelope-peak reads; a generic peak query
-is not evidence of hardware capability.
+Historical feature notes: [documentation history](https://tps01.github.io/colosseum-equipment/guides/documentation-history.html).
