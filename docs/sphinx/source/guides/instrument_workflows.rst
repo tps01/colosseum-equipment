@@ -268,10 +268,11 @@ frequency/loss) and Touchstone ``.s2p`` are accepted. Loss is nearest-bin only;
    col.equipment.vsg.set_frequency(vsg_id=1, frequency=2e9, calibration="fixture_a")
    col.equipment.speca.save_trace_data(speca_id=1, path="traces/dut.csv", calibration="fixture_a")
 
-``set_power(..., calibration=)`` stores the desired post-path level.
-``set_frequency(..., calibration=)`` on ASG/VSG requires that prior desired
-level. SpecA / power-meter frequency setters only bind the lookup frequency;
-measure and trace APIs subtract loss when ``calibration=`` is passed.
+``set_power(..., calibration=)`` and ``play_iq`` store the desired post-path
+level (and bind the carrier for later lookups). ``set_frequency(...,
+calibration=)`` on ASG/VSG requires that prior desired level. SpecA /
+power-meter frequency setters only bind the lookup frequency; measure and
+trace APIs subtract loss when ``calibration=`` is passed.
 
 VNA and phase-noise results
 ---------------------------

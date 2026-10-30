@@ -110,6 +110,39 @@ def test_parse_s2p_single_param_and_full_two_port(tmp_path: Path) -> None:
     assert losses[0] == pytest.approx(-20.0)
 
 
+def test_parse_s2p_strips_inline_touchstone_comments(tmp_path: Path) -> None:
+    """Inline `!` comments must not break tokenization (#53)."""
+    issue = tmp_path / "inline.s2p"
+    issue.write_text(
+        "# GHz S DB R 50\n"
+        "1 0 0 -20 0 0 0 0 0 ! calibration point\n",
+        encoding="utf-8",
+    )
+    freqs, losses = path_cal.parse_calibration_file(issue)
+    assert freqs == pytest.approx([1e9])
+    assert losses == pytest.approx([-20.0])
+
+    option_comment = tmp_path / "option_comment.s2p"
+    option_comment.write_text(
+        "# GHz S DB R 50 ! note mentioning RI and MA\n"
+        "1 0 0 -20 0 0 0 0 0\n",
+        encoding="utf-8",
+    )
+    freqs, losses = path_cal.parse_calibration_file(option_comment)
+    assert freqs == pytest.approx([1e9])
+    assert losses == pytest.approx([-20.0])
+
+    no_space = tmp_path / "no_space.s2p"
+    no_space.write_text(
+        "# GHz S RI R 50\n"
+        "2 0.01 0.0!inline comment without leading space\n",
+        encoding="utf-8",
+    )
+    freqs, losses = path_cal.parse_calibration_file(no_space)
+    assert freqs == pytest.approx([2e9])
+    assert losses == pytest.approx([-40.0])
+
+
 def test_load_calibration_stores_and_nearest_lookup(unit_runtime_context, tmp_path: Path) -> None:
     path = _write_csv(tmp_path / "fixture.csv")
     cal_api.load_calibration(filename=str(path), key="fixture_a")
