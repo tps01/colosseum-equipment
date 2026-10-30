@@ -216,7 +216,7 @@ def require_frequency(instrument: object, *, channel: int | None = None, what: s
     if frequency is None:
         raise CalibrationError(
             f"{what} with calibration= requires a prior set_frequency "
-            "(or set_center_frequency) so path loss can be looked up",
+            "(or set_center_frequency or play_iq) so path loss can be looked up",
         )
     return frequency
 
@@ -226,7 +226,7 @@ def require_desired_power(instrument: object, *, channel: int | None = None) -> 
     if desired is None:
         raise CalibrationError(
             "set_frequency(..., calibration=) requires a prior "
-            "set_power(..., calibration=) so post-cal desired power is known",
+            "set_power(..., calibration=) or play_iq so post-cal desired power is known",
         )
     return desired
 
@@ -309,8 +309,9 @@ def _parse_s2p(text: str) -> tuple[list[float], list[float]]:
     freq_scale = 1.0
     data_rows: list[list[float]] = []
     for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("!"):
+        # Touchstone `!` comments may appear mid-line; strip before tokenizing.
+        line = raw.partition("!")[0].strip()
+        if not line:
             continue
         if line.startswith("#"):
             freq_scale, option = _parse_touchstone_option(line)
