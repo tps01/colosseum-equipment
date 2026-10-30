@@ -22,6 +22,13 @@ _KIND_ID_PARAMS: dict[str, str] = kind_id_params()
 
 
 def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
+    """Return a SCPI helper for one configured instrument.
+
+    :param kind: Registered equipment kind, such as psu or dmm.
+    :param equipment_id: Integer ID from that kind's configuration section.
+    :returns: SCPIHelper using the cached transport; helper calls are not decorated evidence APIs.
+    :raises EquipmentConnectionError: The transport could not be opened.
+    """
     return SCPIHelper(get_transport(kind, equipment_id))
 
 
@@ -69,7 +76,11 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
     api.__module__ = __name__
     api_any: Any = api
     api_any.__signature__ = inspect.Signature(params, return_annotation=return_annotation)
-    id_list = ", ".join(sorted(_KIND_ID_PARAMS))
+    id_fields = "\n".join(
+        f":param {param}: Configured equipment.{kind} ID; defaults to None. "
+        "Pass exactly one instrument ID to this call."
+        for param, kind in sorted(_KIND_ID_PARAMS.items())
+    )
     if return_annotation is type(None):
         returns_line = "None"
     elif return_annotation is str:
@@ -82,7 +93,7 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
 
 :param command: SCPI command string (including terminators as required by the driver).
 :type command: str
-:param {id_list}: Pass exactly one ``*_id`` matching a configured instrument.
+{id_fields}
 
 :returns: {returns_line}
 :raises ValueError: If zero or more than one ``*_id`` is provided.
@@ -115,10 +126,14 @@ def _make_status_api(name: str, method: str, return_annotation: object) -> Calla
     api.__module__ = __name__
     api_any: Any = api
     api_any.__signature__ = inspect.Signature(params, return_annotation=return_annotation)
-    id_list = ", ".join(sorted(_KIND_ID_PARAMS))
+    id_fields = "\n".join(
+        f":param {param}: Configured equipment.{kind} ID; defaults to None. "
+        "Pass exactly one instrument ID to this call."
+        for param, kind in sorted(_KIND_ID_PARAMS.items())
+    )
     api.__doc__ = f"""SCPI status helper ``{method}`` on exactly one configured instrument.
 
-:param {id_list}: Pass exactly one ``*_id`` matching a configured instrument.
+{id_fields}
 
 :raises ValueError: If zero or more than one ``*_id`` is provided.
 :raises EquipmentConnectionError: Transport or instrument connection failed.
@@ -156,11 +171,15 @@ def _make_drain_error_queue() -> Callable[..., list[str]]:
     api.__module__ = __name__
     api_any: Any = api
     api_any.__signature__ = inspect.Signature(params, return_annotation=list[str])
-    id_list = ", ".join(sorted(_KIND_ID_PARAMS))
+    id_fields = "\n".join(
+        f":param {param}: Configured equipment.{kind} ID; defaults to None. "
+        "Pass exactly one instrument ID to this call."
+        for param, kind in sorted(_KIND_ID_PARAMS.items())
+    )
     api.__doc__ = f"""Drain SCPI ``SYST:ERR?`` until empty (or ``max_errors``).
 
 :param max_errors: Maximum number of error strings to read.
-:param {id_list}: Pass exactly one ``*_id`` matching a configured instrument.
+{id_fields}
 
 :returns: List of raw error responses (last entry is typically ``0,"No error"``).
 :raises ValueError: If zero or more than one ``*_id`` is provided.

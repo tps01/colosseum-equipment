@@ -149,6 +149,17 @@ def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
     Configure the qualified sensor's measurement/gate/trigger mode first.
     The transport timeout bounds the wait; unsupported generic dialects must
     be supplied by a model adapter rather than treated as measured power.
+
+    :param pwrmeter_id: Integer ID from the configured equipment.pwrmeter row. Select an
+        existing ID in that section.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+
+    :returns: None; the command outcome is recorded.
+
+    :raises EquipmentCapabilityError: The configured model does not implement this operation or
+        channel.
+    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _inst(pwrmeter_id).acquire(channel=channel)
 

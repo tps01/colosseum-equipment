@@ -45,9 +45,33 @@ The complete offline acceptance script includes required and optional checks::
    colosseum run examples/test_power_rails.py -g examples/configs/config.sim.toml
 
 It deliberately records one optional FAIL on a valid DMM acquisition and exits
-0 when required checks pass. An optional verifier cannot make a failed
+0 when required checks pass. Inspect ``summary.txt`` for the required PASS
+checks, ``execution.sqlite`` for the recorded rail values, and ``debug.log``
+for the attempted output-off. See :doc:`/api/dmm` and :doc:`/api/psu`. An optional verifier cannot make a failed
 measurement optional. The generic DMM has one channel unless configured
 otherwise; a channel-count setting does not create a physical scanner.
+
+For the live example below, wire PSU output 1 to the DMM's voltage input with
+the correct polarity. Confirm the DUT can tolerate the voltage/current limits.
+Save **config.toml**, replacing these documentation addresses with your bench
+resources::
+
+   [equipment.psu]
+   psu_id = 1
+   model = "rigol-dp832"
+   resource = "TCPIP0::192.0.2.20::inst0::INSTR"
+
+   [equipment.dmm]
+   dmm_id = 1
+   model = "keysight-edu34450a"
+   resource = "TCPIP0::192.0.2.21::inst0::INSTR"
+
+Put the following calls inside the ``recipe.py`` scaffold above and run
+``colosseum run recipe.py -g config.toml``. For an energized bench, establish
+output-off behavior before connecting the DUT. The local ``finally`` attempts
+output-off even if acquisition raises; suite teardown runs later and is not a
+substitute. A transport failure can also prevent cleanup, so independently
+confirm the output state after an interrupted run.
 
 For a live supply with multiple outputs (for example ``rigol-dp832``), pass
 ``channel=`` on every operation. Programmed readback and measured output have
@@ -244,10 +268,11 @@ frequency/loss) and Touchstone ``.s2p`` are accepted. Loss is nearest-bin only;
    col.equipment.vsg.set_frequency(vsg_id=1, frequency=2e9, calibration="fixture_a")
    col.equipment.speca.save_trace_data(speca_id=1, path="traces/dut.csv", calibration="fixture_a")
 
-``set_power(..., calibration=)`` stores the desired post-path level.
-``set_frequency(..., calibration=)`` on ASG/VSG requires that prior desired
-level. SpecA / power-meter frequency setters only bind the lookup frequency;
-measure and trace APIs subtract loss when ``calibration=`` is passed.
+``set_power(..., calibration=)`` and ``play_iq`` store the desired post-path
+level (and bind the carrier for later lookups). ``set_frequency(...,
+calibration=)`` on ASG/VSG requires that prior desired level. SpecA /
+power-meter frequency setters only bind the lookup frequency; measure and
+trace APIs subtract loss when ``calibration=`` is passed.
 
 VNA and phase-noise results
 ---------------------------
@@ -380,3 +405,18 @@ configuration. To review a reusable file, pass ``export_path="config.toml"``
 and inspect model, resource and assigned IDs before writing acceptance tests.
 Do not run discovery in offline documentation checks. An explicit config gives
 stable IDs across benches and avoids accidentally selecting a different device.
+
+Arming before an external event
+-------------------------------
+
+Use ``oscope.arm_single(oscope_id=1)`` before producing a load step or other
+external event. It returns without waiting for that event. Generate the event,
+then call ``oscope.wait_complete(oscope_id=1, timeout_s=10.0)`` before fetching.
+``acquire`` combines arm and wait for an already-running or repetitive stimulus.
+Generic SCPI arming requires model qualification; Tek MDO4000 has a specific
+implementation. See :doc:`/api/oscope`.
+
+Power sensors expose ``pwrmeter.acquire`` before fetch-style peak/average
+statistics. Qualify the sensor mode, trigger/gate, and transport timeout first.
+U2000 average-only sensors refuse envelope-peak reads; a generic query is not
+evidence of physical capability. See :doc:`/api/pwrmeter`.

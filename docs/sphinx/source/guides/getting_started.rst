@@ -11,43 +11,42 @@ For RF, DIO, and serial detail, see the other guides in this site.
 1. Config
 ---------
 
-Minimal sim TOML (see also ``examples/configs/config.sim.toml``)::
+Save the following as **config.sim.toml** (see also ``examples/configs/config.sim.toml``)::
 
    [equipment.psu]
    psu_id = 1
-   driver = sim
-   resource = SIM::PSU1
-   model = generic
-   interface = sim
+   driver = "sim"
+   resource = "SIM::PSU1"
+   model = "generic"
+   interface = "sim"
    voltage = 3.3
    ovp = 3.6
    ocp = 1.0
 
    [equipment.dmm]
    dmm_id = 1
-   driver = sim
-   resource = SIM::DMM1
-   model = generic
-   interface = sim
+   driver = "sim"
+   resource = "SIM::DMM1"
+   model = "generic"
+   interface = "sim"
    timeout = 5.0
 
 2. Procedure + verification
 ---------------------------
 
-::
+Save **my_rail.py** beside the config file::
 
    import colosseum as col
 
    def main() -> None:
        col.equipment.psu.set_voltage(psu_id=1, voltage=3.3)
        col.equipment.psu.set_current_limit(psu_id=1, current=0.5)
-       col.equipment.psu.set_output(psu_id=1, enabled=True)
-       col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="rail")
-       col.equipment.dmm.verify_voltage(
-           key="rail",
-           expected_val=3.3,
-           tolerance=0.1,
-       )
+       try:
+           col.equipment.psu.set_output(psu_id=1, enabled=True)
+           col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="rail")
+           col.equipment.dmm.verify_voltage(key="rail", expected_val=3.3, tolerance=0.1)
+       finally:
+           col.equipment.psu.set_output(psu_id=1, enabled=False)
 
 Many benches also verify with ``col.shared.*`` (install ``colosseum-shared``).
 Copy-out stubs that already wire PSU/DMM live in the
@@ -64,3 +63,9 @@ Copy-out stubs that already wire PSU/DMM live in the
 Add ``--report wats`` or ``--report junit`` when you want those files. See the
 `core hub <https://tps01.github.io/colosseum-core/>`__ for runners, parameters,
 and artifacts.
+
+Expected: exit 0 and a required PASS verification for ``rail``. The simulator's
+DMM value is a fixture; it does not respond electrically to the PSU setpoint.
+For real wiring, matching live configuration, and cleanup, see
+:doc:`instrument_workflows`. For VISA setup and model selection, see
+:doc:`transports_support`.

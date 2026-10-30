@@ -20,8 +20,8 @@ def set_frequency(*, vsg_id: int, frequency: float, calibration: str | None = No
     """Set CW output frequency in hertz.
 
     When ``calibration`` is set, retunes programmed power so the post-cal
-    (desired) output level from the last ``set_power(..., calibration=)`` is
-    held at the new frequency.
+    (desired) output level from the last ``set_power(..., calibration=)`` or
+    ``play_iq`` is held at the new frequency.
 
     :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
     :type vsg_id: int
