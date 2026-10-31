@@ -4,9 +4,8 @@ from importlib import metadata
 
 from colosseum.config.sections import ConfigSectionSpec
 from colosseum.logging import get_logger
+from colosseum.plugins.lazy import lazy_module
 from colosseum.plugins.registry import PluginRegistry
-
-from colosseum_equipment.connections import close_all
 
 __colosseum_domain__ = "equipment"
 
@@ -88,15 +87,14 @@ _IO_CONFIG_SPECS = (
 
 
 def register(registry: PluginRegistry) -> None:
-    from colosseum_equipment import api
-    from colosseum_equipment.instruments.registry import kind_specs
-    from colosseum_equipment.io import api as io_api
+    from colosseum_equipment.connections import close_all
+    from colosseum_equipment.instruments.registry import config_kind_specs
 
-    registry.register_namespace("equipment", api)
-    registry.register_namespace("io", io_api)
+    registry.register_namespace("equipment", lazy_module("colosseum_equipment.api"))
+    registry.register_namespace("io", lazy_module("colosseum_equipment.io.api"))
     _logger.debug("Registered col.equipment and col.io namespaces")
     registry.register_shutdown(close_all)
-    for kind_spec in kind_specs():
+    for kind_spec in config_kind_specs():
         registry.register_config_section(kind_spec.section())
     for io_spec in _IO_CONFIG_SPECS:
         registry.register_config_section(io_spec)
