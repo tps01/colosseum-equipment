@@ -107,6 +107,100 @@ def test_evaluate_keep_below_pass_fail() -> None:
     assert "keep_below" in bad.message
 
 
+def test_max_violations_zero_does_not_pass_failing_mask() -> None:
+    mask = validate_mask(
+        {
+            "version": 1,
+            "domain": "time",
+            "regions": [
+                {
+                    "id": "band",
+                    "kind": "keep_below",
+                    "x0": 0,
+                    "x1": 2,
+                    "y0": -100,
+                    "y1": -20,
+                },
+            ],
+        },
+    )
+    assert not evaluate_mask([1.0], [-19.0], mask).ok
+    capped = evaluate_mask([1.0], [-19.0], mask, max_violations=0)
+    assert not capped.ok
+    assert capped.violations == ()
+    assert "violations suppressed" in capped.message
+
+
+def test_max_violations_caps_report_not_acceptance() -> None:
+    mask = validate_mask(
+        {
+            "version": 1,
+            "domain": "time",
+            "regions": [
+                {
+                    "id": "band",
+                    "kind": "keep_below",
+                    "x0": 0,
+                    "x1": 10,
+                    "y0": -100,
+                    "y1": -20,
+                },
+            ],
+        },
+    )
+    xs = [1.0, 2.0, 3.0]
+    ys = [-10.0, -11.0, -12.0]
+    capped = evaluate_mask(xs, ys, mask, max_violations=1)
+    assert not capped.ok
+    assert len(capped.violations) == 1
+
+
+def test_evaluate_mask_rejects_nan_frequency_coverage() -> None:
+    mask = validate_mask(
+        {
+            "version": 1,
+            "domain": "frequency",
+            "regions": [
+                {
+                    "id": "band",
+                    "kind": "keep_below",
+                    "x0": 0,
+                    "x1": 2,
+                    "y0": -100,
+                    "y1": -20,
+                },
+            ],
+        },
+    )
+    result = evaluate_mask([float("nan")], [-30.0], mask)
+    assert not result.ok
+    assert "nonfinite" in result.message
+
+
+def test_evaluate_mask_file_rejects_nan_csv(tmp_path: Path) -> None:
+    csv_path = tmp_path / "trace.csv"
+    csv_path.write_text("frequency_hz,amplitude_dbm\nnan,-30\n", encoding="utf-8")
+    mask = validate_mask(
+        {
+            "version": 1,
+            "domain": "frequency",
+            "regions": [
+                {
+                    "id": "band",
+                    "kind": "keep_below",
+                    "x0": 0,
+                    "x1": 2,
+                    "y0": -100,
+                    "y1": -20,
+                },
+            ],
+        },
+    )
+    result = evaluate_mask_file(csv_path, mask)
+    assert not result.ok
+    assert "nonfinite" in result.message
+
+
 def test_evaluate_mask_requires_region_coverage() -> None:
     mask = validate_mask(_freq_mask())
     # Samples entirely outside the keep_below band must FAIL (not silent PASS).
