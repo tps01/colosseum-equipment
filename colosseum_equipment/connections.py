@@ -7,7 +7,6 @@ from colosseum.context import get_context
 from colosseum.logging import get_logger
 
 from colosseum_equipment._cache import cached_resource, close_cached_resources
-from colosseum_equipment.transports.factory import resolve_connection
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -27,6 +26,8 @@ def get_config(kind: str, equipment_id: int) -> dict[str, Any]:
 
 
 def get_transport(kind: str, equipment_id: int) -> Transport:
+    from colosseum_equipment.transports.factory import resolve_connection
+
     ctx = get_context()
     key = _cache_key(kind, equipment_id)
     cfg = get_config(kind, equipment_id)

@@ -9,10 +9,10 @@ from colosseum.logging import get_logger
 from colosseum_equipment.exceptions import EquipmentConnectionError
 from colosseum_equipment.transports.http import HttpTransport
 from colosseum_equipment.transports.sim import SimTransport
-from colosseum_equipment.transports.visa import VISATransport, normalize_visa_resource
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
+    from colosseum_equipment.transports.visa import VISATransport
 
 _logger = get_logger("colosseum.equipment")
 _COM_PORT = re.compile(r"COM(\d+):?", re.IGNORECASE)
@@ -23,12 +23,9 @@ def _open_failed(message: str) -> ProceduralFault:
 
 
 def _kind_address(kind: str) -> str | None:
-    from colosseum_equipment.instruments.registry import kind_specs
+    from colosseum_equipment.instruments.registry import kind_address_mode
 
-    for spec in kind_specs():
-        if spec.kind == kind:
-            return spec.address
-    return None
+    return kind_address_mode(kind)
 
 
 def resolve_connection(kind: str, config: dict[str, Any]) -> tuple[str, str]:
@@ -82,6 +79,8 @@ def _open_visa(
     timeout: float,
     missing_field: str,
 ) -> VISATransport:
+    from colosseum_equipment.transports.visa import VISATransport, normalize_visa_resource
+
     if not raw_address:
         raise _open_failed(f"equipment.{kind} id {equipment_id} missing `{missing_field}`")
     resource = normalize_visa_resource(raw_address)

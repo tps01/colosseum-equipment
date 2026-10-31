@@ -157,6 +157,50 @@ def reset_best_effort_warnings() -> None:
     _best_effort_warned.clear()
 
 
+# Address mode overrides for config registration without importing models.
+# Unknown optional keys are still accepted by core; required keys matter.
+_CONFIG_KIND_ADDRESS: dict[str, str] = {
+    "attn": "either",
+    "gnss": "either",
+    "relay": "http",
+    "rfswitch": "either",
+    "serial": "either",
+}
+_CONFIG_KIND_EXTRA: dict[str, tuple[str, ...]] = {
+    "serial": ("baudrate", "sim_read"),
+}
+
+
+def config_kind_specs() -> tuple[KindSpec, ...]:
+    """Kind specs for plugin config registration (no instrument model imports)."""
+    import colosseum_equipment.instruments as instruments_pkg
+
+    names = {
+        info.name
+        for info in pkgutil.iter_modules(instruments_pkg.__path__)
+        if info.ispkg
+    }
+    names.add("serial")
+    return tuple(
+        KindSpec(
+            name,
+            address=_CONFIG_KIND_ADDRESS.get(name, "visa"),
+            extra_optional=_CONFIG_KIND_EXTRA.get(name, ()),
+        )
+        for name in sorted(names)
+    )
+
+
+def kind_address_mode(kind: str) -> str | None:
+    """Return the config address mode for ``kind`` without loading models."""
+    if kind in _CONFIG_KIND_ADDRESS:
+        return _CONFIG_KIND_ADDRESS[kind]
+    for spec in config_kind_specs():
+        if spec.kind == kind:
+            return spec.address
+    return None
+
+
 def ensure_instruments_loaded() -> None:
     """Import every instrument package so model decorators run."""
     global _load_state
