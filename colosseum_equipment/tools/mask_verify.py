@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -87,13 +88,24 @@ def evaluate_mask(
     """Check trace samples against mask regions.
 
     Every region must contain at least one sample (coverage). Missing coverage
-    is a FAIL, not a silent PASS.
+    is a FAIL, not a silent PASS. ``max_violations`` only caps how many
+    violation samples are reported; it never changes acceptance.
     """
     regions = list(mask.get("regions") or [])
     if not regions:
         return MaskEvalResult(ok=False, message="mask has no regions to evaluate", violations=())
 
+    for index, (x, y) in enumerate(zip(xs, ys, strict=True)):
+        if not math.isfinite(x) or not math.isfinite(y):
+            return MaskEvalResult(
+                ok=False,
+                message=f"nonfinite trace sample at index {index}: x={x!r} y={y!r}",
+                violations=(),
+            )
+
     violations: list[MaskViolation] = []
+    had_violation = False
+    first_violation: MaskViolation | None = None
     uncovered: list[str] = []
     for region in regions:
         kind = str(region["kind"])
@@ -110,16 +122,18 @@ def evaluate_mask(
             ok, limit = _point_ok(kind, y, y0, y1)
             if ok:
                 continue
+            had_violation = True
+            violation = MaskViolation(
+                region_id=region_id,
+                kind=kind,
+                x=x,
+                y=y,
+                limit=limit,
+            )
+            if first_violation is None:
+                first_violation = violation
             if len(violations) < max_violations:
-                violations.append(
-                    MaskViolation(
-                        region_id=region_id,
-                        kind=kind,
-                        x=x,
-                        y=y,
-                        limit=limit,
-                    ),
-                )
+                violations.append(violation)
         if samples_in_band == 0:
             uncovered.append(region_id)
 
@@ -130,14 +144,22 @@ def evaluate_mask(
             message=f"mask region(s) have no overlapping samples: {ids}",
             violations=tuple(violations),
         )
-    if not violations:
+    if not had_violation:
         return MaskEvalResult(ok=True, message="", violations=())
-    first = violations[0]
-    extra = f" (+{len(violations) - 1} more)" if len(violations) > 1 else ""
-    message = (
-        f"mask region `{first.region_id}` ({first.kind}) failed at "
-        f"x={first.x:g} y={first.y:g} (need {first.limit}){extra}"
-    )
+    assert first_violation is not None
+    reported = len(violations)
+    if reported == 0:
+        message = (
+            f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed "
+            f"(violations suppressed)"
+        )
+    else:
+        extra = f" (+{reported - 1} more)" if reported > 1 else ""
+        message = (
+            f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed at "
+            f"x={first_violation.x:g} y={first_violation.y:g} "
+            f"(need {first_violation.limit}){extra}"
+        )
     return MaskEvalResult(ok=False, message=message, violations=tuple(violations))
 
 
