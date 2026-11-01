@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -99,28 +98,3 @@ def write_config_toml(
     except OSError as exc:
         raise TomlWriteError(f"Failed to write config TOML to {destination}: {exc}") from exc
     return destination
-
-
-def render_bench_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFAULT_HEADER) -> str:
-    """Deprecated alias for :func:`render_config_toml`."""
-    warnings.warn(
-        "render_bench_toml is deprecated; use render_config_toml instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return render_config_toml(raw, header_comment=header_comment)
-
-
-def write_bench_toml(
-    raw: dict[str, Any],
-    path: Path | str,
-    *,
-    header_comment: str | None = _DEFAULT_HEADER,
-) -> Path:
-    """Deprecated alias for :func:`write_config_toml`."""
-    warnings.warn(
-        "write_bench_toml is deprecated; use write_config_toml instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return write_config_toml(raw, path, header_comment=header_comment)

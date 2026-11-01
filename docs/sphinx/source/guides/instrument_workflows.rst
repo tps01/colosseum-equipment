@@ -400,11 +400,14 @@ logging before load/save and preserve arbitrary configuration scripts yourself.
 Autoconfig
 ----------
 
-``col.equipment.autoconfig()`` scans the actual bench and can apply discovered
-configuration. To review a reusable file, pass ``export_path="config.toml"``
-and inspect model, resource and assigned IDs before writing acceptance tests.
-Do not run discovery in offline documentation checks. An explicit config gives
-stable IDs across benches and avoids accidentally selecting a different device.
+``col.equipment.autoconfig()`` scans VISA ``?*INSTR`` resources and local COM
+ports, logging each assignment as it happens. Serial ports try bare ``IDN?``
+then ``*IDN?`` across common bauds; Fluke handheld ``QM`` runs only after IDN
+fails. FTDI / digital IO adapters are not discovered. To review a reusable
+file, pass ``export_path="config.toml"`` and inspect model, resource/port, and
+assigned IDs before writing acceptance tests. Do not run discovery in offline
+documentation checks. An explicit config gives stable IDs across benches and
+avoids accidentally selecting a different device.
 
 Arming before an external event
 -------------------------------

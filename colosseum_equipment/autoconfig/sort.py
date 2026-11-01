@@ -22,8 +22,12 @@ _PXI_RE = re.compile(r"^PXI(\d+)", re.IGNORECASE)
 
 
 def interface_name(resource: str) -> str:
-    """Return the VISA interface prefix (for example ``TCPIP``, ``GPIB``)."""
-    return resource.split("::", 1)[0].upper().split("0")[0] or resource.split("::", 1)[0].upper()
+    """Return the VISA interface prefix (for example ``TCPIP``, ``GPIB``, ``ASRL``).
+
+    Board indexes are stripped (``ASRL15`` → ``ASRL``, ``USB1`` → ``USB``).
+    """
+    prefix = resource.split("::", 1)[0].upper()
+    return prefix.rstrip("0123456789") or prefix
 
 
 def is_tcpip_resource(resource: str) -> bool:
