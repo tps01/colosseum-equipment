@@ -45,3 +45,36 @@ def test_read_trace_power_at_frequency(tmp_path) -> None:
     assert actual_hz == pytest.approx(1e9)
     edge_power, _ = read_trace_power_at_frequency(path, 995e6)
     assert edge_power == pytest.approx(-42.5)
+
+
+def test_read_trace_power_rejects_incomplete_row(tmp_path) -> None:
+    path = tmp_path / "incomplete.csv"
+    path.write_text(
+        "frequency_hz,amplitude_dbm\n,-10\n100,-20\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="row 2.*frequency_hz and amplitude_dbm"):
+        read_trace_power_at_frequency(path, 100)
+
+
+def test_read_trace_power_intact_pair(tmp_path) -> None:
+    path = tmp_path / "intact.csv"
+    path.write_text(
+        "frequency_hz,amplitude_dbm\n50,-10\n100,-20\n",
+        encoding="utf-8",
+    )
+    power, actual_hz = read_trace_power_at_frequency(path, 100)
+    assert power == pytest.approx(-20.0)
+    assert actual_hz == pytest.approx(100.0)
+
+
+def test_read_trace_csv_rejects_incomplete_frequency_row(tmp_path) -> None:
+    from colosseum_equipment.instruments.speca.trace_plot import read_trace_csv
+
+    path = tmp_path / "plot_incomplete.csv"
+    path.write_text(
+        "frequency_hz,amplitude_dbm\n,-10\n100,-20\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="row 2.*frequency_hz and amplitude"):
+        read_trace_csv(path)
