@@ -425,21 +425,21 @@ def discover_equipment_config(
                 last_errors.append(f"baud={baud} qm_open:{exc}")
                 continue
             try:
-                model = query_qm_model(probe)
+                qm_model = query_qm_model(probe)
             except Exception as exc:
                 last_errors.append(f"baud={baud} qm:{exc}")
-                model = None
+                qm_model = None
             finally:
                 close = getattr(probe, "close", None)
                 if callable(close):
                     with contextlib.suppress(Exception):
                         close()
-            if model is None:
+            if qm_model is None:
                 continue
             _assign(
                 kind="dmm",
-                model=model,
-                idn=f"QM:{model}",
+                model=qm_model,
+                idn=f"QM:{qm_model}",
                 resource=resource,
                 port=port,
                 baudrate=baud,
@@ -465,13 +465,15 @@ def discover_equipment_config(
         adapter.close = _close  # type: ignore[attr-defined]
         return adapter
 
-    def _open_com_probe(port: str, baud: int) -> _PyserialProbeAdapter:
-        ser = open_serial_fn(port, baud, timeout)
+    def _open_com_probe(com_port: str, baud: int) -> _PyserialProbeAdapter:
+        ser = open_serial_fn(com_port, baud, timeout)
         adapter = _PyserialProbeAdapter(ser)
 
         def _close() -> None:
-            with contextlib.suppress(Exception):
-                ser.close()
+            close = getattr(ser, "close", None)
+            if callable(close):
+                with contextlib.suppress(Exception):
+                    close()
 
         adapter.close = _close  # type: ignore[attr-defined]
         return adapter
@@ -499,11 +501,15 @@ def discover_equipment_config(
         asrl = _asrl_from_port(port)
         if asrl and asrl in seen_resources:
             continue
+
+        def _open_for_port(baud: int, *, p: str = port) -> _PyserialProbeAdapter:
+            return _open_com_probe(p, baud)
+
         _probe_serial_candidate(
             label=port,
             resource=asrl or "",
             port=port,
-            open_probe=lambda baud, p=port: _open_com_probe(p, baud),
+            open_probe=_open_for_port,
         )
 
     if not assignments:

@@ -91,6 +91,8 @@ module = [
   "customtkinter.*",
   "pyvisa.*",
   "pyvisa_sim.*",
+  "serial",
+  "serial.*",
   "tomli",
   "tomllib",
   "pytest",
