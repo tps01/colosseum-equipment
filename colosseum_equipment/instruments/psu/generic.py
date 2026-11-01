@@ -23,7 +23,9 @@ class GenericPSU(ScpiInstrumentMixin):
         self._scpi = SCPIHelper(transport)
         self._config = config
         self._model = str(config.get("model", "generic")).lower()
-        self._channel_count = int(config.get("channels") or config.get("channel_count") or 1)
+        from colosseum_equipment.instruments._channels import resolve_channel_count
+
+        self._channel_count = resolve_channel_count(config)
         if "voltage" in config:
             self.set_voltage(float(config["voltage"]))
         if "ocp" in config:
