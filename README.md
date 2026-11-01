@@ -21,7 +21,8 @@ installed separately; see the [adapter guide](https://tps01.github.io/colosseum-
 
 Download the wheel from [GitHub Releases](https://github.com/tps01/colosseum-equipment/releases)
 and install it in the same environment as core. Replace `<version>` with
-the downloaded filename. For development, use `python -m pip install -e .`.
+the downloaded filename. For development, use
+`python -m pip install -r requirements.txt`.
 
 ```bash
 python -m pip install "./colosseum_equipment-<version>-py3-none-any.whl"
@@ -86,11 +87,10 @@ for summaries, evidence queries, and opt-in reports.
 
 ```bash
 pip install -e ../colosseum-core
-pip install -e .
+pip install -r requirements.txt
 pytest
 ruff check colosseum_equipment
 mypy
 ```
-
 
 Historical feature notes: [documentation history](https://tps01.github.io/colosseum-equipment/guides/documentation-history.html).
