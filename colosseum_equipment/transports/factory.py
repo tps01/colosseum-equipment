@@ -31,11 +31,12 @@ def _kind_address(kind: str) -> str | None:
 def resolve_connection(kind: str, config: dict[str, Any]) -> tuple[str, str]:
     """Return ``(driver, address)`` for a config row.
 
-    An explicit ``driver`` wins. Otherwise a serial kind, or a ``port`` with no
-    ``resource``, uses the serial/ASRL path. An ``http`` kind (or an
-    ``http(s)://`` resource) uses HTTP. Otherwise VISA. ``driver=serial`` still
-    opens through pyVISA. ``resource`` and ``port`` both remain valid address
-    fields.
+    An explicit ``driver`` wins. Serial kinds (or ``kind`` address mode
+    ``serial``) use the serial/ASRL path. An ``http`` kind (or an
+    ``http(s)://`` resource) uses HTTP. Otherwise VISA — a lone ``port`` does
+    **not** flip a VISA kind to serial. ``driver=serial`` still opens through
+    pyVISA. ``resource`` and ``port`` both remain valid address fields; open
+    uses the resolved address.
     """
     resource = str(config.get("resource") or "").strip()
     port = str(config.get("port") or "").strip()
@@ -43,7 +44,7 @@ def resolve_connection(kind: str, config: dict[str, Any]) -> tuple[str, str]:
     kind_address = _kind_address(kind)
     if explicit not in (None, ""):
         driver = str(explicit).lower()
-    elif kind == "serial" or (port and not resource):
+    elif kind == "serial" or kind_address == "serial":
         driver = "serial"
     elif kind_address == "http" or resource.startswith(("http://", "https://")):
         driver = "http"
@@ -114,12 +115,11 @@ def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Tran
         if driver == "sim":
             return SimTransport(kind, equipment_id, config)
         if driver == "visa":
-            resource = str(config.get("resource") or "").strip()
             return _open_visa(
                 kind,
                 equipment_id,
                 config,
-                raw_address=resource,
+                raw_address=address,
                 line_mode=False,
                 timeout=timeout,
                 missing_field="resource",

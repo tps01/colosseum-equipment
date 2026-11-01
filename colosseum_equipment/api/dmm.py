@@ -395,9 +395,11 @@ def fetch(*, dmm_id: int, channel: int = 1, key: str) -> float:
 verify_fetch = tolerance_verifier("fetch", name="verify_fetch")
 
 
-@measurement
 def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Measure DC voltage (alias for :func:`measure_voltage_dc`).
+
+    Records evidence under command ``measure_voltage_dc``. Pair with
+    :data:`verify_voltage` or :data:`verify_voltage_dc` using the same ``key``.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
         that section.
@@ -416,11 +418,10 @@ def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
     Pair with verify_voltage using the same key. Configure equipment.dmm first;
     see the PSU/DMM acquisition recipe in the instrument workflow guide.
     """
-    _ = key
-    return float(_inst(dmm_id).measure_voltage(channel))
+    return measure_voltage_dc(dmm_id=dmm_id, channel=channel, key=key)
 
 
-verify_voltage = tolerance_verifier("measure_voltage", name="verify_voltage", unit="V")
+verify_voltage = tolerance_verifier("measure_voltage_dc", name="verify_voltage", unit="V")
 
 
 @measurement
@@ -471,9 +472,11 @@ def measure_voltage_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
 verify_voltage_ac = tolerance_verifier("measure_voltage_ac", name="verify_voltage_ac", unit="V")
 
 
-@measurement
 def measure_current(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Measure DC current (alias for :func:`measure_current_dc`).
+
+    Records evidence under command ``measure_current_dc``. Pair with
+    :data:`verify_current` or :data:`verify_current_dc` using the same ``key``.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
         that section.
@@ -488,11 +491,10 @@ def measure_current(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    _ = key
-    return float(_inst(dmm_id).measure_current(channel))
+    return measure_current_dc(dmm_id=dmm_id, channel=channel, key=key)
 
 
-verify_current = tolerance_verifier("measure_current", name="verify_current", unit="A")
+verify_current = tolerance_verifier("measure_current_dc", name="verify_current", unit="A")
 
 
 @measurement

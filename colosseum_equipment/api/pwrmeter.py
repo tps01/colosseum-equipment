@@ -215,7 +215,6 @@ verify_power_dbm = tolerance_verifier(
 )
 
 
-@measurement
 def measure_power(
     *,
     pwrmeter_id: int,
@@ -225,12 +224,14 @@ def measure_power(
 ) -> float:
     """Measure RF power in dBm (alias of :func:`measure_power_dbm`).
 
+    Records evidence under command ``measure_power_dbm``. Pair with
+    :data:`verify_power` or :data:`verify_power_dbm` using the same ``key``.
+
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
     :type pwrmeter_id: int
     :param channel: Sensor channel index (1-based).
     :type channel: int
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
+    :param key: Unique measurement key within domain ``equipment``.
     :type key: str
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
     :type calibration: str | None, optional
@@ -241,18 +242,16 @@ def measure_power(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    _ = key
-    inst = _inst(pwrmeter_id)
-    return _correct_dbm(
-        inst,
-        inst.measure_power(channel=channel),
+    return measure_power_dbm(
+        pwrmeter_id=pwrmeter_id,
         channel=channel,
+        key=key,
         calibration=calibration,
     )
 
 
 verify_power = tolerance_verifier(
-    "measure_power", name="verify_power", default_tolerance=0.5, unit="dBm",
+    "measure_power_dbm", name="verify_power", default_tolerance=0.5, unit="dBm",
 )
 
 

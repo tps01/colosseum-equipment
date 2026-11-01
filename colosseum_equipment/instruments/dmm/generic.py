@@ -18,9 +18,9 @@ class GenericDMM(ScpiInstrumentMixin):
         self._scpi = SCPIHelper(transport)
         self._config = config or {}
         self._model = str(self._config.get("model", "generic")).lower()
-        self._channel_count = int(
-            self._config.get("channels") or self._config.get("channel_count") or 1,
-        )
+        from colosseum_equipment.instruments._channels import resolve_channel_count
+
+        self._channel_count = resolve_channel_count(self._config)
 
     def _require_channel(self, channel: int) -> int:
         ch = int(channel)
