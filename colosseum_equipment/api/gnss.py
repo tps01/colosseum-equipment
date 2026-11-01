@@ -6,6 +6,7 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import limit_verifier, minimum_verifier, tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
@@ -25,11 +26,12 @@ def wait_for_fix(*, gnss_id: int, timeout_s: float) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).wait_for_fix(timeout_s)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).wait_for_fix(timeout_s)
 
 
 @command
-def cold_start(*, gnss_id: int) -> None:
+@broadcastable("gnss", "gnss_id")
+def cold_start(*, gnss_id: EquipmentId) -> None:
     """Clear navigation data and force a cold acquisition (vendor-specific).
 
     :param gnss_id: Integer ID from the configured equipment.gnss row. Select an existing ID in
@@ -41,11 +43,12 @@ def cold_start(*, gnss_id: int) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).cold_start()
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).cold_start()
 
 
 @command
-def mark_acquisition_start(*, gnss_id: int) -> None:
+@broadcastable("gnss", "gnss_id")
+def mark_acquisition_start(*, gnss_id: EquipmentId) -> None:
     """Mark T0 for TTFF measurement without issuing a cold start.
 
     :param gnss_id: Integer ID from the configured equipment.gnss row. Select an existing ID in
@@ -57,11 +60,12 @@ def mark_acquisition_start(*, gnss_id: int) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).mark_acquisition_start()
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).mark_acquisition_start()
 
 
 @command
-def load_config(*, gnss_id: int, path: str) -> None:
+@broadcastable("gnss", "gnss_id")
+def load_config(*, gnss_id: EquipmentId, path: str) -> None:
     """Apply a vendor configuration file to the receiver.
 
     u-blox: u-center GNSS Configuration ``.txt`` (legacy CFG and/or CFG-VALGET)
@@ -79,7 +83,7 @@ def load_config(*, gnss_id: int, path: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).load_config(path)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).load_config(path)
 
 
 @command
@@ -104,11 +108,12 @@ def save_config(*, gnss_id: int, path: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).save_config(path)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_config(path)
 
 
 @command
-def set_message_rate(*, gnss_id: int, message: str, rate_hz: float) -> None:
+@broadcastable("gnss", "gnss_id")
+def set_message_rate(*, gnss_id: EquipmentId, message: str, rate_hz: float) -> None:
     """Enable/disable or set the rate of a named receiver message.
 
     ``rate_hz=0`` disables. Examples: ``NAV-SAT``, ``BESTPOSB``, ``PVTGeodetic``.
@@ -126,7 +131,7 @@ def set_message_rate(*, gnss_id: int, message: str, rate_hz: float) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).set_message_rate(message, rate_hz)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).set_message_rate(message, rate_hz)
 
 
 @command
@@ -150,11 +155,12 @@ def start_logging(*, gnss_id: int, path: str, key: str = "") -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).start_logging(path, key=key)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).start_logging(path, key=key)
 
 
 @command
-def stop_logging(*, gnss_id: int) -> None:
+@broadcastable("gnss", "gnss_id")
+def stop_logging(*, gnss_id: EquipmentId) -> None:
     """Stop the listener, emit continuity summaries, and close log files.
 
     :param gnss_id: Integer ID from the configured equipment.gnss row. Select an existing ID in
@@ -166,7 +172,7 @@ def stop_logging(*, gnss_id: int) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).stop_logging()
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).stop_logging()
 
 
 @command
@@ -184,7 +190,7 @@ def save_track_plot(*, gnss_id: int, path: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).save_track_plot(path)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_track_plot(path)
 
 
 @command
@@ -202,7 +208,7 @@ def save_skyplot(*, gnss_id: int, path: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).save_skyplot(path)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_skyplot(path)
 
 
 @command
@@ -220,7 +226,7 @@ def save_quality_plot(*, gnss_id: int, path: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument("gnss", gnss_id).save_quality_plot(path)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_quality_plot(path)
 
 
 @command
@@ -240,7 +246,7 @@ def get_satellite_snapshot(*, gnss_id: int, max_age_s: float = 5.0) -> list[dict
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     return list(
-        get_cached_instrument("gnss", gnss_id).get_satellite_snapshot(max_age_s=max_age_s),
+        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).get_satellite_snapshot(max_age_s=max_age_s),
     )
 
 
@@ -259,7 +265,7 @@ def get_fix_type(*, gnss_id: int, max_age_s: float = 5.0) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    return str(get_cached_instrument("gnss", gnss_id).get_fix_type(max_age_s=max_age_s))
+    return str(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).get_fix_type(max_age_s=max_age_s))
 
 
 @command
@@ -278,7 +284,7 @@ def get_constellations_present(*, gnss_id: int, max_age_s: float = 5.0) -> list[
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     return list(
-        get_cached_instrument("gnss", gnss_id).get_constellations_present(max_age_s=max_age_s),
+        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).get_constellations_present(max_age_s=max_age_s),
     )
 
 
@@ -300,7 +306,7 @@ def measure_latitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_latitude(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_latitude(max_age_s=max_age_s))
 
 
 @measurement
@@ -321,7 +327,7 @@ def measure_longitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> floa
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_longitude(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_longitude(max_age_s=max_age_s))
 
 
 @measurement
@@ -342,7 +348,7 @@ def measure_altitude_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_altitude_m(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_altitude_m(max_age_s=max_age_s))
 
 
 @measurement
@@ -364,7 +370,7 @@ def measure_fix_quality(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> fl
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_fix_quality(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_fix_quality(max_age_s=max_age_s))
 
 
 @measurement
@@ -385,7 +391,7 @@ def measure_satellites(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_satellites(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_satellites(max_age_s=max_age_s))
 
 
 @measurement
@@ -407,7 +413,7 @@ def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0
     """
     _ = key
     return float(
-        get_cached_instrument("gnss", gnss_id).measure_satellites_visible(max_age_s=max_age_s),
+        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_satellites_visible(max_age_s=max_age_s),
     )
 
 
@@ -429,7 +435,7 @@ def measure_hdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_hdop(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_hdop(max_age_s=max_age_s))
 
 
 verify_hdop = limit_verifier("measure_hdop", name="verify_hdop", upper=True)
@@ -453,7 +459,7 @@ def measure_pdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_pdop(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_pdop(max_age_s=max_age_s))
 
 
 verify_pdop = limit_verifier("measure_pdop", name="verify_pdop", upper=True)
@@ -477,7 +483,7 @@ def measure_vdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_vdop(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_vdop(max_age_s=max_age_s))
 
 
 verify_vdop = limit_verifier("measure_vdop", name="verify_vdop", upper=True)
@@ -501,7 +507,7 @@ def measure_gdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_gdop(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_gdop(max_age_s=max_age_s))
 
 
 @measurement
@@ -522,7 +528,7 @@ def measure_max_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> f
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_max_cn0_dbhz(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_max_cn0_dbhz(max_age_s=max_age_s))
 
 
 verify_max_cn0_dbhz = minimum_verifier(
@@ -548,7 +554,7 @@ def measure_mean_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> 
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_mean_cn0_dbhz(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_mean_cn0_dbhz(max_age_s=max_age_s))
 
 
 @measurement
@@ -580,7 +586,7 @@ def measure_cn0_dbhz(
     """
     _ = key
     return float(
-        get_cached_instrument("gnss", gnss_id).measure_cn0_dbhz(
+        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_cn0_dbhz(
             prn, constellation=constellation, max_age_s=max_age_s,
         ),
     )
@@ -604,7 +610,7 @@ def measure_speed_m_s(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> floa
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_speed_m_s(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_speed_m_s(max_age_s=max_age_s))
 
 
 @measurement
@@ -625,7 +631,7 @@ def measure_course_deg(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_course_deg(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_course_deg(max_age_s=max_age_s))
 
 
 @measurement
@@ -646,7 +652,7 @@ def measure_h_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_h_acc_m(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_h_acc_m(max_age_s=max_age_s))
 
 
 verify_h_acc_m = limit_verifier("measure_h_acc_m", name="verify_h_acc_m", upper=True, unit="m")
@@ -670,7 +676,7 @@ def measure_v_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_v_acc_m(max_age_s=max_age_s))
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_v_acc_m(max_age_s=max_age_s))
 
 
 @measurement
@@ -692,7 +698,7 @@ def measure_geoid_separation_m(*, gnss_id: int, key: str, max_age_s: float = 5.0
     """
     _ = key
     return float(
-        get_cached_instrument("gnss", gnss_id).measure_geoid_separation_m(max_age_s=max_age_s),
+        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_geoid_separation_m(max_age_s=max_age_s),
     )
 
 
@@ -712,7 +718,7 @@ def measure_data_age_s(*, gnss_id: int, key: str) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_data_age_s())
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_data_age_s())
 
 
 @measurement
@@ -733,7 +739,7 @@ def measure_utc_time(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> str:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return str(get_cached_instrument("gnss", gnss_id).measure_utc_time(max_age_s=max_age_s))
+    return str(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_utc_time(max_age_s=max_age_s))
 
 
 @measurement
@@ -752,7 +758,7 @@ def measure_ttff_s(*, gnss_id: int, key: str) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_ttff_s())
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_ttff_s())
 
 
 @measurement
@@ -771,7 +777,7 @@ def measure_fix_availability(*, gnss_id: int, key: str) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_fix_availability())
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_fix_availability())
 
 
 verify_fix_availability = minimum_verifier(
@@ -795,7 +801,7 @@ def measure_longest_outage_s(*, gnss_id: int, key: str) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_longest_outage_s())
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_longest_outage_s())
 
 
 verify_longest_outage_s = limit_verifier(
@@ -819,7 +825,7 @@ def measure_reacquisition_s(*, gnss_id: int, key: str) -> float:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _ = key
-    return float(get_cached_instrument("gnss", gnss_id).measure_reacquisition_s())
+    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_reacquisition_s())
 
 
 verify_latitude = tolerance_verifier("measure_latitude", name="verify_latitude", unit="deg")

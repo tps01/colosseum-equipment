@@ -7,12 +7,13 @@ from typing import Any
 from colosseum.decorators import command, measurement
 
 from colosseum_equipment import calibration as _cal
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(pwrmeter_id: int) -> Any:
-    return get_cached_instrument("pwrmeter", pwrmeter_id)
+def _inst(pwrmeter_id: EquipmentId) -> Any:
+    return get_cached_instrument('pwrmeter', require_int_id(pwrmeter_id, kind='pwrmeter'))
 
 
 def _correct_dbm(inst: Any, raw_dbm: float, *, channel: int, calibration: str | None) -> float:
@@ -23,9 +24,10 @@ def _correct_dbm(inst: Any, raw_dbm: float, *, channel: int, calibration: str | 
 
 
 @command
+@broadcastable("pwrmeter", "pwrmeter_id")
 def set_frequency(
     *,
-    pwrmeter_id: int,
+    pwrmeter_id: EquipmentId,
     frequency_hz: float,
     channel: int = 1,
     calibration: str | None = None,
@@ -56,7 +58,8 @@ def set_frequency(
 
 
 @command
-def set_averaging_count(*, pwrmeter_id: int, count: int, channel: int = 1) -> None:
+@broadcastable("pwrmeter", "pwrmeter_id")
+def set_averaging_count(*, pwrmeter_id: EquipmentId, count: int, channel: int = 1) -> None:
     """Set the measurement averaging count.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -75,7 +78,8 @@ def set_averaging_count(*, pwrmeter_id: int, count: int, channel: int = 1) -> No
 
 
 @command
-def set_offset_db(*, pwrmeter_id: int, offset_db: float, channel: int = 1) -> None:
+@broadcastable("pwrmeter", "pwrmeter_id")
+def set_offset_db(*, pwrmeter_id: EquipmentId, offset_db: float, channel: int = 1) -> None:
     """Set power offset correction in dB.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -94,7 +98,8 @@ def set_offset_db(*, pwrmeter_id: int, offset_db: float, channel: int = 1) -> No
 
 
 @command
-def zero_sensor(*, pwrmeter_id: int, channel: int = 1) -> None:
+@broadcastable("pwrmeter", "pwrmeter_id")
+def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     """Zero the sensor.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -111,7 +116,8 @@ def zero_sensor(*, pwrmeter_id: int, channel: int = 1) -> None:
 
 
 @command
-def calibrate(*, pwrmeter_id: int, channel: int = 1) -> None:
+@broadcastable("pwrmeter", "pwrmeter_id")
+def calibrate(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     """Run sensor calibration.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
@@ -128,7 +134,8 @@ def calibrate(*, pwrmeter_id: int, channel: int = 1) -> None:
 
 
 @command
-def preset(*, pwrmeter_id: int) -> None:
+@broadcastable("pwrmeter", "pwrmeter_id")
+def preset(*, pwrmeter_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.

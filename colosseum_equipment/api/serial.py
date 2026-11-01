@@ -4,17 +4,19 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_transport
 from colosseum_equipment.protocols.serial import SerialChannel
 from colosseum_equipment.protocols.serial import strip_ansi as strip_ansi_text
 
 
-def _channel(serial_id: int) -> SerialChannel:
-    return SerialChannel(get_transport("serial", serial_id))
+def _channel(serial_id: EquipmentId) -> SerialChannel:
+    return SerialChannel(get_transport('serial', require_int_id(serial_id, kind='serial')))
 
 
 @command
-def write(*, serial_id: int, data: str, append_newline: str = "") -> None:
+@broadcastable("serial", "serial_id")
+def write(*, serial_id: EquipmentId, data: str, append_newline: str = "") -> None:
     """Write raw text to a configured serial port.
 
     :param serial_id: Configured ``equipment.serial`` id from config TOML.
@@ -32,7 +34,8 @@ def write(*, serial_id: int, data: str, append_newline: str = "") -> None:
 
 
 @command
-def write_bytes(*, serial_id: int, data: bytes) -> None:
+@broadcastable("serial", "serial_id")
+def write_bytes(*, serial_id: EquipmentId, data: bytes) -> None:
     """Write raw bytes to a configured serial port.
 
     :param serial_id: Configured ``equipment.serial`` id from config TOML.
@@ -118,7 +121,8 @@ def read_until(
 
 
 @command
-def flush(*, serial_id: int) -> None:
+@broadcastable("serial", "serial_id")
+def flush(*, serial_id: EquipmentId) -> None:
     """Discard pending RX/TX buffers on the serial port when supported.
 
     :param serial_id: Configured ``equipment.serial`` id from config TOML.
@@ -152,7 +156,8 @@ def measure_in_waiting(*, serial_id: int, key: str) -> int:
 
 
 @command
-def set_timeout_s(*, serial_id: int, timeout_s: float) -> None:
+@broadcastable("serial", "serial_id")
+def set_timeout_s(*, serial_id: EquipmentId, timeout_s: float) -> None:
     """Set the serial port read timeout in seconds.
 
     :param serial_id: Configured ``equipment.serial`` id from config TOML.

@@ -6,16 +6,18 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(psu_id: int) -> Any:
-    return get_cached_instrument("psu", psu_id)
+def _inst(psu_id: EquipmentId) -> Any:
+    return get_cached_instrument('psu', require_int_id(psu_id, kind='psu'))
 
 
 @command
-def set_voltage(*, psu_id: int, voltage: float, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_voltage(*, psu_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set the programmed output voltage.
 
     :param psu_id: Configured ``equipment.psu`` id from bench TOML.
@@ -34,7 +36,8 @@ def set_voltage(*, psu_id: int, voltage: float, channel: int = 1) -> None:
 
 
 @command
-def set_current_limit(*, psu_id: int, current: float, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_current_limit(*, psu_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set the current limit.
 
     :param psu_id: Configured ``equipment.psu`` id from bench TOML.
@@ -53,7 +56,8 @@ def set_current_limit(*, psu_id: int, current: float, channel: int = 1) -> None:
 
 
 @command
-def set_output(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_output(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable the output.
 
     :param psu_id: Configured ``equipment.psu`` id from bench TOML.
@@ -72,7 +76,8 @@ def set_output(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def set_ovp_v(*, psu_id: int, voltage: float, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_ovp_v(*, psu_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set over-voltage protection level.
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -92,7 +97,8 @@ def set_ovp_v(*, psu_id: int, voltage: float, channel: int = 1) -> None:
 
 
 @command
-def set_ocp_a(*, psu_id: int, current: float, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_ocp_a(*, psu_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set over-current protection level.
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -112,7 +118,8 @@ def set_ocp_a(*, psu_id: int, current: float, channel: int = 1) -> None:
 
 
 @command
-def toggle_ovp(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def toggle_ovp(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable over-voltage protection.
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -131,7 +138,8 @@ def toggle_ovp(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def toggle_ocp(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def toggle_ocp(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable over-current protection.
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -150,7 +158,8 @@ def toggle_ocp(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def clear_protection(*, psu_id: int, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def clear_protection(*, psu_id: EquipmentId, channel: int = 1) -> None:
     """Clear latched protection / fault state.
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -168,7 +177,8 @@ def clear_protection(*, psu_id: int, channel: int = 1) -> None:
 
 
 @command
-def set_remote_sense(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_remote_sense(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable remote (4-wire) sense.
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -187,7 +197,8 @@ def set_remote_sense(*, psu_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def set_slew_voltage(*, psu_id: int, volts_per_s: float, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_slew_voltage(*, psu_id: EquipmentId, volts_per_s: float, channel: int = 1) -> None:
     """Set voltage slew rate (best-effort SCPI).
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -207,7 +218,8 @@ def set_slew_voltage(*, psu_id: int, volts_per_s: float, channel: int = 1) -> No
 
 
 @command
-def set_slew_current(*, psu_id: int, amps_per_s: float, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_slew_current(*, psu_id: EquipmentId, amps_per_s: float, channel: int = 1) -> None:
     """Set current slew rate (best-effort SCPI).
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in
@@ -227,7 +239,8 @@ def set_slew_current(*, psu_id: int, amps_per_s: float, channel: int = 1) -> Non
 
 
 @command
-def set_tracking_mode(*, psu_id: int, mode: str, channel: int = 1) -> None:
+@broadcastable("psu", "psu_id")
+def set_tracking_mode(*, psu_id: EquipmentId, mode: str, channel: int = 1) -> None:
     """Set series/parallel tracking mode (best-effort SCPI).
 
     :param psu_id: Integer ID from the configured equipment.psu row. Select an existing ID in

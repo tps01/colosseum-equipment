@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
 @command
+@broadcastable("attn", "attn_id")
 def set_attenuation_db(
     *,
-    attn_id: int,
+    attn_id: EquipmentId,
     attenuation_db: float,
     channel: int | None = None,
     settle_s: float | None = None,
@@ -32,7 +34,7 @@ def set_attenuation_db(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("attn", attn_id).set_attenuation_db(
+    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).set_attenuation_db(
         attenuation_db,
         channel=channel,
         settle_s=settle_s,
@@ -53,11 +55,12 @@ def wait_settle(*, attn_id: int, settle_s: float | None = None) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("attn", attn_id).wait_settle(settle_s=settle_s)
+    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).wait_settle(settle_s=settle_s)
 
 
 @command
-def preset(*, attn_id: int) -> None:
+@broadcastable("attn", "attn_id")
+def preset(*, attn_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
     :param attn_id: Configured ``equipment.attn`` id from bench TOML.
@@ -68,7 +71,7 @@ def preset(*, attn_id: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("attn", attn_id).preset()
+    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).preset()
 
 
 @measurement
@@ -91,7 +94,7 @@ def measure_attenuation_db(*, attn_id: int, key: str, channel: int | None = None
     """
     _ = key
     return float(
-        get_cached_instrument("attn", attn_id).measure_attenuation_db(channel=channel),
+        get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_attenuation_db(channel=channel),
     )
 
 
@@ -116,7 +119,7 @@ def measure_min_attenuation_db(*, attn_id: int, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(get_cached_instrument("attn", attn_id).measure_min_attenuation_db())
+    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_min_attenuation_db())
 
 
 @measurement
@@ -135,7 +138,7 @@ def measure_max_attenuation_db(*, attn_id: int, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(get_cached_instrument("attn", attn_id).measure_max_attenuation_db())
+    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_max_attenuation_db())
 
 
 @measurement
@@ -154,4 +157,4 @@ def measure_step_db(*, attn_id: int, key: str) -> float:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return float(get_cached_instrument("attn", attn_id).measure_step_db())
+    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_step_db())

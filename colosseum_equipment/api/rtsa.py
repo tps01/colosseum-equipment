@@ -11,11 +11,13 @@ from typing import Any
 
 from colosseum.decorators import command
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
 
 
 @command
-def preset(*, rtsa_id: int) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def preset(*, rtsa_id: EquipmentId) -> None:
     """Load the instrument preset (factory default state).
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -26,11 +28,12 @@ def preset(*, rtsa_id: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).preset()
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).preset()
 
 
 @command
-def set_center_freq(*, rtsa_id: int, frequency_hz: float) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_center_freq(*, rtsa_id: EquipmentId, frequency_hz: float) -> None:
     """Set spectrum center frequency in hertz.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -43,11 +46,12 @@ def set_center_freq(*, rtsa_id: int, frequency_hz: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_center_freq(frequency_hz)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_center_freq(frequency_hz)
 
 
 @command
-def set_span(*, rtsa_id: int, span_hz: float) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_span(*, rtsa_id: EquipmentId, span_hz: float) -> None:
     """Set frequency span in hertz.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -60,11 +64,12 @@ def set_span(*, rtsa_id: int, span_hz: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_span(span_hz)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_span(span_hz)
 
 
 @command
-def set_bandwidth(*, rtsa_id: int, bandwidth_hz: float) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_bandwidth(*, rtsa_id: EquipmentId, bandwidth_hz: float) -> None:
     """Set resolution bandwidth in hertz.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -77,11 +82,12 @@ def set_bandwidth(*, rtsa_id: int, bandwidth_hz: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_bandwidth(bandwidth_hz)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_bandwidth(bandwidth_hz)
 
 
 @command
-def set_acq_time(*, rtsa_id: int, seconds: float) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_acq_time(*, rtsa_id: EquipmentId, seconds: float) -> None:
     """Set acquisition time in seconds.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -94,11 +100,12 @@ def set_acq_time(*, rtsa_id: int, seconds: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_acq_time(seconds)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_acq_time(seconds)
 
 
 @command
-def set_continuous_run(*, rtsa_id: int, enabled: bool) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_continuous_run(*, rtsa_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable continuous acquisition.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -111,11 +118,12 @@ def set_continuous_run(*, rtsa_id: int, enabled: bool) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_continuous_run(enabled)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_continuous_run(enabled)
 
 
 @command
-def set_num_samples(*, rtsa_id: int, count: int) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_num_samples(*, rtsa_id: EquipmentId, count: int) -> None:
     """Set the number of IQ samples to acquire.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -128,7 +136,7 @@ def set_num_samples(*, rtsa_id: int, count: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_num_samples(count)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_num_samples(count)
 
 
 @command
@@ -144,11 +152,12 @@ def get_num_samples(*, rtsa_id: int) -> int:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    return int(get_cached_instrument("rtsa", rtsa_id).get_num_samples())
+    return int(get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).get_num_samples())
 
 
 @command
-def set_trigger_source(*, rtsa_id: int, source: str) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_trigger_source(*, rtsa_id: EquipmentId, source: str) -> None:
     """Set trigger source (for example ``INPut``, ``EXTFront``, ``EXTRear``).
 
     Also supports ``EXTGated`` and ``LINe``.
@@ -163,11 +172,12 @@ def set_trigger_source(*, rtsa_id: int, source: str) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_trigger_source(source)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_trigger_source(source)
 
 
 @command
-def set_trigger_level(*, rtsa_id: int, level_dbm: float) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_trigger_level(*, rtsa_id: EquipmentId, level_dbm: float) -> None:
     """Set trigger level in dBm.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -180,11 +190,12 @@ def set_trigger_level(*, rtsa_id: int, level_dbm: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_trigger_level(level_dbm)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_trigger_level(level_dbm)
 
 
 @command
-def set_trigger_position(*, rtsa_id: int, position_dbm: float) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def set_trigger_position(*, rtsa_id: EquipmentId, position_dbm: float) -> None:
     """Set trigger position in dBm.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -197,11 +208,12 @@ def set_trigger_position(*, rtsa_id: int, position_dbm: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).set_trigger_position(position_dbm)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_trigger_position(position_dbm)
 
 
 @command
-def run(*, rtsa_id: int) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def run(*, rtsa_id: EquipmentId) -> None:
     """Start or arm a single acquisition (non-blocking on generic models).
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -212,7 +224,7 @@ def run(*, rtsa_id: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).run()
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).run()
 
 
 @command
@@ -228,11 +240,12 @@ def wait_complete(*, rtsa_id: int, timeout_s: float = 60.0) -> None:
 
     :raises EquipmentTimeoutError: Acquisition did not complete in time.
     """
-    get_cached_instrument("rtsa", rtsa_id).wait_complete(timeout_s=timeout_s)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).wait_complete(timeout_s=timeout_s)
 
 
 @command
-def abort(*, rtsa_id: int) -> None:
+@broadcastable("rtsa", "rtsa_id")
+def abort(*, rtsa_id: EquipmentId) -> None:
     """Cancel an in-progress acquisition.
 
     :param rtsa_id: Configured ``equipment.rtsa`` id from bench TOML.
@@ -240,7 +253,7 @@ def abort(*, rtsa_id: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("rtsa", rtsa_id).abort()
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).abort()
 
 
 @command
@@ -255,7 +268,7 @@ def acquire(*, rtsa_id: int, timeout_s: float = 60.0) -> str:
     :returns: Acquisition id for correlation with saved artifacts.
     :rtype: str
     """
-    return str(get_cached_instrument("rtsa", rtsa_id).acquire(timeout_s=timeout_s))
+    return str(get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).acquire(timeout_s=timeout_s))
 
 
 @command
@@ -271,7 +284,7 @@ def peak_search(*, rtsa_id: int, marker: int = 1) -> None:
 
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).peak_search(marker)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).peak_search(marker)
 
 
 @command
@@ -289,7 +302,7 @@ def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None
 
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).save_spectrum_trace_data(path, trace=trace)
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).save_spectrum_trace_data(path, trace=trace)
 
 
 @command
@@ -314,7 +327,7 @@ def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rtsa", rtsa_id).save_IQ_data(
+    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).save_IQ_data(
         path, file_format=file_format, key=key,
     )
 
@@ -371,7 +384,7 @@ def capture_iq(
     :raises EquipmentResponseError: Unsupported ``sample_format`` or bad instrument reply.
     """
     return dict(
-        get_cached_instrument("rtsa", rtsa_id).capture_iq(
+        get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).capture_iq(
             center_hz=center_hz,
             span_hz=span_hz,
             bandwidth_hz=bandwidth_hz,

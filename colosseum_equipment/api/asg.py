@@ -12,17 +12,19 @@ from typing import Any
 from colosseum.decorators import command, measurement
 
 from colosseum_equipment import calibration as _cal
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(asg_id: int) -> Any:
-    return get_cached_instrument("asg", asg_id)
+def _inst(asg_id: EquipmentId) -> Any:
+    return get_cached_instrument('asg', require_int_id(asg_id, kind='asg'))
 
 
 @command
+@broadcastable("asg", "asg_id")
 def set_frequency(
     *,
-    asg_id: int,
+    asg_id: EquipmentId,
     frequency: float,
     channel: int = 1,
     calibration: str | None = None,
@@ -58,7 +60,8 @@ def set_frequency(
 
 
 @command
-def set_waveform(*, asg_id: int, waveform: str, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_waveform(*, asg_id: EquipmentId, waveform: str, channel: int = 1) -> None:
     """Set output waveform (``sine``, ``square``, ``ramp``, ``pulse``, ``noise``, ``arb``).
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -77,7 +80,8 @@ def set_waveform(*, asg_id: int, waveform: str, channel: int = 1) -> None:
 
 
 @command
-def set_amplitude_vpp(*, asg_id: int, vpp: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_amplitude_vpp(*, asg_id: EquipmentId, vpp: float, channel: int = 1) -> None:
     """Set output amplitude in volts peak-to-peak.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -96,7 +100,8 @@ def set_amplitude_vpp(*, asg_id: int, vpp: float, channel: int = 1) -> None:
 
 
 @command
-def set_amplitude_vrms(*, asg_id: int, vrms: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_amplitude_vrms(*, asg_id: EquipmentId, vrms: float, channel: int = 1) -> None:
     """Set output amplitude in volts RMS.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -115,7 +120,8 @@ def set_amplitude_vrms(*, asg_id: int, vrms: float, channel: int = 1) -> None:
 
 
 @command
-def set_offset_v(*, asg_id: int, offset_v: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_offset_v(*, asg_id: EquipmentId, offset_v: float, channel: int = 1) -> None:
     """Set DC offset in volts.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -134,7 +140,8 @@ def set_offset_v(*, asg_id: int, offset_v: float, channel: int = 1) -> None:
 
 
 @command
-def set_load_ohms(*, asg_id: int, ohms: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_load_ohms(*, asg_id: EquipmentId, ohms: float, channel: int = 1) -> None:
     """Set output load impedance in ohms.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -174,9 +181,10 @@ def get_load_ohms(*, asg_id: int, channel: int = 1, key: str) -> float:
 
 
 @command
+@broadcastable("asg", "asg_id")
 def set_power(
     *,
-    asg_id: int,
+    asg_id: EquipmentId,
     power_dbm: float,
     channel: int = 1,
     calibration: str | None = None,
@@ -212,7 +220,8 @@ def set_power(
 
 
 @command
-def set_duty_cycle_pct(*, asg_id: int, pct: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_duty_cycle_pct(*, asg_id: EquipmentId, pct: float, channel: int = 1) -> None:
     """Set square-wave duty cycle in percent.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -231,7 +240,8 @@ def set_duty_cycle_pct(*, asg_id: int, pct: float, channel: int = 1) -> None:
 
 
 @command
-def set_output(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable RF output.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -250,7 +260,8 @@ def set_output(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def set_modulation_state(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_modulation_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable AM modulation on a source channel.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -269,7 +280,8 @@ def set_modulation_state(*, asg_id: int, enabled: bool, channel: int = 1) -> Non
 
 
 @command
-def set_burst_state(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_burst_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable burst mode on a source channel.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -288,7 +300,8 @@ def set_burst_state(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def set_pulsegen_output(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_pulsegen_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable the pulse generator output (R&S-style).
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -307,7 +320,8 @@ def set_pulsegen_output(*, asg_id: int, enabled: bool, channel: int = 1) -> None
 
 
 @command
-def set_pulsemod_output(*, asg_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_pulsemod_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable pulse modulation.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -326,7 +340,8 @@ def set_pulsemod_output(*, asg_id: int, enabled: bool, channel: int = 1) -> None
 
 
 @command
-def set_pulse_period(*, asg_id: int, period_s: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_pulse_period(*, asg_id: EquipmentId, period_s: float, channel: int = 1) -> None:
     """Set pulse period in seconds.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.
@@ -345,7 +360,8 @@ def set_pulse_period(*, asg_id: int, period_s: float, channel: int = 1) -> None:
 
 
 @command
-def set_pulse_width(*, asg_id: int, width_s: float, channel: int = 1) -> None:
+@broadcastable("asg", "asg_id")
+def set_pulse_width(*, asg_id: EquipmentId, width_s: float, channel: int = 1) -> None:
     """Set pulse width in seconds.
 
     :param asg_id: Configured ``equipment.asg`` id from bench TOML.

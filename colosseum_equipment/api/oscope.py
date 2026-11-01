@@ -13,18 +13,20 @@ from typing import Any
 
 from colosseum.decorators import VerificationResult, command, measurement, verification
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 from colosseum_equipment.tools.mask_apply import apply_oscope_mask_setup
 from colosseum_equipment.tools.mask_verify import verification_from_mask
 
 
-def _inst(oscope_id: int) -> Any:
-    return get_cached_instrument("oscope", oscope_id)
+def _inst(oscope_id: EquipmentId) -> Any:
+    return get_cached_instrument('oscope', require_int_id(oscope_id, kind='oscope'))
 
 
 @command
-def preset(*, oscope_id: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def preset(*, oscope_id: EquipmentId) -> None:
     """Return the scope to a default preset.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -40,7 +42,8 @@ def preset(*, oscope_id: int) -> None:
 
 
 @command
-def set_channel_display(*, oscope_id: int, channel: int, enabled: bool) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_display(*, oscope_id: EquipmentId, channel: int, enabled: bool) -> None:
     """Enable or disable a channel display.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -59,7 +62,8 @@ def set_channel_display(*, oscope_id: int, channel: int, enabled: bool) -> None:
 
 
 @command
-def set_channel_scale_v(*, oscope_id: int, channel: int, volts_per_div: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_scale_v(*, oscope_id: EquipmentId, channel: int, volts_per_div: float) -> None:
     """Set vertical scale in volts per division.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -79,7 +83,8 @@ def set_channel_scale_v(*, oscope_id: int, channel: int, volts_per_div: float) -
 
 
 @command
-def set_channel_offset_v(*, oscope_id: int, channel: int, offset_v: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_offset_v(*, oscope_id: EquipmentId, channel: int, offset_v: float) -> None:
     """Set vertical offset in volts.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -98,7 +103,8 @@ def set_channel_offset_v(*, oscope_id: int, channel: int, offset_v: float) -> No
 
 
 @command
-def set_channel_coupling(*, oscope_id: int, channel: int, coupling: str) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_coupling(*, oscope_id: EquipmentId, channel: int, coupling: str) -> None:
     """Set channel coupling (``AC`` / ``DC`` / ``GND``).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -118,7 +124,8 @@ def set_channel_coupling(*, oscope_id: int, channel: int, coupling: str) -> None
 
 
 @command
-def set_channel_probe_attenuation(*, oscope_id: int, channel: int, attenuation: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_probe_attenuation(*, oscope_id: EquipmentId, channel: int, attenuation: float) -> None:
     """Set probe attenuation factor (e.g. ``10`` for 10x).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -138,7 +145,8 @@ def set_channel_probe_attenuation(*, oscope_id: int, channel: int, attenuation: 
 
 
 @command
-def set_channel_bandwidth_limit(*, oscope_id: int, channel: int, enabled: bool) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_bandwidth_limit(*, oscope_id: EquipmentId, channel: int, enabled: bool) -> None:
     """Enable or disable channel bandwidth limit.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -157,7 +165,8 @@ def set_channel_bandwidth_limit(*, oscope_id: int, channel: int, enabled: bool) 
 
 
 @command
-def set_channel_impedance(*, oscope_id: int, channel: int, ohms: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_channel_impedance(*, oscope_id: EquipmentId, channel: int, ohms: float) -> None:
     """Set channel termination impedance (``50`` or ``1e6``).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -218,7 +227,8 @@ def get_channel_offset_v(*, oscope_id: int, channel: int, key: str) -> float:
 
 
 @command
-def set_timebase_scale(*, oscope_id: int, seconds_per_div: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_timebase_scale(*, oscope_id: EquipmentId, seconds_per_div: float) -> None:
     """Set horizontal timebase scale.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -236,7 +246,8 @@ def set_timebase_scale(*, oscope_id: int, seconds_per_div: float) -> None:
 
 
 @command
-def set_timebase_position_s(*, oscope_id: int, position_s: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_timebase_position_s(*, oscope_id: EquipmentId, position_s: float) -> None:
     """Set horizontal position / delay.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -254,7 +265,8 @@ def set_timebase_position_s(*, oscope_id: int, position_s: float) -> None:
 
 
 @command
-def set_record_length(*, oscope_id: int, points: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_record_length(*, oscope_id: EquipmentId, points: int) -> None:
     """Set acquisition record length in points.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -291,7 +303,8 @@ def get_record_length(*, oscope_id: int, key: str) -> float:
 
 
 @command
-def set_trigger_mode(*, oscope_id: int, mode: str) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_trigger_mode(*, oscope_id: EquipmentId, mode: str) -> None:
     """Set trigger mode (``auto`` / ``normal`` / ``single``).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -309,7 +322,8 @@ def set_trigger_mode(*, oscope_id: int, mode: str) -> None:
 
 
 @command
-def set_trigger_source(*, oscope_id: int, source: str) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_trigger_source(*, oscope_id: EquipmentId, source: str) -> None:
     """Set edge trigger source (e.g. ``CH1``).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -326,7 +340,8 @@ def set_trigger_source(*, oscope_id: int, source: str) -> None:
 
 
 @command
-def set_trigger_level_v(*, oscope_id: int, level_v: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_trigger_level_v(*, oscope_id: EquipmentId, level_v: float) -> None:
     """Set edge trigger level in volts.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -343,7 +358,8 @@ def set_trigger_level_v(*, oscope_id: int, level_v: float) -> None:
 
 
 @command
-def set_trigger_slope(*, oscope_id: int, slope: str) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_trigger_slope(*, oscope_id: EquipmentId, slope: str) -> None:
     """Set edge trigger slope (``rising`` / ``falling``).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -361,7 +377,8 @@ def set_trigger_slope(*, oscope_id: int, slope: str) -> None:
 
 
 @command
-def set_trigger_holdoff_s(*, oscope_id: int, holdoff_s: float) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_trigger_holdoff_s(*, oscope_id: EquipmentId, holdoff_s: float) -> None:
     """Set trigger holdoff time in seconds.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -378,7 +395,8 @@ def set_trigger_holdoff_s(*, oscope_id: int, holdoff_s: float) -> None:
 
 
 @command
-def force_trigger(*, oscope_id: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def force_trigger(*, oscope_id: EquipmentId) -> None:
     """Force a trigger event.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -412,7 +430,8 @@ def wait_for_trigger(*, oscope_id: int, timeout_s: float) -> None:
 
 
 @command
-def set_acquire_mode(*, oscope_id: int, mode: str) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_acquire_mode(*, oscope_id: EquipmentId, mode: str) -> None:
     """Set acquire mode (``sample`` / ``peak`` / ``average`` / ``hres``).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -430,7 +449,8 @@ def set_acquire_mode(*, oscope_id: int, mode: str) -> None:
 
 
 @command
-def set_acquire_averages(*, oscope_id: int, count: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def set_acquire_averages(*, oscope_id: EquipmentId, count: int) -> None:
     """Set number of averages when acquire mode is average.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -447,7 +467,8 @@ def set_acquire_averages(*, oscope_id: int, count: int) -> None:
 
 
 @command
-def run(*, oscope_id: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def run(*, oscope_id: EquipmentId) -> None:
     """Start continuous acquisition (arm).
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -463,7 +484,8 @@ def run(*, oscope_id: int) -> None:
 
 
 @command
-def stop(*, oscope_id: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def stop(*, oscope_id: EquipmentId) -> None:
     """Stop acquisition.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -479,7 +501,8 @@ def stop(*, oscope_id: int) -> None:
 
 
 @command
-def arm_single(*, oscope_id: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def arm_single(*, oscope_id: EquipmentId) -> None:
     """Arm one capture without waiting; generate the external event next.
 
     Call :func:`wait_complete` before reading measurements or waveforms.
@@ -518,7 +541,8 @@ def single_acquire(*, oscope_id: int) -> None:
 
 
 @command
-def abort(*, oscope_id: int) -> None:
+@broadcastable("oscope", "oscope_id")
+def abort(*, oscope_id: EquipmentId) -> None:
     """Abort / stop an in-progress acquisition.
 
     :param oscope_id: Integer ID from the configured equipment.oscope row. Select an existing ID
@@ -802,9 +826,10 @@ def save_screenshot(*, oscope_id: int, path: str, key: str = "") -> None:
 
 
 @command
+@broadcastable("oscope", "oscope_id")
 def apply_mask_setup(
     *,
-    oscope_id: int,
+    oscope_id: EquipmentId,
     mask: str,
     channel: int = 1,
     key: str = "",
@@ -817,7 +842,7 @@ def apply_mask_setup(
     :param key: Optional parameters / evidence key for this step.
     """
     _ = key
-    apply_oscope_mask_setup(mask, oscope_id=oscope_id, channel=channel)
+    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind='oscope'), channel=channel)
 
 
 @verification
