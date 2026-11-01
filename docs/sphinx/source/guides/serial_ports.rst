@@ -46,4 +46,8 @@ SCPI on a serial port
 
    col.equipment.scpi.query(serial_id=2, command="*IDN?")
 
+``col.equipment.autoconfig()`` also probes local COM ports (Genesys bare
+``IDN?``, then Fluke ``QM``). Raw ``[equipment.serial]`` rows for DUT consoles
+are still configured explicitly.
+
 See the :doc:`../api/serial` and :doc:`../api/scpi` API pages on this site.
