@@ -23,12 +23,41 @@ def test_frequency_axis_endpoints() -> None:
     assert freqs[2] == pytest.approx(1005e6)
 
 
+def test_frequency_axis_empty_and_single_point() -> None:
+    assert frequency_axis(1e9, 10e6, 0) == []
+    assert frequency_axis(1e9, 10e6, -1) == []
+    assert frequency_axis(1e9, 10e6, 1) == [1e9]
+
+
 def test_write_trace_csv_with_frequency(tmp_path) -> None:
     path = tmp_path / "trace.csv"
     write_trace_csv(path, [-42.0, -41.0], center_hz=1e9, span_hz=10e6, include_frequency=True)
     text = path.read_text(encoding="utf-8")
     assert "frequency_hz,amplitude_dbm" in text
     assert "-42.000000" in text
+
+
+def test_write_trace_csv_index_only_when_frequency_disabled(tmp_path) -> None:
+    path = tmp_path / "index.csv"
+    write_trace_csv(
+        path,
+        [-42.0, -41.0],
+        center_hz=1e9,
+        span_hz=10e6,
+        include_frequency=False,
+    )
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "index,amplitude_dbm"
+    assert lines[1].startswith("0,")
+    assert lines[2].startswith("1,")
+
+
+def test_write_trace_csv_index_only_when_center_or_span_missing(tmp_path) -> None:
+    path = tmp_path / "missing_axis.csv"
+    write_trace_csv(path, [-40.0], include_frequency=True)
+    text = path.read_text(encoding="utf-8")
+    assert "index,amplitude_dbm" in text
+    assert "frequency_hz" not in text
 
 
 def test_nearest_trace_bin_picks_closest_frequency() -> None:

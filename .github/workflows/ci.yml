@@ -28,7 +28,8 @@ jobs:
           python -m pip install -e .
           python -m pip check
       - name: Test
-        run: pytest -q
+        # Exclude @pytest.mark.gui (Tk display); those skip locally without a display too.
+        run: pytest -q -m "not gui"
       - name: Package metadata
         run: |
           python -c "from importlib.metadata import entry_points; import colosseum_equipment; assert colosseum_equipment.__version__; assert any(ep.name == 'equipment' for ep in entry_points(group='colosseum.plugins'))"
