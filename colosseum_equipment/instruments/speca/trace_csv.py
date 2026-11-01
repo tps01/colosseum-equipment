@@ -21,19 +21,28 @@ def nearest_trace_bin(frequencies: list[float], target_hz: float) -> int:
 
 
 def read_trace_power_at_frequency(path: Path, target_hz: float) -> tuple[float, float]:
-    """Return (amplitude_dbm, actual_frequency_hz) using nearest trace bin."""
+    """Return (amplitude_dbm, actual_frequency_hz) using nearest trace bin.
+
+    Each data row must include both ``frequency_hz`` and ``amplitude_dbm``.
+    Incomplete rows raise ``ValueError`` so a blank frequency cannot shift
+    later amplitudes onto the wrong bin.
+    """
     frequencies: list[float] = []
     amplitudes: list[float] = []
     with path.open(encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
-        for row in reader:
-            if "frequency_hz" in row and row["frequency_hz"]:
-                frequencies.append(float(row["frequency_hz"]))
-            amplitudes.append(float(row["amplitude_dbm"]))
+        for row_number, row in enumerate(reader, start=2):
+            freq_text = (row.get("frequency_hz") or "").strip()
+            amp_text = (row.get("amplitude_dbm") or "").strip()
+            if not freq_text or not amp_text:
+                raise ValueError(
+                    f"trace CSV {path} row {row_number} must include both "
+                    "frequency_hz and amplitude_dbm",
+                )
+            frequencies.append(float(freq_text))
+            amplitudes.append(float(amp_text))
     if not amplitudes:
         raise ValueError(f"trace CSV is empty: {path}")
-    if not frequencies:
-        raise ValueError(f"trace CSV has no frequency_hz column: {path}")
     index = nearest_trace_bin(frequencies, target_hz)
     return amplitudes[index], frequencies[index]
 
