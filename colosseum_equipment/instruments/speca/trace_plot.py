@@ -8,17 +8,36 @@ if TYPE_CHECKING:
 
 
 def read_trace_csv(path: Path) -> tuple[list[float], list[float]]:
+    """Return ``(frequencies, amplitudes)`` from a SpecA trace CSV.
+
+    When the header includes ``frequency_hz``, every data row must supply both
+    a frequency and an amplitude (``amplitude_dbm`` or ``value``). Incomplete
+    rows raise ``ValueError``. Amplitude-only CSVs (no ``frequency_hz`` column)
+    still return an empty frequency list.
+    """
     frequencies: list[float] = []
     amplitudes: list[float] = []
     with path.open(encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
-        for row in reader:
-            if "frequency_hz" in row and row["frequency_hz"]:
-                frequencies.append(float(row["frequency_hz"]))
-            if "amplitude_dbm" in row:
-                amplitudes.append(float(row["amplitude_dbm"]))
-            elif "value" in row:
-                amplitudes.append(float(row["value"]))
+        fieldnames = set(reader.fieldnames or ())
+        has_frequency = "frequency_hz" in fieldnames
+        for row_number, row in enumerate(reader, start=2):
+            amp_text = (row.get("amplitude_dbm") or row.get("value") or "").strip()
+            if has_frequency:
+                freq_text = (row.get("frequency_hz") or "").strip()
+                if not freq_text or not amp_text:
+                    raise ValueError(
+                        f"trace CSV {path} row {row_number} must include both "
+                        "frequency_hz and amplitude",
+                    )
+                frequencies.append(float(freq_text))
+                amplitudes.append(float(amp_text))
+                continue
+            if not amp_text:
+                raise ValueError(
+                    f"trace CSV {path} row {row_number} must include amplitude_dbm or value",
+                )
+            amplitudes.append(float(amp_text))
     if not amplitudes:
         raise ValueError(f"trace CSV is empty: {path}")
     return frequencies, amplitudes
