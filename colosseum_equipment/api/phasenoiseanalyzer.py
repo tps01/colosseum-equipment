@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
 
 
 @command
-def preset(*, phasenoiseanalyzer_id: int) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def preset(*, phasenoiseanalyzer_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -16,11 +18,12 @@ def preset(*, phasenoiseanalyzer_id: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).preset()
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).preset()
 
 
 @command
-def set_carrier_frequency_hz(*, phasenoiseanalyzer_id: int, frequency_hz: float) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_carrier_frequency_hz(*, phasenoiseanalyzer_id: EquipmentId, frequency_hz: float) -> None:
     """Set the carrier / DUT frequency in hertz.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -30,13 +33,14 @@ def set_carrier_frequency_hz(*, phasenoiseanalyzer_id: int, frequency_hz: float)
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_carrier_frequency_hz(
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).set_carrier_frequency_hz(
         frequency_hz,
     )
 
 
 @command
-def set_offset_start_hz(*, phasenoiseanalyzer_id: int, offset_hz: float) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_offset_start_hz(*, phasenoiseanalyzer_id: EquipmentId, offset_hz: float) -> None:
     """Set the phase-noise offset start frequency in hertz.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -46,13 +50,14 @@ def set_offset_start_hz(*, phasenoiseanalyzer_id: int, offset_hz: float) -> None
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_offset_start_hz(
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).set_offset_start_hz(
         offset_hz,
     )
 
 
 @command
-def set_offset_stop_hz(*, phasenoiseanalyzer_id: int, offset_hz: float) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_offset_stop_hz(*, phasenoiseanalyzer_id: EquipmentId, offset_hz: float) -> None:
     """Set the phase-noise offset stop frequency in hertz.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -62,13 +67,14 @@ def set_offset_stop_hz(*, phasenoiseanalyzer_id: int, offset_hz: float) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_offset_stop_hz(
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).set_offset_stop_hz(
         offset_hz,
     )
 
 
 @command
-def initiate(*, phasenoiseanalyzer_id: int) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def initiate(*, phasenoiseanalyzer_id: EquipmentId) -> None:
     """Start a phase-noise measurement sweep.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -76,7 +82,7 @@ def initiate(*, phasenoiseanalyzer_id: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).initiate()
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).initiate()
 
 
 @command
@@ -90,13 +96,14 @@ def wait_complete(*, phasenoiseanalyzer_id: int, timeout_s: float = 120.0) -> No
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).wait_complete(
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).wait_complete(
         timeout_s=timeout_s,
     )
 
 
 @command
-def abort(*, phasenoiseanalyzer_id: int) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def abort(*, phasenoiseanalyzer_id: EquipmentId) -> None:
     """Cancel an in-progress phase-noise sweep.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -104,11 +111,12 @@ def abort(*, phasenoiseanalyzer_id: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).abort()
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).abort()
 
 
 @command
-def set_averaging_count(*, phasenoiseanalyzer_id: int, count: int) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_averaging_count(*, phasenoiseanalyzer_id: EquipmentId, count: int) -> None:
     """Set sweep averaging count.
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -118,13 +126,14 @@ def set_averaging_count(*, phasenoiseanalyzer_id: int, count: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_averaging_count(
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).set_averaging_count(
         count,
     )
 
 
 @command
-def set_xcorr_count(*, phasenoiseanalyzer_id: int, count: int) -> None:
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_xcorr_count(*, phasenoiseanalyzer_id: EquipmentId, count: int) -> None:
     """Set cross-correlation count (R&S FSWP and similar).
 
     :param phasenoiseanalyzer_id: Configured ``equipment.phasenoiseanalyzer`` id.
@@ -134,7 +143,7 @@ def set_xcorr_count(*, phasenoiseanalyzer_id: int, count: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).set_xcorr_count(count)
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).set_xcorr_count(count)
 
 
 @command
@@ -150,7 +159,7 @@ def save_trace_data(*, phasenoiseanalyzer_id: int, path: str, trace: int = 1) ->
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).save_trace_data(
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).save_trace_data(
         path,
         trace=trace,
     )
@@ -165,7 +174,7 @@ def wait_opc(*, phasenoiseanalyzer_id: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).wait_opc()
+    get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).wait_opc()
 
 
 @measurement
@@ -188,7 +197,7 @@ def measure_spot_noise_dbc_hz(
     :rtype: float
     """
     _ = key
-    instrument = get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id)
+    instrument = get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer'))
     return float(instrument.measure_spot_noise_dbc_hz(offset_hz))
 
 
@@ -216,7 +225,7 @@ def measure_integrated_jitter_s(
     """
     _ = key
     return float(
-        get_cached_instrument("phasenoiseanalyzer", phasenoiseanalyzer_id).measure_integrated_jitter_s(
+        get_cached_instrument('phasenoiseanalyzer', require_int_id(phasenoiseanalyzer_id, kind='phasenoiseanalyzer')).measure_integrated_jitter_s(
             start_hz=start_hz,
             stop_hz=stop_hz,
         ),

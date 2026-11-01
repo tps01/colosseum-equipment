@@ -18,6 +18,26 @@ do not distinguish measurements with the same domain, command, key, and row
 index. See `evidence and verification <https://tps01.github.io/colosseum-core/guides/measurements_verifications.html>`__
 for lookup rules and complete failure examples.
 
+Broadcast id ``"all"``
+----------------------
+
+Selected **void** setup/control commands accept ``*_id="all"`` (for example
+``psu_id``, ``vsg_id``) and apply the same arguments to every configured row of
+that kind, in ascending id order. Fan-out is sequential (not simultaneous). If
+any target fails, remaining ids still run, then one
+``EquipmentError`` summarizes the failures. Channel numbers, remote waveform
+names, and other args must be valid on every target. Shared **input** paths
+(such as ``upload_waveform`` / ``apply_mask_setup``) are intentional; host
+**output** path writers (``save_*``, ``start_logging``), waits, and
+get/measure APIs stay single-id only.
+
+Example::
+
+   col.equipment.psu.set_output(psu_id="all", enabled=False)
+   col.equipment.vsg.upload_waveform(
+       vsg_id="all", local_path="wave.wfm", remote_name="WAVE1",
+   )
+
 The plugin uses Colosseum's standard run artifacts. See the
 `output guide <https://tps01.github.io/colosseum-core/guides/output_artifacts.html>`__
 for summaries and SQLite queries. Plugin captures require artifacts enabled.
