@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
 
 
 @command
-def set_path(*, rfswitch_id: int, path: str, wait_settle_s: float | None = None) -> None:
+@broadcastable("rfswitch", "rfswitch_id")
+def set_path(*, rfswitch_id: EquipmentId, path: str, wait_settle_s: float | None = None) -> None:
     """Set routing path (model-specific string, e.g. ``A=1;B=0`` or ``SETP=0011``).
 
     :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
@@ -23,13 +25,14 @@ def set_path(*, rfswitch_id: int, path: str, wait_settle_s: float | None = None)
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rfswitch", rfswitch_id).set_path(path, wait_settle_s=wait_settle_s)
+    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).set_path(path, wait_settle_s=wait_settle_s)
 
 
 @command
+@broadcastable("rfswitch", "rfswitch_id")
 def set_switch(
     *,
-    rfswitch_id: int,
+    rfswitch_id: EquipmentId,
     switch: str,
     state: int,
     wait_settle_s: float | None = None,
@@ -50,7 +53,7 @@ def set_switch(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rfswitch", rfswitch_id).set_switch(
+    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).set_switch(
         switch,
         state,
         wait_settle_s=wait_settle_s,
@@ -71,11 +74,12 @@ def wait_settle(*, rfswitch_id: int, settle_s: float | None = None) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rfswitch", rfswitch_id).wait_settle(settle_s=settle_s)
+    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).wait_settle(settle_s=settle_s)
 
 
 @command
-def preset(*, rfswitch_id: int) -> None:
+@broadcastable("rfswitch", "rfswitch_id")
+def preset(*, rfswitch_id: EquipmentId) -> None:
     """Return the switch to a default preset.
 
     :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
@@ -86,7 +90,7 @@ def preset(*, rfswitch_id: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("rfswitch", rfswitch_id).preset()
+    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).preset()
 
 
 @measurement
@@ -106,4 +110,4 @@ def measure_path(*, rfswitch_id: int, key: str) -> str:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return str(get_cached_instrument("rfswitch", rfswitch_id).measure_path())
+    return str(get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).measure_path())

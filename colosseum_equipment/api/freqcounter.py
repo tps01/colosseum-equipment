@@ -6,16 +6,18 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(freqcounter_id: int) -> Any:
-    return get_cached_instrument("freqcounter", freqcounter_id)
+def _inst(freqcounter_id: EquipmentId) -> Any:
+    return get_cached_instrument('freqcounter', require_int_id(freqcounter_id, kind='freqcounter'))
 
 
 @command
-def set_gate_time(*, freqcounter_id: int, seconds: float) -> None:
+@broadcastable("freqcounter", "freqcounter_id")
+def set_gate_time(*, freqcounter_id: EquipmentId, seconds: float) -> None:
     """Set the measurement gate time.
 
     :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
@@ -32,7 +34,8 @@ def set_gate_time(*, freqcounter_id: int, seconds: float) -> None:
 
 
 @command
-def set_coupling(*, freqcounter_id: int, coupling: str, channel: int = 1) -> None:
+@broadcastable("freqcounter", "freqcounter_id")
+def set_coupling(*, freqcounter_id: EquipmentId, coupling: str, channel: int = 1) -> None:
     """Set input coupling (``AC`` or ``DC``).
 
     :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
@@ -51,7 +54,8 @@ def set_coupling(*, freqcounter_id: int, coupling: str, channel: int = 1) -> Non
 
 
 @command
-def set_impedance(*, freqcounter_id: int, ohms: float, channel: int = 1) -> None:
+@broadcastable("freqcounter", "freqcounter_id")
+def set_impedance(*, freqcounter_id: EquipmentId, ohms: float, channel: int = 1) -> None:
     """Set input termination impedance (``50`` or ``1e6``).
 
     :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
@@ -70,7 +74,8 @@ def set_impedance(*, freqcounter_id: int, ohms: float, channel: int = 1) -> None
 
 
 @command
-def set_attenuation(*, freqcounter_id: int, attenuation_db: float, channel: int = 1) -> None:
+@broadcastable("freqcounter", "freqcounter_id")
+def set_attenuation(*, freqcounter_id: EquipmentId, attenuation_db: float, channel: int = 1) -> None:
     """Set input attenuation in dB.
 
     :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
@@ -89,7 +94,8 @@ def set_attenuation(*, freqcounter_id: int, attenuation_db: float, channel: int 
 
 
 @command
-def set_trigger_level_v(*, freqcounter_id: int, level_v: float, channel: int = 1) -> None:
+@broadcastable("freqcounter", "freqcounter_id")
+def set_trigger_level_v(*, freqcounter_id: EquipmentId, level_v: float, channel: int = 1) -> None:
     """Set input trigger level in volts.
 
     :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
@@ -108,7 +114,8 @@ def set_trigger_level_v(*, freqcounter_id: int, level_v: float, channel: int = 1
 
 
 @command
-def preset(*, freqcounter_id: int) -> None:
+@broadcastable("freqcounter", "freqcounter_id")
+def preset(*, freqcounter_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
     :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.

@@ -91,6 +91,11 @@ different meanings::
    finally:
        col.equipment.psu.set_output(psu_id=1, channel=1, enabled=False)
 
+When the bench TOML lists more than one PSU and every supply should see the
+same command, pass ``psu_id="all"`` (for example
+``col.equipment.psu.set_output(psu_id="all", enabled=False)``). See
+:doc:`api_conventions` for broadcast behavior and limits.
+
 Read trip state with ``get_fault_status`` and clear it with
 ``clear_protection`` only when the bench procedure calls for it. A readback of a
 setpoint alone does not establish voltage at the DUT.

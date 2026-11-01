@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
 
 
 @command
-def set_relay(*, relay_id: int, channel: int, enabled: bool) -> None:
+@broadcastable("relay", "relay_id")
+def set_relay(*, relay_id: EquipmentId, channel: int, enabled: bool) -> None:
     """Turn a relay channel on or off.
 
     :param relay_id: Configured ``equipment.relay`` id from config TOML.
@@ -23,11 +25,12 @@ def set_relay(*, relay_id: int, channel: int, enabled: bool) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("relay", relay_id).set_relay(channel, enabled)
+    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_relay(channel, enabled)
 
 
 @command
-def set_all(*, relay_id: int, bitmask: int) -> None:
+@broadcastable("relay", "relay_id")
+def set_all(*, relay_id: EquipmentId, bitmask: int) -> None:
     """Set all relay channels from a bitmask (bit 0 = channel 1).
 
     :param relay_id: Configured ``equipment.relay`` id from config TOML.
@@ -40,11 +43,12 @@ def set_all(*, relay_id: int, bitmask: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("relay", relay_id).set_all(bitmask)
+    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_all(bitmask)
 
 
 @command
-def pulse_relay(*, relay_id: int, channel: int, duration_s: float | None = None) -> None:
+@broadcastable("relay", "relay_id")
+def pulse_relay(*, relay_id: EquipmentId, channel: int, duration_s: float | None = None) -> None:
     """Pulse a relay channel.
 
     :param relay_id: Configured ``equipment.relay`` id from config TOML.
@@ -60,11 +64,12 @@ def pulse_relay(*, relay_id: int, channel: int, duration_s: float | None = None)
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("relay", relay_id).pulse_relay(channel, duration_s)
+    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).pulse_relay(channel, duration_s)
 
 
 @command
-def set_pulse_width_s(*, relay_id: int, channel: int, width_s: float) -> None:
+@broadcastable("relay", "relay_id")
+def set_pulse_width_s(*, relay_id: EquipmentId, channel: int, width_s: float) -> None:
     """Set the preset pulse width for a relay channel (ControlByWeb ``pulseTimeN``).
 
     :param relay_id: Configured ``equipment.relay`` id from config TOML.
@@ -79,7 +84,7 @@ def set_pulse_width_s(*, relay_id: int, channel: int, width_s: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument("relay", relay_id).set_pulse_width_s(channel, width_s)
+    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_pulse_width_s(channel, width_s)
 
 
 @measurement
@@ -100,7 +105,7 @@ def measure_relay(*, relay_id: int, channel: int, key: str) -> bool:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return bool(get_cached_instrument("relay", relay_id).measure_relay(channel))
+    return bool(get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).measure_relay(channel))
 
 
 @measurement
@@ -119,4 +124,4 @@ def measure_all(*, relay_id: int, key: str) -> int:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = key
-    return int(get_cached_instrument("relay", relay_id).measure_all())
+    return int(get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).measure_all())

@@ -11,16 +11,18 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 
+from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
 
-def _inst(dmm_id: int) -> Any:
-    return get_cached_instrument("dmm", dmm_id)
+def _inst(dmm_id: EquipmentId) -> Any:
+    return get_cached_instrument('dmm', require_int_id(dmm_id, kind='dmm'))
 
 
 @command
-def set_function(*, dmm_id: int, function: str, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_function(*, dmm_id: EquipmentId, function: str, channel: int = 1) -> None:
     """Set measurement function (e.g. ``VOLT:DC``, ``CURR:AC``, ``RES``).
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -40,7 +42,8 @@ def set_function(*, dmm_id: int, function: str, channel: int = 1) -> None:
 
 
 @command
-def set_range(*, dmm_id: int, value: float, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_range(*, dmm_id: EquipmentId, value: float, channel: int = 1) -> None:
     """Set manual measurement range for the active function.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -60,7 +63,8 @@ def set_range(*, dmm_id: int, value: float, channel: int = 1) -> None:
 
 
 @command
-def set_auto_range(*, dmm_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_auto_range(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable autorange.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -79,7 +83,8 @@ def set_auto_range(*, dmm_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def set_nplc(*, dmm_id: int, nplc: float, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_nplc(*, dmm_id: EquipmentId, nplc: float, channel: int = 1) -> None:
     """Set integration time in power-line cycles (NPLC).
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -99,7 +104,8 @@ def set_nplc(*, dmm_id: int, nplc: float, channel: int = 1) -> None:
 
 
 @command
-def set_aperture_s(*, dmm_id: int, seconds: float, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_aperture_s(*, dmm_id: EquipmentId, seconds: float, channel: int = 1) -> None:
     """Set aperture time in seconds (when supported).
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -118,7 +124,8 @@ def set_aperture_s(*, dmm_id: int, seconds: float, channel: int = 1) -> None:
 
 
 @command
-def set_auto_zero(*, dmm_id: int, enabled: bool, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_auto_zero(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable auto-zero.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -137,7 +144,8 @@ def set_auto_zero(*, dmm_id: int, enabled: bool, channel: int = 1) -> None:
 
 
 @command
-def set_input_z(*, dmm_id: int, ohms: float, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_input_z(*, dmm_id: EquipmentId, ohms: float, channel: int = 1) -> None:
     """Set input impedance in ohms.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -156,7 +164,8 @@ def set_input_z(*, dmm_id: int, ohms: float, channel: int = 1) -> None:
 
 
 @command
-def set_trigger_source(*, dmm_id: int, source: str, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def set_trigger_source(*, dmm_id: EquipmentId, source: str, channel: int = 1) -> None:
     """Set trigger source (e.g. ``IMM``, ``EXT``, ``BUS``).
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
@@ -175,7 +184,8 @@ def set_trigger_source(*, dmm_id: int, source: str, channel: int = 1) -> None:
 
 
 @command
-def initiate(*, dmm_id: int, channel: int = 1) -> None:
+@broadcastable("dmm", "dmm_id")
+def initiate(*, dmm_id: EquipmentId, channel: int = 1) -> None:
     """Arm a measurement (``INIT``); read with :func:`fetch`.
 
     :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
