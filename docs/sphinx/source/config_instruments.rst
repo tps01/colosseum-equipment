@@ -28,7 +28,7 @@ equipment.asg
    frequency = 1000.0                         # optional; set_frequency at connect when present
    amplitude_vpp = 1.0                        # optional; set_amplitude_vpp at connect when present
    output = true                              # optional; set_output(True) at connect when truthy
-   channels = 1                               # optional; channel count; default 1; also reads channel_count
+   channels = 1                               # preferred channel count; default 1; channel_count accepted if channels omitted
 
 equipment.attn
 --------------
@@ -71,8 +71,8 @@ equipment.dmm
    visa_backend = "sim"                       # optional; "sim" requires sim_definition; any other value keeps the default manager
    visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
    sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
-   channels = 1                               # optional; channel count; default 1 when channels and channel_count are empty
-   channel_count = 1                          # optional; used when channels is empty; default 1
+   channels = 1                               # preferred channel count; default 1
+   channel_count = 1                          # accepted when channels omitted; error if both disagree
    baudrate = 115200                          # optional; line-mode default 115200; fluke-189 requires 9600 and fluke-289 requires 115200 with driver=serial
 
 equipment.eload
@@ -90,8 +90,8 @@ equipment.eload
    visa_backend = "sim"                       # optional; "sim" requires sim_definition; any other value keeps the default manager
    visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
    sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
-   channels = 1                               # optional; channel count; default 1 when channels and channel_count are empty
-   channel_count = 1                          # optional; used when channels is empty; default 1
+   channels = 1                               # preferred channel count; default 1
+   channel_count = 1                          # accepted when channels omitted; error if both disagree
 
 equipment.freqcounter
 ---------------------
@@ -108,7 +108,7 @@ equipment.freqcounter
    visa_backend = "sim"                       # optional; "sim" requires sim_definition; any other value keeps the default manager
    visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
    sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
-   channels = 2                               # optional; channel count; default 2; also reads channel_count
+   channels = 2                               # preferred channel count; default 2; channel_count accepted if channels omitted
 
 equipment.gnss
 --------------
@@ -149,7 +149,7 @@ equipment.oscope
    visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
    sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
    measurement_slot = 1                       # optional; tektronix-t3dso2000 PAVA CUST slot; default 1
-   channels = 4                               # optional; channel count; default 4; also reads channel_count
+   channels = 4                               # preferred channel count; default 4; channel_count accepted if channels omitted
 
 equipment.phasenoiseanalyzer
 ----------------------------
@@ -185,8 +185,8 @@ equipment.psu
    voltage = 3.3                              # optional; set_voltage at connect when present
    ovp = 3.6                                  # optional; set_ovp_v at connect when present
    ocp = 1.0                                  # optional; set_current_limit at connect when present
-   channels = 1                               # optional; channel count; default 1 when channels and channel_count are empty
-   channel_count = 1                          # optional; used when channels is empty; default 1
+   channels = 1                               # preferred channel count; default 1
+   channel_count = 1                          # accepted when channels omitted; error if both disagree
    baudrate = 115200                          # optional; line-mode default 115200; tdk-genesys-serial requires it with driver=serial
    device_address = 0                         # optional; tdk-genesys-serial sends ADR n when set; integer 0..30
 
@@ -206,7 +206,7 @@ equipment.pwrmeter
    visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
    sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
    frequency = 1000000000.0                   # optional; Hz; set_frequency at connect when present
-   channels = 1                               # optional; channel count; default 1; also reads channel_count
+   channels = 1                               # preferred channel count; default 1; channel_count accepted if channels omitted
 
 equipment.relay
 ---------------

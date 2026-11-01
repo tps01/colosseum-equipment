@@ -27,7 +27,7 @@ the downloaded filename. For development, use `python -m pip install -e .`.
 python -m pip install "./colosseum_equipment-<version>-py3-none-any.whl"
 ```
 
-This requires `colosseum-core` `>=0.17.1,<0.18` (threaded evidence queue and
+This requires `colosseum-core` `>=0.18,<0.19` (threaded evidence queue and
 portable artifact paths) and registers the `equipment` and `io`
 namespaces through the `colosseum.plugins` entry point.
 
