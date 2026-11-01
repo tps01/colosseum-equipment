@@ -46,3 +46,18 @@ def test_mixed_kinds_keep_global_order() -> None:
 def test_resource_sort_key_is_stable() -> None:
     resource = "TCPIP0::10.0.0.5::5025::SOCKET"
     assert resource_sort_key(resource) == resource_sort_key(resource)
+
+
+def test_nonzero_board_indexes_keep_interface_rank() -> None:
+    ordered = sort_resources(
+        [
+            "ASRL15::INSTR",
+            "GPIB1::2::INSTR",
+            "USB1::0x2A8D::0x8F01::INSTR",
+            "TCPIP0::10.0.0.1::INSTR",
+        ],
+    )
+    assert ordered[0].startswith("TCPIP")
+    assert ordered[1].startswith("USB")
+    assert ordered[2].startswith("GPIB")
+    assert ordered[3].startswith("ASRL")

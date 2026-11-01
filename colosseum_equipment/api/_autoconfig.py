@@ -1,4 +1,4 @@
-"""VISA autoconfig entry point for ``col.equipment.autoconfig``."""
+"""Autoconfig entry point for ``col.equipment.autoconfig``."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from colosseum.config.loader import (
     default_test_name,
 )
 from colosseum.context import apply_no_artifacts, get_context, init_context
+from colosseum.logging.setup import setup_logging
 
 from colosseum_equipment.autoconfig.discovery import discover_equipment_config
-from colosseum_equipment.autoconfig.logging import log_autoconfig
 from colosseum_equipment.autoconfig.toml_write import TomlWriteError, write_config_toml
 
 if TYPE_CHECKING:
@@ -24,20 +24,19 @@ if TYPE_CHECKING:
 def autoconfig(
     *,
     timeout: float = 5.0,
-    visa_backend: str | None = None,
     visa_library: str | None = None,
     blacklist: str | Sequence[str] | None = None,
     export_path: str | Path | None = None,
     no_artifacts: bool = False,
 ) -> ConfigStore:
-    """Scan VISA ``?*INSTR`` resources and build equipment config without a TOML file.
+    """Scan VISA ``?*INSTR`` and serial COM ports; build equipment config.
 
-    Serial ports and FTDI adapters are not part of this scan.
+    Serial ASRL/COM ports try bare ``IDN?`` then ``*IDN?`` across common bauds.
+    Fluke handheld ``QM`` is probed only after IDN fails. FTDI adapters are not
+    discovered.
 
-    :param timeout: Probe timeout in seconds for each VISA resource.
+    :param timeout: Probe timeout in seconds for each resource/port.
     :type timeout: float, optional
-    :param visa_backend: Reserved for future use; VISA backend selection uses ``visa_library``.
-    :type visa_backend: str | None, optional
     :param visa_library: Optional PyVISA ``ResourceManager`` library path (for example ``@ivi``).
     :type visa_library: str | None, optional
     :param blacklist: Interface name(s) or local IPv4 address(es) whose subnets are excluded
@@ -54,8 +53,6 @@ def autoconfig(
     :raises ConfigError: When PyVISA is unavailable, no resources are found, or none classify.
     :raises RuntimeError: When ``no_artifacts`` is set after runtime bootstrap.
     """
-    _ = visa_backend
-
     try:
         ctx = get_context()
     except RuntimeError:
@@ -67,14 +64,16 @@ def autoconfig(
     else:
         apply_no_artifacts(ctx, no_artifacts=no_artifacts)
 
+    if ctx.logger is None:
+        ctx.logger = setup_logging(ctx, console=True, file=False)
+
     result = discover_equipment_config(
         timeout=timeout,
         visa_library=visa_library,
         blacklist=blacklist,
+        logger=ctx.logger,
     )
     store = apply_raw_config(ctx, result.raw, source_label="(autoconfig)")
-    if ctx.logger is not None:
-        log_autoconfig(ctx, result)
     if export_path is not None:
         try:
             exported = write_config_toml(result.raw, export_path)

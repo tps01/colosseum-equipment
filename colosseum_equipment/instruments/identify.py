@@ -45,7 +45,7 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
     if driver in {"sim", "http"}:
         return "generic"
 
-    idn, bare = _probe_identity(kind, config, transport)
+    idn, bare = probe_identity(transport, asrl=_uses_asrl(kind, config), log_kind=kind)
     if idn is None:
         return "generic"
     if bare and lambda_gen_identity(idn):
@@ -80,36 +80,47 @@ def _uses_asrl(kind: str, config: dict[str, Any]) -> bool:
     return resource.upper().startswith("ASRL")
 
 
-def _probe_identity(kind: str, config: dict[str, Any], transport: object) -> tuple[str | None, bool]:
-    if _uses_asrl(kind, config):
-        try:
-            bare = _query_bare_idn(transport).strip()
-        except Exception as bare_exc:
-            _logger.warning("equipment.%s IDN? failed: %s", kind, bare_exc)
-            bare = ""
-        if bare and lambda_gen_identity(bare):
-            return bare, True
-        _flush(transport)
-    try:
-        idn = str(transport.query("*IDN?")).strip()  # type: ignore[attr-defined]
-    except Exception as exc:
-        _logger.warning("equipment.%s *IDN? failed: %s", kind, exc)
-        return None, False
-    return idn, False
-
-
-def _flush(transport: object) -> None:
+def flush_transport(transport: object) -> None:
+    """Best-effort flush of a transport input buffer."""
     flush = getattr(transport, "flush", None)
     if callable(flush):
         with contextlib.suppress(Exception):
             flush()
 
 
-def _query_bare_idn(transport: object) -> str:
-    _flush(transport)
+def query_bare_idn(transport: object) -> str:
+    """Send CR-terminated bare ``IDN?`` (Genesys native serial)."""
+    flush_transport(transport)
     write_bytes = getattr(transport, "write_bytes", None)
     read_until = getattr(transport, "read_until", None)
     if callable(write_bytes) and callable(read_until):
         write_bytes(b"IDN?\r")
         return str(read_until(b"\r"))
     return str(transport.query("IDN?"))  # type: ignore[attr-defined]
+
+
+def probe_identity(
+    transport: object,
+    *,
+    asrl: bool,
+    log_kind: str = "instrument",
+) -> tuple[str | None, bool]:
+    """Return ``(idn, bare)`` using bare ``IDN?`` on ASRL/COM then ``*IDN?``.
+
+    When ``bare`` is true the reply matched a Lambda GEN rating via bare ``IDN?``.
+    """
+    if asrl:
+        try:
+            bare = query_bare_idn(transport).strip()
+        except Exception as bare_exc:
+            _logger.warning("equipment.%s IDN? failed: %s", log_kind, bare_exc)
+            bare = ""
+        if bare and lambda_gen_identity(bare):
+            return bare, True
+        flush_transport(transport)
+    try:
+        idn = str(transport.query("*IDN?")).strip()  # type: ignore[attr-defined]
+    except Exception as exc:
+        _logger.warning("equipment.%s *IDN? failed: %s", log_kind, exc)
+        return None, False
+    return idn, False

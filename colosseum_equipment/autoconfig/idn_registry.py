@@ -208,7 +208,6 @@ _TIER2_RULES: tuple[_PatternRule, ...] = (
     _PatternRule("DMM", "dmm", "generic"),
     _PatternRule("POWER SUPPLY", "psu", "generic"),
     _PatternRule("E363", "psu", "generic"),
-    _PatternRule("DP832", "psu", "generic"),
     _PatternRule("SIGNAL GENERATOR", "vsg", "generic"),
     _PatternRule("N5182", "vsg", "generic"),
     _PatternRule("N5172", "vsg", "generic"),
