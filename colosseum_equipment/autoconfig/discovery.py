@@ -9,13 +9,17 @@ from __future__ import annotations
 
 import contextlib
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from colosseum.config.loader import ConfigError
 
-from colosseum_equipment.autoconfig.idn_registry import KIND_SECTIONS, classify_idn, lambda_gen_identity
+from colosseum_equipment.autoconfig.idn_registry import (
+    KIND_SECTIONS,
+    classify_idn,
+    lambda_gen_identity,
+)
 from colosseum_equipment.autoconfig.logging import (
     AutoconfigProgress,
     log_assignment,
@@ -25,7 +29,11 @@ from colosseum_equipment.autoconfig.logging import (
     log_skip,
     log_summary,
 )
-from colosseum_equipment.autoconfig.network_filter import BlockedSubnet, filter_resources, resolve_blacklist
+from colosseum_equipment.autoconfig.network_filter import (
+    BlockedSubnet,
+    filter_resources,
+    resolve_blacklist,
+)
 from colosseum_equipment.autoconfig.qm_probe import query_qm_model
 from colosseum_equipment.autoconfig.sort import sort_resources
 from colosseum_equipment.instruments.identify import probe_identity
@@ -225,10 +233,10 @@ def _serial_row_fields(
     return port, None, baudrate
 
 
-OpenSerial = Callable[[str, int, float], Any]
+OpenSerial = Callable[[str, int, float], object]
 
 
-def _default_open_serial(port: str, baudrate: int, timeout: float) -> Any:
+def _default_open_serial(port: str, baudrate: int, timeout: float) -> object:
     import serial
 
     return serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
@@ -441,7 +449,9 @@ def discover_equipment_config(
         detail = "; ".join(last_errors) if last_errors else "no response"
         _skip(label, f"probe_failed: {detail}")
 
-    def _open_visa_probe(manager: object, resource: str, baud: int, seconds: float) -> _VisaProbeAdapter:
+    def _open_visa_probe(
+        manager: object, resource: str, baud: int, seconds: float,
+    ) -> _VisaProbeAdapter:
         inst = manager.open_resource(resource)  # type: ignore[attr-defined]
         inst.timeout = int(seconds * 1000)
         with contextlib.suppress(Exception):
