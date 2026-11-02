@@ -1,0 +1,73 @@
+# Matrix tables (no expected_*/tolerance) — read via col.load_parameter.
+# Limit tables — injected by evidence key= on verify_*.
+#
+# Waveform paths are relative to examples/ (see the script). Both cases reuse
+# the shared stub IQ file; real packs usually point at distinct waveforms.
+# Other packs: copy this file, edit cases/limits, pass --parameters.
+
+[cases]
+names = ["wf1", "wf2"]
+
+[wf1]
+local = "fixtures/rf/stub_iq.bin"
+remote = "WFM_WF1"
+fs_hz = 1e8
+amp_dbm = -10.0
+
+[wf1.by_vsg]
+1 = [1.0e9, 1.1e9, 1.2e9]
+2 = [5.8e9, 5.9e9, 6.0e9]
+
+[wf2]
+local = "fixtures/rf/stub_iq.bin"
+remote = "WFM_WF2"
+fs_hz = 1e8
+amp_dbm = -10.0
+
+[wf2.by_vsg]
+1 = [1.05e9, 1.15e9, 1.25e9]
+2 = [5.85e9, 5.95e9]
+
+[wf1_vsg1_1000000000]
+expected_val = -10.0
+tolerance = 1.0
+
+[wf1_vsg1_1100000000]
+expected_val = -10.0
+tolerance = 1.0
+
+[wf1_vsg1_1200000000]
+expected_val = -10.0
+tolerance = 1.0
+
+[wf1_vsg2_5800000000]
+expected_val = -10.0
+tolerance = 1.5
+
+[wf1_vsg2_5900000000]
+expected_val = -10.0
+tolerance = 1.5
+
+[wf1_vsg2_6000000000]
+expected_val = -10.0
+tolerance = 1.5
+
+[wf2_vsg1_1050000000]
+expected_val = -12.0
+tolerance = 1.0
+
+[wf2_vsg1_1150000000]
+expected_val = -12.0
+tolerance = 1.0
+
+[wf2_vsg1_1250000000]
+expected_val = -12.0
+tolerance = 1.0
+
+[wf2_vsg2_5850000000]
+expected_val = -12.0
+tolerance = 1.5
+
+[wf2_vsg2_5950000000]
+expected_val = -12.0
+tolerance = 1.5

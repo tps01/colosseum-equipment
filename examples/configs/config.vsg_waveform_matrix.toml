@@ -1,0 +1,18 @@
+# Two-VSG + SpecA layout for examples/test_vsg_waveform_matrix.py.
+# Edit resource strings for the bench. Keep [[equipment.vsg]] for multiple VSGs.
+
+[[equipment.vsg]]
+vsg_id = 1
+model = "rohde-smbv100b"
+resource = "TCPIP0::192.168.1.50::inst0::INSTR"
+
+[[equipment.vsg]]
+vsg_id = 2
+model = "rohde-smbv100b"
+resource = "TCPIP0::192.168.1.51::inst0::INSTR"
+
+[equipment.speca]
+speca_id = 1
+model = "keysight-e4407b"
+resource = "TCPIP0::192.168.1.60::inst0::INSTR"
+timeout = 10.0
