@@ -3,7 +3,8 @@ Instrument acquisition recipes
 
 These recipes show how configuration, acquisition, readback, acceptance and
 export fit together. The runnable simulator procedures are
-``examples/test_power_rails.py``, ``test_rf_sweep.py`` and ``test_rf_vector_mod.py``.
+``examples/test_power_rails.py``, ``test_rf_sweep.py``, ``test_rf_vector_mod.py``,
+and ``test_vsg_waveform_matrix.py``.
 Run from the repository root with their documented config files. Simulator
 fixtures establish command flow and known responses, not hardware support or
 instrument accuracy.
@@ -232,6 +233,7 @@ The RF simulator bench supplies an E4438C generator, E4407B analyzer and RSA5100
 
    colosseum run examples/test_rf_sweep.py -g examples/configs/config.rf.visa-sim.toml
    colosseum run examples/test_rf_vector_mod.py -g examples/configs/config.rf.visa-sim.toml
+   colosseum run examples/test_vsg_waveform_matrix.py -g examples/configs/config.vsg_waveform_matrix.toml --parameters examples/vsg_waveform_matrix/parameters.toml
 
 An IQ upload uses the sample format expected by the VSG loader (16-bit
 interleaved I/Q for the supplied ``.bin``). RTSA exported bytes have the
@@ -239,6 +241,12 @@ receiver's acquisition format; do not assume an exported file can be fed back
 to a generator without conversion. Sample clock, RF reference, trigger and
 analysis bandwidth are separate settings. ``save_IQ_data`` saves the capture;
 ``iq.tar`` includes metadata and ``bin`` is raw payload.
+
+``test_vsg_waveform_matrix.py`` shows a reusable pack: each waveform lists
+center frequencies per ``vsg_id`` in ``parameters.toml`` (``col.load_parameter``
+for the matrix, ``key=`` tables for marker limits). The example config uses two
+``rohde-smbv100b`` VSGs and a ``keysight-e4407b`` SpecA; edit the resources for
+the bench.
 
 For numeric acceptance on the supplied analyzer, place a marker then record
 and verify its power::
