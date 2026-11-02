@@ -109,10 +109,12 @@ Representative capability matrix
 
 The model-by-model matrix is maintained in the
 `inventory implementation and qualification table <https://github.com/tps01/colosseum-equipment/blob/develop/docs/equipment/inventory-rollout.md>`__
-and its linked manual analysis. The inventory rollout reports synthetic
-command-level tests and outstanding physical qualification. Scope capture,
-IQ export, triggering, and analyzer applications need per-operation checks;
-an installed option or matching model name does not establish those capabilities.
+and its linked manual analysis. The inventory expansion pass reports synthetic
+command-level tests; CI does not gate physical qualification, and formal
+hardware-qualified rows are still empty in that table even when some lab
+validation of older drivers exists elsewhere. Scope capture, IQ export,
+triggering, and analyzer applications need per-operation checks; an installed
+option or matching model name does not establish those capabilities.
 
 Troubleshooting
 ---------------
