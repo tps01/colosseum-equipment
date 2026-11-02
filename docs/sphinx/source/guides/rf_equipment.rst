@@ -27,6 +27,7 @@ Example workflows
 
 * CW stimulus and swept spectrum: ``examples/test_rf_sweep.py`` (uses ``config.rf.visa-sim.toml`` or hardware config)
 * Vector arb and RTSA capture: ``examples/test_rf_vector_mod.py``
+* Multi-VSG IQ matrix from ``parameters.toml``: ``examples/test_vsg_waveform_matrix.py``
 * Offline trace plot: ``python examples/plot_trace.py outputs/<run>/traces/carrier.csv``
 
 Offline CI without hardware uses ``examples/configs/config.rf.visa-sim.toml`` and ``pytest -m visa_sim``.
