@@ -102,11 +102,65 @@ def test_serial_visa_non_lambda_idn_falls_back_to_star() -> None:
     assert other.queries == ["*IDN?"]
 
 
-def test_sim_http_and_gnss_skip_the_probe() -> None:
+def test_sim_http_and_relay_skip_the_probe() -> None:
     probe = _Probe("LAMBDA,GEN30-50")
     assert resolve_instrument_model("psu", {"driver": "sim"}, probe) == "generic"
     assert resolve_instrument_model(
         "relay", {"resource": "http://192.168.1.2"}, probe,
     ) == "generic"
-    assert resolve_instrument_model("gnss", {"port": "COM7"}, probe) == "generic"
     assert probe.queries == []
+
+
+def test_gnss_omit_model_probes_vendor_stream() -> None:
+    from colosseum_equipment.instruments.gnss.ubx import (
+        CLS_MON,
+        ID_MON_VER,
+        build_ubx,
+        mon_ver_poll,
+    )
+
+    # MON-VER payload: sw(30) + hw(10) with MOD=NEO-M9N in extension
+    body = bytearray(70)
+    body[0:7] = b"ROM SPG"
+    body[30:36] = b"000A00"
+    body[40:51] = b"MOD=NEO-M9N"
+    frame = build_ubx(CLS_MON, ID_MON_VER, bytes(body))
+
+    class _GnssProbe:
+        def __init__(self) -> None:
+            self._chunks = [frame]
+            self.written: list[bytes] = []
+
+        def flush(self) -> None:
+            return None
+
+        def write_bytes(self, payload: bytes) -> None:
+            self.written.append(payload)
+
+        def read_bytes(self, size: int = 512) -> bytes:
+            _ = size
+            if not self._chunks:
+                return b""
+            return self._chunks.pop(0)
+
+    probe = _GnssProbe()
+    assert resolve_instrument_model("gnss", {"port": "COM7"}, probe) == "ublox-m9"
+    assert probe.written == [mon_ver_poll()]
+
+
+def test_gnss_omit_model_without_reply_is_generic() -> None:
+    class _Silent:
+        def flush(self) -> None:
+            return None
+
+        def write_bytes(self, payload: bytes) -> None:
+            _ = payload
+
+        def read_bytes(self, size: int = 512) -> bytes:
+            _ = size
+            return b""
+
+        def in_waiting(self) -> int:
+            return 0
+
+    assert resolve_instrument_model("gnss", {"port": "COM7"}, _Silent()) == "generic"

@@ -147,8 +147,7 @@ SMW200A (high-end VSG) documented for a later pass.
 [equipment.gnss]
 gnss_id = 1
 port = "COM7"
-baudrate = 9600
-model = "ublox-f9"
+model = "ublox"
 ```
 
 **Septentrio AsteRx-U3 (USB/RS-232 serial):**

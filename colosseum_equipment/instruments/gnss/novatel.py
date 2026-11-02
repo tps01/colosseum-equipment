@@ -36,6 +36,7 @@ _DEFAULT_LOGS = (
 @instrument_model(
     "gnss",
     "novatel-oem7",
+    "novatel",
     "novatel-oem7600",
     "novatel-pwrpak7",
     "novatel-smart7",

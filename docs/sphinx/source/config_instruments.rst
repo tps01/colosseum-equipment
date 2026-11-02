@@ -113,25 +113,28 @@ equipment.freqcounter
 equipment.gnss
 --------------
 
-Neither ``resource`` nor ``port`` is required. ``resolve_instrument_model``
-does not probe this kind; an omitted ``model`` stays ``generic``.
+Neither ``resource`` nor ``port`` is required. GNSS is not an ``*IDN?`` kind:
+an omitted ``model`` runs a vendor stream probe (UBX MON-VER / NovAtel /
+Septentrio) and falls back to ``generic``. Family slugs ``ublox``,
+``septentrio``, and ``novatel`` are enough; exact series is optional
+(``ublox-m8``, ``ublox-m9``, ``ublox-m10``, ``ublox-f9``, ``ublox-f10``, …).
+When ``port`` is set, the inferred driver is ``serial`` (serial also wins if
+both ``port`` and ``resource`` are set). A lone ``resource`` (for example a
+TCPIP SOCKET) stays VISA.
 
 .. code-block:: toml
 
    [equipment.gnss]
    gnss_id = 1                                # required integer id
-   driver = "serial"                          # optional; sim, visa, serial, or http; else inferred
-   model = "generic"                          # optional; default generic; this kind does not *IDN? probe
-   interface = "usb"                          # optional; open_transport and instruments do not read it
-   timeout = 5.0                              # optional; seconds; default 5.0; also the poll cap when a fix max-age is larger
-   visa_backend = "sim"                       # optional; "sim" requires sim_definition; any other value keeps the default manager
-   visa_library = "visa32.dll"                # optional; ResourceManager argument when visa_backend is not sim
-   sim_definition = "sim.yaml"                # optional YAML path; required when visa_backend is sim
-   connection = "COM1"                        # optional; Septentrio stream port; default COM1; generic GNSS does not read it
-   baudrate = 9600                            # optional; line-mode default 9600
-   sim_read = "OK"                            # optional; registered here; SimTransport applies sim_read only for kind serial
-   port = "COM5"                              # optional serial/ASRL address; used when driver is serial or resource is empty
-   resource = "ASRL5::INSTR"                  # optional VISA resource; neither this nor port is required
+   port = "COM5"                              # typical serial address; infers driver=serial
+   model = "ublox"                            # optional family or series; omitted probes the receiver
+
+   # Optional keys:
+   # driver = "serial"                        # sim, visa, serial, or http; else inferred
+   # baudrate = 9600                          # line-mode default 9600
+   # connection = "COM1"                      # Septentrio stream port; default COM1
+   # resource = "TCPIP0::192.0.2.1::28785::SOCKET"  # Ethernet SOCKET when not using port
+   # timeout = 5.0
 
 equipment.oscope
 ----------------

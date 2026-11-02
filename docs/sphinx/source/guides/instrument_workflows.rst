@@ -385,8 +385,10 @@ Use exactly one target ID. These calls do not replace numerical acceptance.
 GNSS freshness and acquisition
 ------------------------------
 
-Use a receiver-specific ``equipment.gnss`` row (``port``/``baudrate`` for serial
-or the supported VISA SOCKET resource), an antenna/signal, and enabled position
+Use a receiver-specific ``equipment.gnss`` row. Serial receivers typically need
+only ``port`` and a family ``model`` such as ``ublox`` (baudrate defaults to
+9600; ``driver=serial`` is inferred from ``port``). Ethernet Septentrio uses a
+VISA SOCKET ``resource``. Provide an antenna/signal and enabled position
 messages. A fix-dependent scalar flow is::
 
    col.equipment.gnss.mark_acquisition_start(gnss_id=1)
@@ -416,7 +418,8 @@ Autoconfig
 ``col.equipment.autoconfig()`` scans VISA ``?*INSTR`` resources and local COM
 ports, logging each assignment as it happens. Serial ports try bare ``IDN?``
 then ``*IDN?`` across common bauds; Fluke handheld ``QM`` runs only after IDN
-fails. FTDI / digital IO adapters are not discovered. To review a reusable
+fails; GNSS vendor probes run after both miss. FTDI / digital IO adapters are
+not discovered. To review a reusable
 file, pass ``export_path="config.toml"`` and inspect model, resource/port, and
 assigned IDs before writing acceptance tests. Do not run discovery in offline
 documentation checks. An explicit config gives stable IDs across benches and

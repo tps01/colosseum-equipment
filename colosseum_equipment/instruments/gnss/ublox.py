@@ -44,6 +44,7 @@ from colosseum_equipment.instruments.gnss.ubx import (
     cfg_rst_cold,
     cfg_valget_poll,
     mon_ver_poll,
+    parse_mon_ver_series,
     parse_nav_dop,
     parse_nav_pvt,
     resolve_message_id,
@@ -63,7 +64,23 @@ if TYPE_CHECKING:
 _logger = get_logger("colosseum.equipment")
 
 
-@instrument_model("gnss", "ublox-m8", "ublox-m10", "ublox-f9", "ublox-f10")
+def _series_from_model(model: str) -> str | None:
+    lower = model.lower()
+    for token in ("m10", "f10", "f9", "m9", "m8"):
+        if token in lower:
+            return token
+    return None
+
+
+@instrument_model(
+    "gnss",
+    "ublox-m8",
+    "ublox",
+    "ublox-m9",
+    "ublox-m10",
+    "ublox-f9",
+    "ublox-f10",
+)
 class UbloxGnss(GenericGnss):
     """Shared u-blox driver; series share NMEA + UBX NAV-PVT / NAV-DOP."""
 
@@ -71,6 +88,7 @@ class UbloxGnss(GenericGnss):
         super().__init__(transport, config)
         self._parser = UbxStreamParser()
         self._nav: NavPvt | None = None
+        self._series = _series_from_model(self._model)
         self._enable_messages()
 
     def _wire_suffix(self) -> str:
@@ -93,8 +111,28 @@ class UbloxGnss(GenericGnss):
         self._write_bytes(cfg_msg_rate(CLS_NMEA, ID_NMEA_GSV, 1))
 
     def _is_m8_family(self) -> bool:
-        model = self._model.lower()
-        return "m8" in model and "m10" not in model
+        series = (self._series or _series_from_model(self._model) or "").lower()
+        return series == "m8"
+
+    def _refine_series_from_mon_ver(self, body: bytes) -> None:
+        series = parse_mon_ver_series(body)
+        if series is None:
+            if self._series is None:
+                _logger.info(
+                    "gnss model `%s` MON-VER did not identify series; using gen9 defaults",
+                    self._model,
+                )
+            return
+        self._series = series
+        if self._model in {"ublox", "ublox-m8", "ublox-m9", "ublox-m10", "ublox-f9", "ublox-f10"}:
+            refined = f"ublox-{series}"
+            if refined != self._model:
+                _logger.info(
+                    "gnss model `%s` refined to `%s` from MON-VER",
+                    self._model,
+                    refined,
+                )
+                self._model = refined
 
     def _apply_events(self, events: list[tuple[str, object]]) -> None:
         for kind, payload in events:
@@ -215,7 +253,8 @@ class UbloxGnss(GenericGnss):
         if not frames:
             raise EquipmentResponseError(f"no CFG messages found in {path}")
         if info is not None:
-            warning = detect_mismatch(self._model, info)
+            mismatch_model = self._model if self._series is None else f"ublox-{self._series}"
+            warning = detect_mismatch(mismatch_model, info)
             if warning:
                 _logger.warning("%s", warning)
         total_naks = 0
@@ -246,6 +285,7 @@ class UbloxGnss(GenericGnss):
             max_msgs=1,
         ):
             mon_line = ucenter_hex_line("MON-VER", msg_class, msg_id, body)
+            self._refine_series_from_mon_ver(body)
             break
 
         entries: list[tuple[str, int, int, bytes]] = []

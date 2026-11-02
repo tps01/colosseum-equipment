@@ -16,6 +16,12 @@ interface = "usb"
 resource = "USB0::0x2A8D::0x8F01::INSTR"
 timeout = 5.0
 
+# GNSS receiver (serial). Family model is enough; omit model to probe.
+# [equipment.gnss]
+# gnss_id = 1
+# port = "COM5"
+# model = "ublox"
+
 # FT232H GPIO
 [io.dio]
 dio_id = 1

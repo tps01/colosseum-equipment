@@ -6,8 +6,14 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
+from colosseum.logging import get_logger
+
+from colosseum_equipment.exceptions import EquipmentTimeoutError
+
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+_logger = get_logger("colosseum.equipment")
 
 
 class GnssListener:
@@ -26,9 +32,11 @@ class GnssListener:
             name="gnss-listener",
             daemon=True,
         )
+        self._error_streak = 0
 
     def start(self) -> None:
         self._stop.clear()
+        self._error_streak = 0
         self._thread.start()
 
     def stop(self, timeout_s: float = 2.0) -> None:
@@ -43,13 +51,21 @@ class GnssListener:
         while not self._stop.is_set():
             try:
                 chunk = self._read_bytes(512)
-            except Exception:
+            except EquipmentTimeoutError:
                 time.sleep(0.02)
                 continue
+            except Exception as exc:
+                self._error_streak += 1
+                if self._error_streak == 1 or self._error_streak % 50 == 0:
+                    _logger.warning("gnss listener read failed: %s", exc)
+                time.sleep(0.02)
+                continue
+            self._error_streak = 0
             if chunk:
                 try:
                     self._on_chunk(chunk)
-                except Exception:
+                except Exception as exc:
+                    _logger.warning("gnss listener chunk handling failed: %s", exc)
                     time.sleep(0.02)
             else:
                 time.sleep(0.02)

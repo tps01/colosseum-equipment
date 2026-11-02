@@ -168,6 +168,7 @@ _CONFIG_KIND_ADDRESS: dict[str, str] = {
 }
 _CONFIG_KIND_EXTRA: dict[str, tuple[str, ...]] = {
     "serial": ("baudrate", "sim_read"),
+    "gnss": ("baudrate", "connection", "sim_read"),
 }
 
 
