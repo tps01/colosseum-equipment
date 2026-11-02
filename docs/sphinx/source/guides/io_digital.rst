@@ -216,7 +216,8 @@ SPI backends and Aardvark I2C also write them to the debug log.
 Runtime installation and licensing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``pip install -e .`` still installs the package and its development/test tools.
+``pip install -e .`` installs the package and its runtime dependencies.
+``pip install -r requirements.txt`` adds development and test tools.
 Tests and simulated runs require no vendor SDK or attached hardware. Live
 access requires the bench's separately installed vendor runtime, as with NI:
 

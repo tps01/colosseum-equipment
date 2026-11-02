@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import tarfile
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,22 @@ def _load_mat(path: Path) -> bytes:
     )
 
 
+def _iq_tar_format(metadata: dict[str, Any]) -> str:
+    sample_format = str(metadata.get("sample_format", "")).lower().lstrip(".")
+    if sample_format in {"i16", "f32", "c64"}:
+        return sample_format
+    iq_dtype = str(metadata.get("iq_dtype", "")).lower()
+    if iq_dtype in {"int16", "i16", "<i2"}:
+        return "i16"
+    if iq_dtype in {"float64", "f8", "<f8"}:
+        return "f64"
+    if iq_dtype in {"float32", "f4", "<f4"}:
+        return "f32"
+    if iq_dtype in {"complex64", "c8", "<c8"}:
+        return "c64"
+    return "i16"
+
+
 def _load_iq_tar(path: Path) -> bytes:
     with tarfile.open(path, mode="r:*") as archive:
         member = archive.getmember("iq.bin")
@@ -66,15 +83,36 @@ def _load_iq_tar(path: Path) -> bytes:
         if handle is None:
             raise EquipmentResponseError(f"iq.tar missing iq.bin: {path}")
         payload = handle.read()
-    if len(payload) >= 8 and len(payload) % 8 == 0:
+        metadata: dict[str, Any] = {}
+        try:
+            meta_member = archive.getmember("metadata.json")
+        except KeyError:
+            meta_member = None
+        if meta_member is not None:
+            meta_handle = archive.extractfile(meta_member)
+            if meta_handle is not None:
+                metadata = json.loads(meta_handle.read().decode("utf-8"))
+    fmt = _iq_tar_format(metadata)
+    if fmt == "i16":
+        if len(payload) >= 4 and len(payload) % 4 == 0:
+            return payload
+        raise EquipmentResponseError(
+            f"iq.bin in `{path}` must contain whole 16-bit I/Q sample pairs",
+        )
+    if fmt == "f64":
         as_f64 = np.frombuffer(payload, dtype="<f8")
-        if as_f64.size >= 2 and bool(np.all(np.isfinite(as_f64))) and float(np.max(np.abs(as_f64))) <= 2.0:
-            return _float_to_i16_interleaved(as_f64[0::2], as_f64[1::2])
-    if len(payload) >= 4 and len(payload) % 4 == 0:
-        return payload
-    raise EquipmentResponseError(
-        f"iq.bin in `{path}` must contain whole 16-bit I/Q sample pairs",
-    )
+        if as_f64.size < 2 or as_f64.size % 2:
+            raise EquipmentResponseError(f"iq.bin in `{path}` must contain float64 I/Q pairs")
+        return _float_to_i16_interleaved(as_f64[0::2], as_f64[1::2])
+    if fmt == "f32":
+        as_f32 = np.frombuffer(payload, dtype="<f4")
+        if as_f32.size < 2 or as_f32.size % 2:
+            raise EquipmentResponseError(f"iq.bin in `{path}` must contain float32 I/Q pairs")
+        return _float_to_i16_interleaved(as_f32[0::2], as_f32[1::2])
+    as_c64 = np.frombuffer(payload, dtype="<c8")
+    if as_c64.size < 1:
+        raise EquipmentResponseError(f"iq.bin in `{path}` must contain complex64 samples")
+    return _float_to_i16_interleaved(as_c64.real, as_c64.imag)
 
 
 def load_iq_interleaved_i16(local_path: str | Path) -> bytes:

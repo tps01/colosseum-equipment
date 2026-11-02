@@ -25,7 +25,29 @@ def test_map_resource_locked() -> None:
     exc = pyvisa.errors.VisaIOError(constants.VI_ERROR_RSRC_LOCKED)
     err = map_visa_exception(exc, resource="USB0::0x1234::INSTR")
     assert isinstance(err, EquipmentConnectionError)
-    assert "locked" in str(err).lower()
+    assert "locked by another session" in str(err)
+
+
+def test_map_locked_message_without_locked_code() -> None:
+    import pyvisa
+    from pyvisa import constants
+
+    exc = pyvisa.errors.VisaIOError(constants.VI_ERROR_INV_OBJECT)
+    with patch.object(type(exc), "__str__", return_value="device is locked"):
+        err = map_visa_exception(exc, resource="GPIB0::1::INSTR")
+    assert isinstance(err, EquipmentConnectionError)
+    assert "in use or locked" in str(err)
+
+
+def test_map_resource_busy_message_without_locked_code() -> None:
+    import pyvisa
+    from pyvisa import constants
+
+    exc = pyvisa.errors.VisaIOError(constants.VI_ERROR_INV_OBJECT)
+    with patch.object(type(exc), "__str__", return_value="VI_ERROR: resource busy"):
+        err = map_visa_exception(exc, resource="ASRL1::INSTR")
+    assert isinstance(err, EquipmentConnectionError)
+    assert "in use or locked" in str(err)
 
 
 def test_map_timeout() -> None:

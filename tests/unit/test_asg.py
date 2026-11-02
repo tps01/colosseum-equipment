@@ -10,14 +10,10 @@ from colosseum_equipment.instruments.factory import build_instrument
 from tests.support.stubs import RfStubTransport
 
 
-def test_generic_asg_model() -> None:
-    inst = build_instrument("asg", 1, {"model": "generic"}, RfStubTransport())
-    assert isinstance(inst, GenericASG)
-
-
 def test_generic_asg_setters_write_scpi() -> None:
     transport = RfStubTransport()
     inst = build_instrument("asg", 1, {"model": "generic"}, transport)
+    assert isinstance(inst, GenericASG)
 
     inst.set_frequency(2.4e9)
     inst.set_amplitude_vpp(1.0)

@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 from colosseum_equipment.instruments.factory import build_instrument
-from colosseum_equipment.instruments.registry import registered_models
 
 from tests.support.stubs import RfStubTransport
-
-
-def test_rohde_smbv_and_fsw_registered() -> None:
-    assert "rohde-smbv100b" in registered_models("vsg")
-    assert "rohde-fsw" in registered_models("speca")
 
 
 def test_rohde_smbv_play_iq_scpi() -> None:
