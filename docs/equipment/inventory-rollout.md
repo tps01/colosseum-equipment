@@ -7,7 +7,10 @@ have separate spectrum and IQ interfaces. Version **0.6.0** includes the audit
 fixes described in the [manual analysis](inventory-manual-analysis.md).
 
 These are bounded implementations based on command documentation and synthetic
-recording-transport tests. **No physical instrument was available for qualification.**
+recording-transport tests. The inventory expansion pass itself was not
+hardware-qualified; CI does not gate physical qualification. Some lab
+validation of pre-existing drivers exists outside this inventory table, but
+those exercises are not recorded here as formal hardware-qualified rows.
 Registration does not mean every generic API operation is supported. The table
 below records the first implementation pass; the manual analysis lists the
 additional profiles, source references and remaining category work.
@@ -98,7 +101,9 @@ The first-pass acquisition descriptions above apply to its original profiles.
    compare dBm and watts against a known source. For handhelds, compare native
    descriptor, range and displayed value, including held/relative values.
 7. Promote only the exercised operations to hardware-qualified status, recording
-   instrument identity and evidence. No model in the table has that status yet.
+   instrument identity and evidence. This inventory table still has no formal
+   hardware-qualified rows; lab checks outside the expansion pass are not
+   listed here until they are captured that way.
 
 ## Command references
 
