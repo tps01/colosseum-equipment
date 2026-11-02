@@ -138,14 +138,40 @@ class GenericGnss:
         return self._transport.query("")
 
     def _read_bytes(self, size: int = 256) -> bytes:
+        """Read up to ``size`` stream bytes without blocking for a fixed count.
+
+        When the transport exposes ``in_waiting``, return ``b""`` if nothing is
+        buffered, otherwise read only the available count. That avoids VISA
+        fixed-count ``read_bytes(N)`` timeouts that the listener would swallow
+        while capturing nothing.
+        """
+        read_size = max(1, int(size))
+        in_waiting = getattr(self._transport, "in_waiting", None)
+        if callable(in_waiting):
+            try:
+                waiting = int(in_waiting())
+            except Exception:
+                waiting = -1
+            if waiting == 0:
+                return b""
+            if waiting > 0:
+                read_size = min(read_size, waiting)
         read_bytes = getattr(self._transport, "read_bytes", None)
         if callable(read_bytes):
-            return bytes(read_bytes(size))
+            return bytes(read_bytes(read_size))
         read_raw = getattr(self._transport, "read_raw", None)
         if callable(read_raw):
-            return bytes(read_raw(size))
+            return bytes(read_raw(read_size))
         line = self._read_line()
         return (line + "\n").encode("ascii", errors="replace")
+
+    def _arm_stream_outputs(self) -> None:
+        """Re-enable vendor message streams before a logging session."""
+        for name in ("_enable_messages", "_enable_streams", "_enable_logs"):
+            enable = getattr(self, name, None)
+            if callable(enable):
+                enable()
+                return
 
     def _logging_active(self) -> bool:
         return self._listener is not None and self._listener.is_alive()
@@ -698,6 +724,7 @@ class GenericGnss:
                 "track_csv": str(track_path),
             },
         )
+        self._arm_stream_outputs()
         self._listener = GnssListener(self._read_bytes, self._on_listener_chunk)
         self._listener.start()
         self._epoch_stop.clear()

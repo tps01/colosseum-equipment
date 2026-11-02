@@ -392,4 +392,5 @@ KIND_SECTIONS: dict[str, tuple[str, str]] = {
     "freqcounter": ("equipment.freqcounter", "freqcounter_id"),
     "vna": ("equipment.vna", "vna_id"),
     "phasenoiseanalyzer": ("equipment.phasenoiseanalyzer", "phasenoiseanalyzer_id"),
+    "gnss": ("equipment.gnss", "gnss_id"),
 }

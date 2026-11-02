@@ -33,10 +33,13 @@ def resolve_connection(kind: str, config: dict[str, Any]) -> tuple[str, str]:
 
     An explicit ``driver`` wins. Serial kinds (or ``kind`` address mode
     ``serial``) use the serial/ASRL path. An ``http`` kind (or an
-    ``http(s)://`` resource) uses HTTP. Otherwise VISA — a lone ``port`` does
-    **not** flip a VISA kind to serial. ``driver=serial`` still opens through
-    pyVISA. ``resource`` and ``port`` both remain valid address fields; open
-    uses the resolved address.
+    ``http(s)://`` resource) uses HTTP. For ``either`` kinds, a set ``port``
+    selects serial (including when ``resource`` is also set — serial wins the
+    tie-break and ``resource`` is ignored with a warning). A lone ``resource``
+    on an ``either`` kind stays VISA. Visa-address kinds still default to VISA;
+    a lone ``port`` does not flip them to serial. ``driver=serial`` still opens
+    through pyVISA. ``resource`` and ``port`` both remain valid address fields;
+    open uses the resolved address.
     """
     resource = str(config.get("resource") or "").strip()
     port = str(config.get("port") or "").strip()
@@ -48,6 +51,14 @@ def resolve_connection(kind: str, config: dict[str, Any]) -> tuple[str, str]:
         driver = "serial"
     elif kind_address == "http" or resource.startswith(("http://", "https://")):
         driver = "http"
+    elif kind_address == "either" and port:
+        driver = "serial"
+        if resource:
+            _logger.warning(
+                "equipment.%s has port and resource with no driver; using serial port "
+                "and ignoring resource",
+                kind,
+            )
     else:
         driver = "visa"
         if port and resource:

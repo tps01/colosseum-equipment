@@ -147,6 +147,7 @@ class _FakeSerialPort:
         qm_ack: str = "",
         qm_data: str = "",
         expected_baud: int | None = None,
+        gnss_reply: bytes = b"",
     ) -> None:
         self.bare = bare
         self.idn = idn
@@ -154,8 +155,10 @@ class _FakeSerialPort:
         self.qm_ack = qm_ack
         self.qm_data = qm_data
         self.expected_baud = expected_baud
+        self.gnss_reply = gnss_reply
         self.baudrate = 0
         self._stage = ""
+        self._gnss_buf = bytearray()
         self.closed = False
 
     def reset_input_buffer(self) -> None:
@@ -168,8 +171,22 @@ class _FakeSerialPort:
             self._stage = "star"
         elif payload == b"QM\r":
             self._stage = "qm_ack"
+        elif self.gnss_reply and payload[:2] == b"\xb5\x62":
+            self._stage = "gnss"
+            self._gnss_buf = bytearray(self.gnss_reply)
         else:
             self._stage = "other"
+
+    @property
+    def in_waiting(self) -> int:
+        return len(self._gnss_buf)
+
+    def read(self, size: int = 1) -> bytes:
+        if not self._gnss_buf:
+            return b""
+        chunk = bytes(self._gnss_buf[:size])
+        del self._gnss_buf[:size]
+        return chunk
 
     def read_until(self, terminator: bytes) -> bytes:
         _ = terminator
@@ -397,6 +414,43 @@ def test_fluke_289_qm_dialect() -> None:
     )
     assert result.raw["equipment"]["dmm"][0]["model"] == "fluke-289"
     assert result.raw["equipment"]["dmm"][0]["baudrate"] == 115200
+
+
+def test_gnss_probe_after_idn_and_qm_miss() -> None:
+    from colosseum_equipment.instruments.gnss.ubx import CLS_MON, ID_MON_VER, build_ubx
+
+    body = bytearray(70)
+    body[40:51] = b"MOD=NEO-M9N"
+    frame = build_ubx(CLS_MON, ID_MON_VER, bytes(body))
+    rm = _FakeResourceManager({})
+    state = {"idn_done": False, "qm_done": False}
+
+    def _open(port: str, baud: int, timeout: float) -> _FakeSerialPort:
+        _ = port, timeout
+        if not state["idn_done"]:
+            if baud == 19200:
+                state["idn_done"] = True
+            return _FakeSerialPort(fail_idn=True)
+        if not state["qm_done"]:
+            if baud == 115200:
+                state["qm_done"] = True
+            return _FakeSerialPort(fail_idn=True)
+        if baud == 9600:
+            return _FakeSerialPort(fail_idn=True, gnss_reply=frame)
+        raise TimeoutError("skip")
+
+    result = discover_equipment_config(
+        resource_manager=rm,
+        timeout=1.0,
+        list_comports=lambda: [_ComPort("COM5")],
+        open_serial=_open,
+    )
+    row = result.raw["equipment"]["gnss"][0]
+    assert row["model"] == "ublox-m9"
+    assert row["driver"] == "serial"
+    assert row["port"] == "COM5"
+    assert row["baudrate"] == 9600
+    assert state["idn_done"] and state["qm_done"]
 
 
 def test_live_log_order() -> None:

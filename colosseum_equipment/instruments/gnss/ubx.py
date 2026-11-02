@@ -108,6 +108,26 @@ def mon_ver_poll() -> bytes:
     return build_ubx(CLS_MON, ID_MON_VER, b"")
 
 
+def parse_mon_ver_series(body: bytes) -> str | None:
+    """Return a series token (m8/m9/m10/f9/f10) from a MON-VER payload, if any."""
+    if len(body) < 40:
+        return None
+    parts: list[str] = []
+    for start, end in ((0, 30), (30, 40)):
+        raw = body[start:end].split(b"\x00", 1)[0]
+        if raw:
+            parts.append(raw.decode("ascii", errors="replace"))
+    for offset in range(40, len(body), 30):
+        raw = body[offset : offset + 30].split(b"\x00", 1)[0]
+        if raw:
+            parts.append(raw.decode("ascii", errors="replace"))
+    blob = " ".join(parts).upper()
+    for token in ("M10", "F10", "F9", "M9", "M8"):
+        if token in blob:
+            return token.lower()
+    return None
+
+
 def resolve_message_id(message: str) -> tuple[int, int]:
     key = message.strip().upper().replace("_", "-")
     if key not in MESSAGE_IDS:
