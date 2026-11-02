@@ -100,7 +100,8 @@ class SCPIHelper:
                             payload_len = int(digits)
                             got = max(0, len(buffer) - header_len)
                             raise EquipmentResponseError(
-                                f"truncated SCPI block: expected {payload_len} payload bytes, got {got}",
+                                "truncated SCPI block: expected "
+                                f"{payload_len} payload bytes, got {got}",
                             )
                     raise EquipmentResponseError("truncated or invalid SCPI block length")
                 raise EquipmentResponseError("malformed or indefinite SCPI block header")
