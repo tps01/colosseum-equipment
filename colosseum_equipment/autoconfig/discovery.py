@@ -120,6 +120,30 @@ class _VisaProbeAdapter:
             return
         raise AttributeError("VISA instrument cannot write raw bytes")
 
+    def read_bytes(self, size: int = 512) -> bytes:
+        read_bytes = getattr(self._inst, "read_bytes", None)
+        if callable(read_bytes):
+            return bytes(read_bytes(size))
+        read_raw = getattr(self._inst, "read_raw", None)
+        if callable(read_raw):
+            return bytes(read_raw(size))
+        return b""
+
+    def in_waiting(self) -> int:
+        waiting = getattr(self._inst, "bytes_in_buffer", None)
+        if waiting is not None and not callable(waiting):
+            try:
+                return int(waiting)
+            except Exception:
+                return 0
+        in_waiting = getattr(self._inst, "in_waiting", None)
+        if callable(in_waiting):
+            try:
+                return int(in_waiting())
+            except Exception:
+                return 0
+        return -1
+
     def read_until(self, terminator: bytes) -> str:
         read_until = getattr(self._inst, "read_until", None)
         if callable(read_until):
@@ -153,6 +177,21 @@ class _PyserialProbeAdapter:
 
     def write_bytes(self, payload: bytes) -> None:
         self._port.write(payload)  # type: ignore[attr-defined]
+
+    def read_bytes(self, size: int = 512) -> bytes:
+        read = getattr(self._port, "read", None)
+        if callable(read):
+            return bytes(read(size))
+        return b""
+
+    def in_waiting(self) -> int:
+        waiting = getattr(self._port, "in_waiting", None)
+        if waiting is None:
+            return -1
+        try:
+            return int(waiting) if not callable(waiting) else int(waiting())
+        except Exception:
+            return 0
 
     def read_until(self, terminator: bytes) -> str:
         raw = self._port.read_until(terminator)  # type: ignore[attr-defined]
@@ -257,7 +296,7 @@ def discover_equipment_config(
 
     Serial ports use bare ``IDN?`` then ``*IDN?`` across bauds ``9600``, ``115200``,
     ``19200``. Fluke ``QM`` is tried only after IDN fails (bauds ``9600``, ``115200``).
-    FTDI adapters are not discovered.
+    GNSS vendor probes run after IDN and QM miss. FTDI adapters are not discovered.
     """
     import pyvisa
 
@@ -305,6 +344,11 @@ def discover_equipment_config(
         port_out, driver, baud_out = _serial_row_fields(
             model=model, resource=resource, port=port, baudrate=baudrate,
         )
+        if kind == "gnss":
+            port_out = port_out or _port_from_asrl(resource)
+            driver = "serial"
+            if baud_out is None:
+                baud_out = 9600
         if port_out:
             covered_ports.add(port_out.upper())
         if resource:
@@ -440,6 +484,37 @@ def discover_equipment_config(
                 kind="dmm",
                 model=qm_model,
                 idn=f"QM:{qm_model}",
+                resource=resource,
+                port=port,
+                baudrate=baud,
+            )
+            return
+
+        from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
+
+        for baud in _IDN_BAUDS:
+            log_probing(logger, f"{label} GNSS", baud=baud)
+            try:
+                probe = open_probe(baud)
+            except Exception as exc:
+                last_errors.append(f"baud={baud} gnss_open:{exc}")
+                continue
+            try:
+                gnss_model = probe_gnss_model(probe)
+            except Exception as exc:
+                last_errors.append(f"baud={baud} gnss:{exc}")
+                gnss_model = None
+            finally:
+                close = getattr(probe, "close", None)
+                if callable(close):
+                    with contextlib.suppress(Exception):
+                        close()
+            if gnss_model is None:
+                continue
+            _assign(
+                kind="gnss",
+                model=gnss_model,
+                idn=f"GNSS:{gnss_model}",
                 resource=resource,
                 port=port,
                 baudrate=baud,

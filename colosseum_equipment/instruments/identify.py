@@ -7,14 +7,13 @@ from typing import Any
 
 from colosseum.logging import get_logger
 
-from colosseum_equipment.autoconfig.idn_registry import classify_idn, lambda_gen_identity
 from colosseum_equipment.instruments.registry import registered_models
 from colosseum_equipment.transports.factory import resolve_connection
 from colosseum_equipment.transports.visa import normalize_visa_resource
 
 _logger = get_logger("colosseum.equipment")
 
-_NO_PROBE_KINDS = frozenset({"serial", "gnss", "relay"})
+_NO_PROBE_KINDS = frozenset({"serial", "relay"})
 
 
 def instrument_config(kind: str, config: dict[str, Any], model: str) -> dict[str, Any]:
@@ -31,7 +30,8 @@ def instrument_config(kind: str, config: dict[str, Any], model: str) -> dict[str
 def resolve_instrument_model(kind: str, config: dict[str, Any], transport: object) -> str:
     """Return the model slug for ``config``.
 
-    A non-empty ``model`` wins and does not query. Otherwise a pyVISA instrument
+    A non-empty ``model`` wins and does not query. GNSS (no ``*IDN?``) uses a
+    vendor stream probe when ``model`` is omitted. Otherwise a pyVISA instrument
     is classified from ``*IDN?`` within ``kind``, falling back to ``generic``.
     A COM or ASRL resource is probed with ``IDN?`` first. A Lambda GEN reply
     selects ``tdk-genesys-serial``.
@@ -39,11 +39,25 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
     explicit = str(config.get("model") or "").strip().lower()
     if explicit:
         return explicit
+    if kind == "gnss":
+        from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
+
+        hit = probe_gnss_model(transport)
+        if hit and hit in registered_models("gnss"):
+            return hit
+        if hit:
+            _logger.warning(
+                "equipment.gnss probe selected unregistered model `%s`; using generic",
+                hit,
+            )
+        return "generic"
     if kind in _NO_PROBE_KINDS:
         return "generic"
     driver, _address = resolve_connection(kind, config)
     if driver in {"sim", "http"}:
         return "generic"
+
+    from colosseum_equipment.autoconfig.idn_registry import classify_idn, lambda_gen_identity
 
     idn, bare = probe_identity(transport, asrl=_uses_asrl(kind, config), log_kind=kind)
     if idn is None:
@@ -110,6 +124,8 @@ def probe_identity(
     When ``bare`` is true the reply matched a Lambda GEN rating via bare ``IDN?``.
     """
     if asrl:
+        from colosseum_equipment.autoconfig.idn_registry import lambda_gen_identity
+
         try:
             bare = query_bare_idn(transport).strip()
         except Exception as bare_exc:

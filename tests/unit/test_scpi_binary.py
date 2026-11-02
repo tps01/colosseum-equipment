@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.protocols.scpi import (
     SCPIHelper,
     format_definite_length_block,
@@ -37,3 +39,14 @@ def test_read_binary_block_reassembles_split_reads() -> None:
     scpi = SCPIHelper(transport)
     assert scpi.read_binary_block("FETCH:DATA?") == payload
     assert transport.written == ["FETCH:DATA?"]
+
+
+def test_read_binary_block_empty_read_raises_truncated() -> None:
+    transport = RfStubTransport(
+        {
+            "__raw_chunks__": [b"#15ab", b"", b"", b""],
+        },
+    )
+    scpi = SCPIHelper(transport)
+    with pytest.raises(EquipmentResponseError, match="expected 5 payload bytes, got 2"):
+        scpi.read_binary_block("DATA?")

@@ -83,6 +83,38 @@ def test_open_transport_gnss_com_uses_9600() -> None:
     )
 
 
+def test_open_transport_either_port_and_resource_prefers_serial(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with patch("colosseum_equipment.transports.visa.VISATransport") as visa_cls:
+        visa_cls.return_value = object()
+        with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
+            open_transport(
+                "gnss",
+                1,
+                {"port": "COM5", "resource": "TCPIP0::192.0.2.1::28785::SOCKET"},
+            )
+    visa_cls.assert_called_once_with(
+        "ASRL5::INSTR",
+        **_visa_kwargs(baudrate=9600, line_mode=True),
+    )
+    assert "ignoring resource" in caplog.text
+
+
+def test_open_transport_gnss_resource_only_uses_visa() -> None:
+    with patch("colosseum_equipment.transports.visa.VISATransport") as visa_cls:
+        visa_cls.return_value = object()
+        open_transport(
+            "gnss",
+            1,
+            {"resource": "TCPIP0::192.0.2.1::28785::SOCKET"},
+        )
+    visa_cls.assert_called_once_with(
+        "TCPIP0::192.0.2.1::28785::SOCKET",
+        **_visa_kwargs(),
+    )
+
+
 def test_open_transport_serial_kind_without_port_raises() -> None:
     with pytest.raises(ProceduralFault, match="missing `port`"):
         open_transport("serial", 1, {})

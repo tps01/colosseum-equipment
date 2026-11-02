@@ -36,6 +36,7 @@ _logger = get_logger("colosseum.equipment")
 @instrument_model(
     "gnss",
     "septentrio-asterx-u3",
+    "septentrio",
     "septentrio-asterx-m3",
     "septentrio-mosaic-x5",
     "septentrio-mosaic-h",

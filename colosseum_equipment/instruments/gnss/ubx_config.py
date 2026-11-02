@@ -146,8 +146,8 @@ def frames_from_ubx_binary(data: bytes) -> list[bytes]:
 def detect_mismatch(model: str, info: UcenterFileInfo) -> str | None:
     """Return a warning message if file flavor disagrees with model family."""
     family = model.lower()
-    is_m8 = "m8" in family and "m10" not in family
-    is_gen9 = any(token in family for token in ("f9", "m10", "f10"))
+    is_m8 = "m8" in family and "m10" not in family and "m9" not in family
+    is_gen9 = any(token in family for token in ("f9", "m9", "m10", "f10"))
     if info.has_valget and is_m8:
         return (
             f"config file contains CFG-VALGET (gen 9+) but model `{model}` is M8-family; "

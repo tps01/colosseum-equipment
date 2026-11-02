@@ -91,6 +91,32 @@ class _ByteTransport:
         return None
 
 
+class _StreamingTransport:
+    """Transport where exact-count reads larger than the buffer would time out."""
+
+    def __init__(self, payload: bytes) -> None:
+        self._buf = bytearray(payload)
+        self.written_bytes: list[bytes] = []
+
+    def write_bytes(self, payload: bytes) -> None:
+        self.written_bytes.append(payload)
+
+    def in_waiting(self) -> int:
+        return len(self._buf)
+
+    def read_bytes(self, size: int = 256) -> bytes:
+        if size > len(self._buf):
+            raise TimeoutError("exact-count read would block")
+        if not self._buf:
+            return b""
+        chunk = bytes(self._buf[:size])
+        del self._buf[:size]
+        return chunk
+
+    def close(self) -> None:
+        return None
+
+
 def _nav_pvt_frame(*, lat_e7: int = 377749000, lon_e7: int = -1224194000) -> bytes:
     payload = bytearray(92)
     struct.pack_into("<I", payload, 0, 0)
@@ -133,7 +159,17 @@ def test_generic_gnss_reads_nmea_fix() -> None:
 
 def test_ublox_aliases_registered() -> None:
     models = registered_models("gnss")
-    assert {"ublox-m8", "ublox-m10", "ublox-f9", "ublox-f10", "generic"}.issubset(models)
+    assert {
+        "ublox",
+        "ublox-m8",
+        "ublox-m9",
+        "ublox-m10",
+        "ublox-f9",
+        "ublox-f10",
+        "septentrio",
+        "novatel",
+        "generic",
+    }.issubset(models)
 
 
 def test_ublox_uses_nav_pvt() -> None:
@@ -281,6 +317,39 @@ def test_start_logging_updates_fix(unit_runtime_context) -> None:
     assert instrument._track_csv_path is not None
     assert instrument._track_csv_path.is_file()
     assert instrument._track_samples
+
+
+def test_start_logging_captures_partial_visa_sized_reads(unit_runtime_context) -> None:
+    """in_waiting must shrink the read so exact-count VISA reads do not time out."""
+    _ = unit_runtime_context
+    gga = (_gga_line() + "\n").encode("ascii")
+    assert len(gga) < 512
+    transport = _StreamingTransport(gga * 3)
+    instrument = build_instrument("gnss", 1, {"model": "generic"}, transport)
+    try:
+        instrument.start_logging("gnss/partial.nmea", key="partial")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            if instrument._wire_log_path and instrument._wire_log_path.is_file():
+                if instrument._wire_log_path.stat().st_size > 0:
+                    break
+            time.sleep(0.05)
+    finally:
+        instrument.stop_logging()
+    assert instrument._wire_log_path is not None
+    assert b"$GPGGA" in instrument._wire_log_path.read_bytes()
+
+
+def test_parse_mon_ver_series_from_mod_extension() -> None:
+    from colosseum_equipment.instruments.gnss.ubx import parse_mon_ver_series
+
+    body = bytearray(70)
+    body[40:51] = b"MOD=NEO-M9N"
+    assert parse_mon_ver_series(bytes(body)) == "m9"
+    body2 = bytearray(70)
+    body2[0:10] = b"EXT CORE "
+    body2[40:50] = b"MOD=ZED-F9P"
+    assert parse_mon_ver_series(bytes(body2)) == "f9"
 
 
 @pytest.mark.plot
