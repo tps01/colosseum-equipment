@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from typing import Any
 
 from colosseum.logging import get_logger
 
@@ -16,8 +15,6 @@ from colosseum_equipment.instruments.gnss.ubx import (
 )
 
 _logger = get_logger("colosseum.equipment")
-
-_PROBE_BAUDS = (9600, 115200, 19200)
 
 
 def _read_chunk(transport: object, size: int = 512) -> bytes:
@@ -139,32 +136,4 @@ def probe_gnss_model(transport: object, *, timeout_s: float | None = None) -> st
             continue
         if hit:
             return hit
-    return None
-
-
-def probe_gnss_on_open(
-    open_probe: Any,
-    *,
-    bauds: tuple[int, ...] = _PROBE_BAUDS,
-) -> tuple[str, int] | None:
-    """Try ``open_probe(baud)`` across bauds and return ``(model, baud)`` on hit.
-
-    ``open_probe`` must return a transport-like object with optional ``close``.
-    """
-    for baud in bauds:
-        try:
-            transport = open_probe(baud)
-        except Exception:
-            continue
-        try:
-            model = probe_gnss_model(transport)
-        finally:
-            close = getattr(transport, "close", None)
-            if callable(close):
-                try:
-                    close()
-                except Exception:
-                    pass
-        if model:
-            return model, baud
     return None
