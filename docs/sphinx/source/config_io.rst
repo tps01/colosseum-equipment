@@ -70,6 +70,7 @@ and ``ni-845x``. Any other driver, including an empty one, raises
    address_bits = 7
    pullup = true
    timeout_ms = 500                   # NI-845x / Total Phase / USB2ANY
+   # Sim-only optional keys: nack, read_data
 
 io.spi
 ------
@@ -90,6 +91,7 @@ io.spi
    chip_select = 0
    bits_per_word = 8
    timeout_ms = 500
+   # Sim-only optional key: read_data
 
 ``spi_settings`` allows chip select ``0`` only on Aardvark (``max_cs`` 0) and
 ``0..2`` on Cheetah.
@@ -110,6 +112,7 @@ port and speaks the DS2480B serial protocol.
    baudrate = 9600                    # DS2480B power-on default
    timeout_s = 1.0
    speed = "standard"                 # standard or overdrive
+   # Sim-only optional keys: presence, roms / devices, read_data
 
 io.analyzer
 -----------
