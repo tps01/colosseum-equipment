@@ -283,7 +283,7 @@ def _default_open_serial(port: str, baudrate: int, timeout: float) -> object:
 
 def discover_equipment_config(
     *,
-    timeout: float = 5.0,
+    timeout: float = 1.0,
     visa_library: str | None = None,
     blacklist: str | Sequence[str] | None = None,
     network_bindings: Sequence[IPv4NetworkBinding] | None = None,

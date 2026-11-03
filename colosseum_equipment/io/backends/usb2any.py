@@ -143,7 +143,7 @@ class Usb2AnyI2cBackend(UsbBackend):
     def configure(
         self, *, address: int | None = None, address_bits: int | None = None,
         clock_hz: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         addr = self._address if address is None else address
         bits = self._bits if address_bits is None else address_bits
         clock = self._clock if clock_hz is None else clock_hz
@@ -151,6 +151,15 @@ class Usb2AnyI2cBackend(UsbBackend):
         with self.session().lock:
             self._address, self._bits, self._clock = addr, bits, clock
             self._apply()
+        return {
+            "driver": "ti-usb2any",
+            "clock_hz": self._clock,
+            "actual_clock_hz": getattr(self, "actual_clock_hz", self._clock),
+            "address": self._address,
+            "address_bits": self._bits,
+            "pullup": self._pullup,
+            "timeout_ms": self._timeout,
+        }
 
     def set_pullup(self, enabled: bool) -> None:
         with self.session().lock:
@@ -228,7 +237,7 @@ class Usb2AnySpiBackend(UsbBackend):
     def configure(
         self, *, clock_hz: int | None = None, mode: int | None = None,
         chip_select: int | None = None, bits_per_word: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         clock = self._clock if clock_hz is None else clock_hz
         selected_mode = self._mode if mode is None else mode
         self._validate(clock, selected_mode, 0 if chip_select is None else chip_select,
@@ -236,6 +245,15 @@ class Usb2AnySpiBackend(UsbBackend):
         with self.session().lock:
             self._clock, self._mode = clock, selected_mode
             self._apply()
+        return {
+            "driver": "ti-usb2any",
+            "clock_hz": self._clock,
+            "actual_clock_hz": getattr(self, "actual_clock_hz", self._clock),
+            "mode": self._mode,
+            "chip_select": 0,
+            "bits_per_word": 8,
+            "timeout_ms": self._timeout,
+        }
 
     def transfer(self, data: bytes) -> bytes:
         size(len(data), 255)

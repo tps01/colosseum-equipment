@@ -49,8 +49,8 @@ outside their documented subset, rather than relying on best-effort warnings.
 | `model` slug | Kind | Manual | Notes |
 | --- | --- | --- | --- |
 | `ublox-m8` | gnss | u-blox M8/M10/F9/F10 interface descriptions | aliases `ublox-m10`, `ublox-f9`, `ublox-f10`; NMEA + UBX NAV-PVT |
-| `septentrio-asterx-u3` | gnss | AsteRx-U3 User Manual + Septentrio Reference Guide / ``pysbf2`` | aliases `septentrio-asterx-m3`, `septentrio-mosaic-x5`, `septentrio-mosaic-h`; NMEA + SBF PVTGeodetic; serial or VISA SOCKET |
-| `novatel-oem7` | gnss | `https://docs.novatel.com/OEM7/Content/PDFs/OEM7_Commands_Logs_Manual.pdf` | aliases `novatel-oem7600`, `novatel-pwrpak7`, `novatel-smart7`; NMEA + BESTPOSB; `FRESET COLDSTART` |
+| `septentrio-asterx-u3` | gnss | AsteRx-U3 User Manual + Septentrio Reference Guide / ``pysbf2`` | aliases `septentrio-asterx-m3`, `septentrio-mosaic-x5`, `septentrio-mosaic-h`; NMEA + SBF (PVTGeodetic/DOP/field/sat); `setDataInOut` + streams; serial or VISA SOCKET |
+| `novatel-oem7` | gnss | `https://docs.novatel.com/OEM7/Content/PDFs/OEM7_Commands_Logs_Manual.pdf` | aliases `novatel-oem7600`, `novatel-pwrpak7`, `novatel-smart7`; NMEA + BESTPOSB/PSRDOP/field/sat logs; CRLF `LOG`/`UNLOGALL`; `FRESET COLDSTART` |
 | `rohde-smbv100b` | vsg | `https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1178_4460_01/SMBV100B_UserManual_en_15.pdf` | ARB play; upload `.bin` / `.mat` / `.iq.tar` (16-bit I/Q) |
 | `rohde-fsw` | speca | `https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1173_9411_01/FSW_UserManual_en_57.pdf` | Spectrum analyzer SCPI |
 | `rohde-fswp` | phasenoiseanalyzer | `https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/pdm/cl_manuals/user_manual/1177_5633_01/FSWP_UserManual_en_17.pdf` | Spot noise `CALC:SNO:*` |
@@ -92,10 +92,28 @@ outage summaries. Freshness-gated `measure_*` raise `NoFixError` /
   streams/logs this driver manages). Call while logging is stopped.
 - `set_message_rate(message, rate_hz)` — `CFG-MSG` (u-blox), `LOG`/`UNLOG`
   (NovAtel), `setNMEAOutput`/`setSBFOutput` (Septentrio); `rate_hz=0` disables.
+- `start_logging(..., messages=)` / `set_message_profile` — shared profiles
+  `default|nmea|field|sat|all` map to vendor enables; multi-row evidence uses
+  logical ids (`gnss_pvt`, `gnss_dop`, …) with aliases (`NAV-PVT`, `BESTPOSB`,
+  `PVTGeodetic`, `GSV`, …).
 - `start_logging` always writes a **binary wire sidecar**
   (`{stem}_wire.ubx` / `.gps` / `.sbf` / `.bin`) with every serial chunk before
   parse (u-center / Convert / RxTools friendly), plus the decoded text log and
   track CSV.
+
+**GNSS message profiles (vendor enables):**
+
+| Profile | u-blox | NovAtel | Septentrio |
+| --- | --- | --- | --- |
+| `default` | NAV-PVT, NAV-DOP, NMEA-GSV | BESTPOSB, PSRDOPB ONCHANGED, GGA/RMC/GSV | NMEA GGA+RMC+GSV; SBF PVTGeodetic+DOP |
+| `nmea` | + GGA/RMC/GSA/VTG | + GPGSA/GPVTG | + GSA/VTG |
+| `field` | + POSECEF/TIMEGPS/CLOCK/STATUS | + BESTXYZB, TIMEB, CLOCKMODELB, RXSTATUSB | + PVTCartesian, ReceiverTime, ReceiverStatus |
+| `sat` | + NAV-SAT, MEASX, RAWX | + SATVIS2B, TRACKSTATB, RANGEB | + SatVisibility, ChannelStatus, MeasEpoch |
+| `all` | union | union | union |
+
+Logical aliases include `BESTPOS`/`BESTPOSB`/`PVTGeodetic` → `gnss_pvt`;
+`PSRDOP`/`DOP` → `gnss_dop`; `SATVIS2`/`SatVisibility`/`GSV` → `gnss_sat`;
+`RANGE`/`MeasEpoch` → raw/meas evidence.
 
 Indoor-repeater flow:
 
@@ -162,9 +180,11 @@ connection = "COM1"
 ```
 
 `connection` is the RxTools stream descriptor (`COM1`…`COM3`, `USB1`, `IPS1`, …)
-passed to `setNMEAOutput` / `setSBFOutput` (default `COM1`). U3 I/O and web UI
-streams: AsteRx-U3 User Manual; ASCII enable commands and SBF layout: Reference
-Guide / pysbf2 reading list.
+passed to `setDataInOut` / `setNMEAOutput` / `setSBFOutput`. **Set this to the
+port that matches the open transport**; the driver defaults to `COM1` with a
+warning if omitted (USB/Ethernet benches commonly need `USB1` / `IPS1`). U3 I/O
+and web UI streams: AsteRx-U3 User Manual; ASCII enable commands and SBF layout:
+Reference Guide / pysbf2 reading list.
 
 **Septentrio AsteRx-U3 (Ethernet TCP data socket via VISA):**
 

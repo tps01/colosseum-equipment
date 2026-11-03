@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 def autoconfig(
     *,
-    timeout: float = 5.0,
+    timeout: float = 1.0,
     visa_library: str | None = None,
     blacklist: str | Sequence[str] | None = None,
     export_path: str | Path | None = None,

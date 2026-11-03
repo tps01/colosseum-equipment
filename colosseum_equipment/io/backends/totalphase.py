@@ -147,7 +147,7 @@ class AardvarkI2cBackend(UsbBackend):
     def configure(
         self, *, address: int | None = None, address_bits: int | None = None,
         clock_hz: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         addr = self._address if address is None else address
         bits = self._bits if address_bits is None else address_bits
         clock = self._clock if clock_hz is None else clock_hz
@@ -155,6 +155,14 @@ class AardvarkI2cBackend(UsbBackend):
         with self.session().lock:
             self._address, self._bits, self._clock = addr, bits, clock
             self._apply()
+        return {
+            "driver": "totalphase-aardvark",
+            "clock_hz": self._clock,
+            "actual_clock_hz": getattr(self, "actual_clock_hz", self._clock),
+            "address": self._address,
+            "address_bits": self._bits,
+            "pullup": self._pullup,
+        }
 
     def set_pullup(self, enabled: bool) -> None:
         with self.session().lock:
@@ -243,7 +251,7 @@ class TotalPhaseSpiBackend(UsbBackend):
     def configure(
         self, *, clock_hz: int | None = None, mode: int | None = None,
         chip_select: int | None = None, bits_per_word: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         clock = self._clock if clock_hz is None else clock_hz
         selected_mode = self._mode if mode is None else mode
         cs = self._cs if chip_select is None else chip_select
@@ -251,6 +259,14 @@ class TotalPhaseSpiBackend(UsbBackend):
         with self.session().lock:
             self._clock, self._mode, self._cs = clock, selected_mode, cs
             self._apply()
+        return {
+            "driver": "totalphase-cheetah" if self._cheetah else "totalphase-aardvark",
+            "clock_hz": self._clock,
+            "actual_clock_hz": getattr(self, "actual_clock_hz", self._clock),
+            "mode": self._mode,
+            "chip_select": self._cs,
+            "bits_per_word": 8,
+        }
 
     def transfer(self, data: bytes) -> bytes:
         # Aardvark's full-duplex host buffer is approximately 4 KiB, despite

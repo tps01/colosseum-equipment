@@ -223,7 +223,8 @@ class _FakeNi845x:
         return 0
 
     def ni845xDioWritePort(self, _h: Any, _port: int, value: int) -> int:
-        self.dio_value = int(value) & self.dio_direction
+        # Latch the full written value; direction is applied separately.
+        self.dio_value = int(value)
         return 0
 
     def ni845xDioReadPort(self, _h: Any, _port: int, value_p: Any) -> int:
@@ -468,6 +469,42 @@ def test_8451_rejects_fast_spi(monkeypatch: pytest.MonkeyPatch) -> None:
         Ni845xSpiBackend(
             resource="USB-8451", model="usb-8451", clock_hz=20_000_000,
         )
+
+
+def test_ni845x_spi_short_transfer_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeNi845x()
+
+    def _short_write_read(
+        _dev: Any,
+        _cfg: Any,
+        wsize: int,
+        _wdata: Any,
+        rsize_p: Any,
+        _rdata: Any,
+    ) -> int:
+        _set_out(rsize_p, max(0, wsize - 1))
+        return 0
+
+    fake.ni845xSpiWriteRead = _short_write_read  # type: ignore[method-assign]
+    ni845x_api.set_ni845x_library(fake)
+    spi = Ni845xSpiBackend(resource="USB-8452", model="usb-8452", clock_hz=1_000_000)
+    with pytest.raises(IoConnectionError, match="short transfer"):
+        spi.transfer(b"\x01\x02")
+    spi.close()
+
+
+def test_ni845x_dio_rejects_illegal_bits(monkeypatch: pytest.MonkeyPatch) -> None:
+    ni845x_api.set_ni845x_library(_FakeNi845x())
+    dio = Ni845xDioBackend(
+        resource="USB-8452", model="usb-8452", direction=0x0F, initial_output=0x05,
+    )
+    assert dio.read_port() & 0x0F == 0x05
+    with pytest.raises(IoConfigError, match="input-only bits"):
+        dio.write_port(0xF0)
+    snapshot = dio.configure(0x03, initial=0x01)
+    assert snapshot["direction"] == 0x03
+    assert snapshot["initial_output"] == 0x01
+    dio.close()
 
 
 def test_i2c_nack_maps_to_connection_error(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -8,12 +8,20 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass
+from typing import Any
 
 UBX_SYNC = b"\xb5\x62"
 CLS_NAV = 0x01
-ID_NAV_PVT = 0x07
+ID_NAV_POSECEF = 0x01
+ID_NAV_STATUS = 0x03
 ID_NAV_DOP = 0x04
+ID_NAV_PVT = 0x07
+ID_NAV_TIMEGPS = 0x20
+ID_NAV_CLOCK = 0x22
 ID_NAV_SAT = 0x35
+CLS_RXM = 0x02
+ID_RXM_MEASX = 0x14
+ID_RXM_RAWX = 0x15
 CLS_CFG = 0x06
 ID_CFG_PRT = 0x00
 ID_CFG_MSG = 0x01
@@ -46,6 +54,12 @@ MESSAGE_IDS: dict[str, tuple[int, int]] = {
     "NAV-PVT": (CLS_NAV, ID_NAV_PVT),
     "NAV-DOP": (CLS_NAV, ID_NAV_DOP),
     "NAV-SAT": (CLS_NAV, ID_NAV_SAT),
+    "NAV-POSECEF": (CLS_NAV, ID_NAV_POSECEF),
+    "NAV-STATUS": (CLS_NAV, ID_NAV_STATUS),
+    "NAV-TIMEGPS": (CLS_NAV, ID_NAV_TIMEGPS),
+    "NAV-CLOCK": (CLS_NAV, ID_NAV_CLOCK),
+    "RXM-MEASX": (CLS_RXM, ID_RXM_MEASX),
+    "RXM-RAWX": (CLS_RXM, ID_RXM_RAWX),
     "NMEA-GGA": (CLS_NMEA, ID_NMEA_GGA),
     "NMEA-GLL": (CLS_NMEA, ID_NMEA_GLL),
     "NMEA-GSA": (CLS_NMEA, ID_NMEA_GSA),
@@ -54,8 +68,10 @@ MESSAGE_IDS: dict[str, tuple[int, int]] = {
     "NMEA-VTG": (CLS_NMEA, ID_NMEA_VTG),
     # Common aliases
     "GGA": (CLS_NMEA, ID_NMEA_GGA),
+    "GSA": (CLS_NMEA, ID_NMEA_GSA),
     "GSV": (CLS_NMEA, ID_NMEA_GSV),
     "RMC": (CLS_NMEA, ID_NMEA_RMC),
+    "VTG": (CLS_NMEA, ID_NMEA_VTG),
 }
 
 # Legacy CFG polls for M8 save_config
@@ -211,6 +227,187 @@ def parse_nav_dop(payload: bytes) -> NavDop | None:
     # iTOW + gDOP pDOP tDOP vDOP hDOP nDOP eDOP (each u2, scale 0.01)
     values = struct.unpack_from("<HHHHHHH", payload, 4)
     return NavDop(*(v / 100.0 for v in values))
+
+
+def parse_nav_posecef(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-NAV-POSECEF (20 bytes) to a field dict."""
+    if len(payload) < 20:
+        return None
+    itow, ecef_x, ecef_y, ecef_z, p_acc = struct.unpack_from("<IiiiI", payload, 0)
+    return {
+        "iTOW": itow,
+        "ecefX": ecef_x,
+        "ecefY": ecef_y,
+        "ecefZ": ecef_z,
+        "pAcc": p_acc,
+        "ecefX_m": ecef_x / 100.0,
+        "ecefY_m": ecef_y / 100.0,
+        "ecefZ_m": ecef_z / 100.0,
+        "pAcc_m": p_acc / 100.0,
+    }
+
+
+def parse_nav_status(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-NAV-STATUS (16 bytes)."""
+    if len(payload) < 16:
+        return None
+    itow = struct.unpack_from("<I", payload, 0)[0]
+    gps_fix = payload[4]
+    flags = payload[5]
+    fix_stat = payload[6]
+    flags2 = payload[7]
+    ttff, msss = struct.unpack_from("<II", payload, 8)
+    return {
+        "iTOW": itow,
+        "gpsFix": gps_fix,
+        "flags": flags,
+        "fixStat": fix_stat,
+        "flags2": flags2,
+        "ttff": ttff,
+        "msss": msss,
+        "gpsFixOk": 1 if (flags & 0x01) else 0,
+    }
+
+
+def parse_nav_timegps(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-NAV-TIMEGPS (16 bytes)."""
+    if len(payload) < 16:
+        return None
+    itow, ftow, week = struct.unpack_from("<IiH", payload, 0)
+    leap_s = struct.unpack_from("<b", payload, 10)[0]
+    valid = payload[11]
+    t_acc = struct.unpack_from("<I", payload, 12)[0]
+    return {
+        "iTOW": itow,
+        "fTOW": ftow,
+        "week": week,
+        "leapS": leap_s,
+        "valid": valid,
+        "tAcc": t_acc,
+    }
+
+
+def parse_nav_clock(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-NAV-CLOCK (20 bytes)."""
+    if len(payload) < 20:
+        return None
+    itow, clk_b, clk_d, t_acc, f_acc = struct.unpack_from("<IiiII", payload, 0)
+    return {
+        "iTOW": itow,
+        "clkB": clk_b,
+        "clkD": clk_d,
+        "tAcc": t_acc,
+        "fAcc": f_acc,
+    }
+
+
+def parse_nav_sat(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-NAV-SAT header + per-SV rows; include ``num_svs`` and ``svs``."""
+    if len(payload) < 8:
+        return None
+    itow = struct.unpack_from("<I", payload, 0)[0]
+    version = payload[4]
+    num_svs = payload[5]
+    svs: list[dict[str, float | int]] = []
+    offset = 8
+    for _ in range(num_svs):
+        if offset + 12 > len(payload):
+            break
+        gnss_id, sv_id, cno, elev = payload[offset : offset + 4]
+        azim, pr_res = struct.unpack_from("<hh", payload, offset + 4)
+        flags = struct.unpack_from("<I", payload, offset + 8)[0]
+        elev_s = elev if elev < 128 else elev - 256
+        svs.append(
+            {
+                "gnssId": gnss_id,
+                "svId": sv_id,
+                "cno": cno,
+                "elev": elev_s,
+                "azim": azim,
+                "prRes": pr_res,
+                "flags": flags,
+            },
+        )
+        offset += 12
+    return {
+        "iTOW": itow,
+        "version": version,
+        "numSvs": num_svs,
+        "num_svs": float(len(svs)),
+        "svs": svs,
+    }
+
+
+def parse_rxm_rawx(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-RXM-RAWX header; ``num_svs`` is measurement count."""
+    if len(payload) < 16:
+        return None
+    rcv_tow = struct.unpack_from("<d", payload, 0)[0]
+    week = struct.unpack_from("<H", payload, 8)[0]
+    leap_s = struct.unpack_from("<b", payload, 10)[0]
+    num_meas = payload[11]
+    return {
+        "rcvTow": rcv_tow,
+        "week": week,
+        "leapS": leap_s,
+        "numMeas": num_meas,
+        "num_svs": float(num_meas),
+        "recStat": payload[12],
+        "version": payload[13],
+    }
+
+
+def parse_rxm_measx(payload: bytes) -> dict[str, Any] | None:
+    """Decode UBX-RXM-MEASX header; ``num_svs`` from numSV field."""
+    if len(payload) < 44:
+        return None
+    version = payload[0]
+    num_sv = payload[34]
+    flags = payload[35]
+    return {
+        "version": version,
+        "numSV": num_sv,
+        "num_svs": float(num_sv),
+        "flags": flags,
+    }
+
+
+def nav_pvt_fields(nav: NavPvt) -> dict[str, float | int | str | bool]:
+    """Flatten NavPvt for multi-row evidence."""
+    return {
+        "latitude": nav.latitude,
+        "longitude": nav.longitude,
+        "altitude_m": nav.altitude_m,
+        "fix_quality": nav.fix_quality,
+        "satellites": nav.satellites,
+        "num_svs": float(nav.satellites),
+        "pdop": nav.pdop,
+        "utc_time": nav.utc_time,
+        "fix_ok": nav.fix_ok,
+        "gpsFixOk": 1 if nav.fix_ok else 0,
+        "hAcc": nav.h_acc_m * 1000.0,  # mm, UBX native scale alias
+        "vAcc": nav.v_acc_m * 1000.0,
+        "h_acc_m": nav.h_acc_m,
+        "v_acc_m": nav.v_acc_m,
+        "speed_m_s": nav.speed_m_s,
+        "course_deg": nav.course_deg,
+    }
+
+
+def nav_dop_fields(dop: NavDop) -> dict[str, float]:
+    return {
+        "gDOP": dop.gdop,
+        "pDOP": dop.pdop,
+        "tDOP": dop.tdop,
+        "vDOP": dop.vdop,
+        "hDOP": dop.hdop,
+        "nDOP": dop.ndop,
+        "eDOP": dop.edop,
+        "gdop": dop.gdop,
+        "pdop": dop.pdop,
+        "vdop": dop.vdop,
+        "hdop": dop.hdop,
+    }
 
 
 class UbxStreamParser:

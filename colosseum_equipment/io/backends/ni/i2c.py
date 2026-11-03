@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ctypes import byref, create_string_buffer
+from typing import Any
 
 from colosseum_equipment.io.backends.ni import ni845x as api
 from colosseum_equipment.io.backends.ni import session845x
@@ -24,8 +25,11 @@ class Ni845xI2cBackend:
         address_bits: int = 7,
         pullup: bool = True,
         library: str | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
+        self._resource = resource
         self._model = model
+        self._timeout_ms = timeout_ms
         self._voltage = resolve_voltage(model, voltage)
         self._clock_hz = check_i2c_clock(model, clock_hz)
         self._address = int(address)
@@ -37,6 +41,7 @@ class Ni845xI2cBackend:
             resource=resource,
             voltage=self._voltage,
             library=library,
+            timeout_ms=timeout_ms,
         )
         self._config = api.NiHandle()
         try:
@@ -89,7 +94,7 @@ class Ni845xI2cBackend:
         address: int | None = None,
         address_bits: int | None = None,
         clock_hz: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         if address is not None:
             self._address = int(address)
         if address_bits is not None:
@@ -100,6 +105,20 @@ class Ni845xI2cBackend:
             self._clock_hz = check_i2c_clock(self._model, clock_hz)
         with session845x.locked(self._session) as session:
             self._apply_config(session)
+        return self.applied_settings()
+
+    def applied_settings(self) -> dict[str, Any]:
+        return {
+            "driver": "ni-845x",
+            "resource": self._resource,
+            "model": self._model,
+            "voltage": self._voltage,
+            "clock_hz": self._clock_hz,
+            "address": self._address,
+            "address_bits": self._address_bits,
+            "pullup": self._pullup,
+            "timeout_ms": self._timeout_ms,
+        }
 
     def set_pullup(self, enabled: bool) -> None:
         self._pullup = bool(enabled)

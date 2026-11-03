@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import command, measurement
 
 from colosseum_equipment.io.connections import get_backend
@@ -15,27 +17,21 @@ def configure(
     mode: int | None = None,
     chip_select: int | None = None,
     bits_per_word: int | None = None,
-) -> None:
+) -> dict[str, Any]:
     """Update SPI clock, mode (0..3), chip select, and/or bits per word.
 
-    :param spi_id: Configured ``io.spi`` id from config TOML.
-    :type spi_id: int
-    :param clock_hz: SCLK rate in hertz.
-    :type clock_hz: int | None, optional
-    :param mode: SPI mode 0..3 (CPOL/CPHA).
-    :type mode: int | None, optional
-    :param chip_select: Chip-select index 0..7.
-    :type chip_select: int | None, optional
-    :param bits_per_word: Bits per SPI sample (typically 8).
-    :type bits_per_word: int | None, optional
+    :returns: Applied settings snapshot (clock_hz, mode, chip_select, …).
 
-    :returns: None
+    :raises IoConnectionError: Transport or instrument connection failed.
+    :raises IoConfigError: Invalid clock/mode/CS for the configured model.
     """
-    get_backend("spi", spi_id).configure(
-        clock_hz=clock_hz,
-        mode=mode,
-        chip_select=chip_select,
-        bits_per_word=bits_per_word,
+    return dict(
+        get_backend("spi", spi_id).configure(
+            clock_hz=clock_hz,
+            mode=mode,
+            chip_select=chip_select,
+            bits_per_word=bits_per_word,
+        ),
     )
 
 
@@ -43,15 +39,10 @@ def configure(
 def transfer(*, spi_id: int, data: bytes, key: str) -> bytes:
     """Full-duplex SPI transfer; returns bytes shifted in from MISO.
 
-    :param spi_id: Configured ``io.spi`` id from config TOML.
-    :type spi_id: int
-    :param data: MOSI payload bytes.
-    :type data: bytes
-    :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+    Short transfers raise ``IoConnectionError`` rather than returning truncated data.
 
-    :returns: MISO payload bytes (same length as ``data`` on success).
-    :rtype: bytes
+    :raises IoConnectionError: Transport failure or incomplete transfer.
+    :raises IoConfigError: Payload rejected by the configured model limits.
     """
     _ = key
     return bytes(get_backend("spi", spi_id).transfer(bytes(data)))

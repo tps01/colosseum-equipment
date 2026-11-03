@@ -132,7 +132,7 @@ TCPIP SOCKET) stays VISA.
    # Optional keys:
    # driver = "serial"                        # sim, visa, serial, or http; else inferred
    # baudrate = 9600                          # line-mode default 9600
-   # connection = "COM1"                      # Septentrio stream port; default COM1
+   # connection = "COM1"                      # Septentrio RxTools port (COM1/USB1/IPS1); required for correct stream routing
    # resource = "TCPIP0::192.0.2.1::28785::SOCKET"  # Ethernet SOCKET when not using port
    # timeout = 5.0
 

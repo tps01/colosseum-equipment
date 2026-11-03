@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from colosseum.decorators import command, measurement
+from colosseum.context import get_context
+from colosseum.decorators import VerificationResult, command, measurement, verification
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import limit_verifier, minimum_verifier, tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
+from colosseum_equipment.instruments.gnss.messages import resolve_logical_message
 
 
 @command
@@ -135,12 +137,25 @@ def set_message_rate(*, gnss_id: EquipmentId, message: str, rate_hz: float) -> N
 
 
 @command
-def start_logging(*, gnss_id: int, path: str, key: str = "") -> None:
+@broadcastable("gnss", "gnss_id")
+def set_message_profile(*, gnss_id: EquipmentId, messages: str = "default") -> None:
+    """Enable a named message profile (``default`` / ``nmea`` / ``field`` / ``sat`` / ``all``).
+
+    :param gnss_id: Integer ID from the configured equipment.gnss row.
+    :param messages: Profile name. Default ``default`` is the light fix/DOP/sky baseline.
+    """
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).set_message_profile(messages)
+
+
+@command
+def start_logging(*, gnss_id: int, path: str, key: str = "", messages: str = "default") -> None:
     """Start background logging of raw messages, binary wire capture, track CSV, and DB epochs.
 
     Writes a decoded text log at ``path``, a binary wire sidecar
     (``{stem}_wire.ubx`` / ``.gps`` / ``.sbf`` / ``.bin``), and ``{stem}_track.csv``.
     ``key`` identifies the logging window for evidence rows.
+    ``messages`` selects a vendor message profile (``default`` / ``nmea`` / ``field`` /
+    ``sat`` / ``all``).
 
     :param gnss_id: Integer ID from the configured equipment.gnss row. Select an existing ID in
         that section.
@@ -148,6 +163,7 @@ def start_logging(*, gnss_id: int, path: str, key: str = "") -> None:
         requires artifacts enabled.
     :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
         evidence lookup rules in the core guide. Default: ``''``.
+    :param messages: Message enable profile applied when arming streams. Default: ``default``.
 
     :returns: None; the command outcome is recorded.
 
@@ -155,7 +171,9 @@ def start_logging(*, gnss_id: int, path: str, key: str = "") -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).start_logging(path, key=key)
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).start_logging(
+        path, key=key, messages=messages,
+    )
 
 
 @command
@@ -227,6 +245,36 @@ def save_quality_plot(*, gnss_id: int, path: str) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_quality_plot(path)
+
+
+@command
+def save_signal_levels_plot(*, gnss_id: int, path: str) -> None:
+    """Save a per-satellite C/N0 bar chart from the current sky snapshot.
+
+    :param gnss_id: Integer ID from the configured equipment.gnss row.
+    :param path: Destination PNG path under the run output directory.
+    """
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_signal_levels_plot(path)
+
+
+@command
+def save_deviation_plot(
+    *,
+    gnss_id: int,
+    path: str,
+    ref_lat: float | None = None,
+    ref_lon: float | None = None,
+) -> None:
+    """Save an east/north deviation scatter about mean or a supplied reference.
+
+    :param gnss_id: Integer ID from the configured equipment.gnss row.
+    :param path: Destination PNG path under the run output directory.
+    :param ref_lat: Optional reference latitude (deg). Default: mean of fix samples.
+    :param ref_lon: Optional reference longitude (deg). Default: mean of fix samples.
+    """
+    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_deviation_plot(
+        path, ref_lat=ref_lat, ref_lon=ref_lon,
+    )
 
 
 @command
@@ -394,6 +442,9 @@ def measure_satellites(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_satellites(max_age_s=max_age_s))
 
 
+verify_satellites = minimum_verifier("measure_satellites", name="verify_satellites")
+
+
 @measurement
 def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """Measure satellites visible in the recent sky view (no fix required).
@@ -415,6 +466,11 @@ def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0
     return float(
         get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_satellites_visible(max_age_s=max_age_s),
     )
+
+
+verify_satellites_visible = minimum_verifier(
+    "measure_satellites_visible", name="verify_satellites_visible",
+)
 
 
 @measurement
@@ -510,6 +566,9 @@ def measure_gdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_gdop(max_age_s=max_age_s))
 
 
+verify_gdop = limit_verifier("measure_gdop", name="verify_gdop", upper=True)
+
+
 @measurement
 def measure_max_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """Measure maximum C/N0 (dB-Hz) across the recent sky view.
@@ -555,6 +614,11 @@ def measure_mean_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> 
     """
     _ = key
     return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_mean_cn0_dbhz(max_age_s=max_age_s))
+
+
+verify_mean_cn0_dbhz = minimum_verifier(
+    "measure_mean_cn0_dbhz", name="verify_mean_cn0_dbhz", unit="dB-Hz",
+)
 
 
 @measurement
@@ -679,6 +743,9 @@ def measure_v_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_v_acc_m(max_age_s=max_age_s))
 
 
+verify_v_acc_m = limit_verifier("measure_v_acc_m", name="verify_v_acc_m", upper=True, unit="m")
+
+
 @measurement
 def measure_geoid_separation_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """Measure geoid separation in meters from GGA when present.
@@ -761,6 +828,9 @@ def measure_ttff_s(*, gnss_id: int, key: str) -> float:
     return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_ttff_s())
 
 
+verify_ttff_s = limit_verifier("measure_ttff_s", name="verify_ttff_s", upper=True, unit="s")
+
+
 @measurement
 def measure_fix_availability(*, gnss_id: int, key: str) -> float:
     """Measure fraction of logging epochs with a valid fix (0..1).
@@ -828,6 +898,346 @@ def measure_reacquisition_s(*, gnss_id: int, key: str) -> float:
     return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_reacquisition_s())
 
 
+verify_reacquisition_s = limit_verifier(
+    "measure_reacquisition_s", name="verify_reacquisition_s", upper=True, unit="s",
+)
+
+
 verify_latitude = tolerance_verifier("measure_latitude", name="verify_latitude", unit="deg")
 verify_longitude = tolerance_verifier("measure_longitude", name="verify_longitude", unit="deg")
 verify_altitude_m = tolerance_verifier("measure_altitude_m", name="verify_altitude_m", unit="m")
+
+
+def _field_rows(*, key: str, message: str) -> list[dict[str, Any]]:
+    logical = resolve_logical_message(message)
+    rows = get_context().db.list_measurements("equipment", logical, key)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        value = row.value
+        if isinstance(value, dict):
+            out.append(value)
+        elif value is not None:
+            out.append({"value": value})
+    return out
+
+
+def _field_values(rows: list[dict[str, Any]], field: str) -> list[float]:
+    values: list[float] = []
+    for row in rows:
+        if field not in row:
+            continue
+        try:
+            values.append(float(row[field]))
+        except (TypeError, ValueError):
+            continue
+    return values
+
+
+def _sat_counts(
+    rows: list[dict[str, Any]],
+    *,
+    gnss_id: int | None,
+) -> list[float]:
+    counts: list[float] = []
+    for row in rows:
+        if gnss_id is None:
+            raw = row.get("num_svs", row.get("numSvs", row.get("numMeas", row.get("numSV"))))
+            try:
+                counts.append(float(raw))  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+            continue
+        svs = row.get("svs")
+        if not isinstance(svs, list):
+            continue
+        counts.append(float(sum(1 for sv in svs if isinstance(sv, dict) and int(sv.get("gnssId", -1)) == gnss_id)))
+    return counts
+
+
+def _check_bound(
+    actual: float,
+    *,
+    expected_val: float | None,
+    tolerance: float | None,
+    minimum: float | None,
+    maximum: float | None,
+    limit: float | None,
+    optional: bool,
+) -> VerificationResult:
+    if expected_val is not None:
+        tol = 0.0 if tolerance is None else tolerance
+        if abs(actual - expected_val) <= tol:
+            return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
+        return VerificationResult(
+            status="FAIL",
+            message=f"expected {expected_val} +/- {tol}, got {actual}",
+            optional=optional,
+            actual=actual,
+        )
+    lo = minimum
+    hi = maximum if maximum is not None else limit
+    if lo is not None and actual < lo:
+        return VerificationResult(
+            status="FAIL",
+            message=f"expected {actual} >= {lo}",
+            optional=optional,
+            actual=actual,
+        )
+    if hi is not None and actual > hi:
+        return VerificationResult(
+            status="FAIL",
+            message=f"expected {actual} <= {hi}",
+            optional=optional,
+            actual=actual,
+        )
+    if lo is None and hi is None:
+        return VerificationResult(
+            status="ERROR",
+            message="provide expected_val/tolerance and/or minimum/maximum/limit",
+            optional=optional,
+            actual=actual,
+        )
+    return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
+
+
+@verification
+def verify_field_avg(
+    *,
+    key: str,
+    message: str,
+    field: str,
+    expected_val: float | None = None,
+    tolerance: float | None = None,
+    minimum: float | None = None,
+    maximum: float | None = None,
+    limit: float | None = None,
+    optional: bool = False,
+) -> VerificationResult:
+    """Verify the mean of ``field`` over multi-row logging evidence for ``message``."""
+    try:
+        rows = _field_rows(key=key, message=message)
+    except KeyError:
+        return VerificationResult(
+            status="ERROR",
+            message=f"unknown message alias {message!r}",
+            optional=optional,
+        )
+    values = _field_values(rows, field)
+    if not values:
+        return VerificationResult(
+            status="ERROR",
+            message=f"no rows for message {message!r} field {field!r} under key {key!r}",
+            optional=optional,
+        )
+    actual = sum(values) / len(values)
+    return _check_bound(
+        actual,
+        expected_val=expected_val,
+        tolerance=tolerance,
+        minimum=minimum,
+        maximum=maximum,
+        limit=limit,
+        optional=optional,
+    )
+
+
+@verification
+def verify_field_avg_delta(
+    *,
+    key_a: str,
+    key_b: str,
+    message: str,
+    field: str,
+    expected_val: float | None = None,
+    tolerance: float | None = None,
+    minimum: float | None = None,
+    maximum: float | None = None,
+    limit: float | None = None,
+    optional: bool = False,
+) -> VerificationResult:
+    """Verify ``avg(key_b) - avg(key_a)`` for ``field`` (B minus A)."""
+    try:
+        rows_a = _field_rows(key=key_a, message=message)
+        rows_b = _field_rows(key=key_b, message=message)
+    except KeyError:
+        return VerificationResult(
+            status="ERROR",
+            message=f"unknown message alias {message!r}",
+            optional=optional,
+        )
+    vals_a = _field_values(rows_a, field)
+    vals_b = _field_values(rows_b, field)
+    if not vals_a or not vals_b:
+        return VerificationResult(
+            status="ERROR",
+            message=f"missing field rows for {message!r}/{field!r} under {key_a!r} or {key_b!r}",
+            optional=optional,
+        )
+    actual = (sum(vals_b) / len(vals_b)) - (sum(vals_a) / len(vals_a))
+    return _check_bound(
+        actual,
+        expected_val=expected_val,
+        tolerance=tolerance,
+        minimum=minimum,
+        maximum=maximum,
+        limit=limit,
+        optional=optional,
+    )
+
+
+@verification
+def verify_field_equal_percent(
+    *,
+    key: str,
+    message: str,
+    field: str,
+    expected_val: float,
+    tolerance: float = 0.0,
+    minimum: float | None = None,
+    maximum: float | None = None,
+    limit: float | None = None,
+    optional: bool = False,
+) -> VerificationResult:
+    """Verify the percentage of rows where ``field`` equals ``expected_val``."""
+    try:
+        rows = _field_rows(key=key, message=message)
+    except KeyError:
+        return VerificationResult(
+            status="ERROR",
+            message=f"unknown message alias {message!r}",
+            optional=optional,
+        )
+    values = _field_values(rows, field)
+    if not values:
+        return VerificationResult(
+            status="ERROR",
+            message=f"no rows for message {message!r} field {field!r} under key {key!r}",
+            optional=optional,
+        )
+    matches = sum(1 for value in values if abs(value - expected_val) <= tolerance)
+    actual = 100.0 * matches / len(values)
+    return _check_bound(
+        actual,
+        expected_val=None,
+        tolerance=None,
+        minimum=minimum,
+        maximum=maximum,
+        limit=limit,
+        optional=optional,
+    )
+
+
+@verification
+def verify_sat_avg_delta(
+    *,
+    key_a: str,
+    key_b: str,
+    message: str,
+    gnss_id: int | None = None,
+    as_percent: bool = False,
+    expected_val: float | None = None,
+    tolerance: float | None = None,
+    minimum: float | None = None,
+    maximum: float | None = None,
+    limit: float | None = None,
+    optional: bool = False,
+) -> VerificationResult:
+    """Verify absolute (or percent) difference of average satellite counts between keys."""
+    try:
+        rows_a = _field_rows(key=key_a, message=message)
+        rows_b = _field_rows(key=key_b, message=message)
+    except KeyError:
+        return VerificationResult(
+            status="ERROR",
+            message=f"unknown message alias {message!r}",
+            optional=optional,
+        )
+    counts_a = _sat_counts(rows_a, gnss_id=gnss_id)
+    counts_b = _sat_counts(rows_b, gnss_id=gnss_id)
+    if not counts_a or not counts_b:
+        return VerificationResult(
+            status="ERROR",
+            message=f"missing sat-count rows for {message!r} under {key_a!r} or {key_b!r}",
+            optional=optional,
+        )
+    avg_a = sum(counts_a) / len(counts_a)
+    avg_b = sum(counts_b) / len(counts_b)
+    delta = abs(avg_b - avg_a)
+    if as_percent:
+        if avg_a == 0:
+            return VerificationResult(
+                status="ERROR",
+                message="cannot compute percent sat delta vs zero baseline",
+                optional=optional,
+            )
+        delta = 100.0 * delta / abs(avg_a)
+    return _check_bound(
+        delta,
+        expected_val=expected_val,
+        tolerance=tolerance,
+        minimum=minimum,
+        maximum=maximum,
+        limit=limit,
+        optional=optional,
+    )
+
+
+@verification
+def verify_sat_diff(
+    *,
+    key_a: str,
+    key_b: str,
+    message: str,
+    gnss_id: int | None = None,
+    as_percent: bool = False,
+    expected_val: float | None = None,
+    tolerance: float | None = None,
+    minimum: float | None = None,
+    maximum: float | None = None,
+    limit: float | None = None,
+    optional: bool = False,
+) -> VerificationResult:
+    """Verify the largest epoch-aligned absolute sat-count delta between two keys."""
+    try:
+        rows_a = _field_rows(key=key_a, message=message)
+        rows_b = _field_rows(key=key_b, message=message)
+    except KeyError:
+        return VerificationResult(
+            status="ERROR",
+            message=f"unknown message alias {message!r}",
+            optional=optional,
+        )
+    counts_a = _sat_counts(rows_a, gnss_id=gnss_id)
+    counts_b = _sat_counts(rows_b, gnss_id=gnss_id)
+    if not counts_a or not counts_b:
+        return VerificationResult(
+            status="ERROR",
+            message=f"missing sat-count rows for {message!r} under {key_a!r} or {key_b!r}",
+            optional=optional,
+        )
+    n = min(len(counts_a), len(counts_b))
+    diffs = [abs(counts_a[i] - counts_b[i]) for i in range(n)]
+    if not diffs:
+        actual = 0.0
+        baseline = 0.0
+    else:
+        max_i = max(range(n), key=lambda i: diffs[i])
+        actual = diffs[max_i]
+        baseline = abs(counts_a[max_i])
+    if as_percent:
+        if baseline == 0:
+            return VerificationResult(
+                status="ERROR",
+                message="cannot compute percent sat diff vs zero baseline",
+                optional=optional,
+            )
+        actual = 100.0 * actual / baseline
+    return _check_bound(
+        actual,
+        expected_val=expected_val,
+        tolerance=tolerance,
+        minimum=minimum,
+        maximum=maximum,
+        limit=limit,
+        optional=optional,
+    )

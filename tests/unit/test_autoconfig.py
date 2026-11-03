@@ -477,7 +477,7 @@ def test_autoconfig_populates_config_store(monkeypatch: pytest.MonkeyPatch) -> N
     def _fake_discover(**kwargs: object) -> object:
         return discover_equipment_config(
             resource_manager=rm,
-            timeout=float(kwargs.get("timeout", 5.0)),  # type: ignore[arg-type]
+            timeout=float(kwargs.get("timeout", 1.0)),  # type: ignore[arg-type]
             blacklist=kwargs.get("blacklist"),  # type: ignore[arg-type]
             list_comports=lambda: [],
             logger=kwargs.get("logger"),  # type: ignore[arg-type]
@@ -510,7 +510,7 @@ def test_autoconfig_export_writes_toml(
     def _fake_discover(**kwargs: object) -> object:
         return discover_equipment_config(
             resource_manager=rm,
-            timeout=float(kwargs.get("timeout", 5.0)),  # type: ignore[arg-type]
+            timeout=float(kwargs.get("timeout", 1.0)),  # type: ignore[arg-type]
             blacklist=kwargs.get("blacklist"),  # type: ignore[arg-type]
             list_comports=lambda: [],
             logger=kwargs.get("logger"),  # type: ignore[arg-type]
