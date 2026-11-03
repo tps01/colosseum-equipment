@@ -35,11 +35,11 @@ def test_io_write_pin_without_resource_records_command_error(
             """,
         ),
     )
-    with pytest.raises(IoConfigError, match="requires resource="):
+    with pytest.raises(IoConfigError, match="port="):
         col.io.dio.write_pin(dio_id=1, line=0, value=True)
     row = ctx.db.fetch_table_rows("commands")[-1]
     assert row["status"] == "ERROR"
-    assert "requires resource=" in (row["message"] or "")
+    assert "port=" in (row["message"] or "")
 
 
 def test_io_dio_sim_read_write_port(io_runtime_context: RuntimeContext, io_bench) -> None:
@@ -51,13 +51,38 @@ def test_io_dio_sim_read_write_port(io_runtime_context: RuntimeContext, io_bench
             driver = sim
             port_lines = 8
             direction = 0xFF
+            initial_output = 0x01
             """,
         ),
     )
+    assert col.io.dio.read_port(dio_id=1, key="initial") == 0x01
+    snapshot = col.io.dio.configure(dio_id=1, direction=0x0F, initial=0x05)
+    assert snapshot["direction"] == 0x0F
+    assert snapshot["initial_output"] == 0x05
     col.io.dio.write_port(dio_id=1, value=0b1010)
     assert col.io.dio.read_port(dio_id=1, key="port_a") == 0b1010
     col.io.dio.write_pin(dio_id=1, line=0, value=True)
     assert col.io.dio.read_pin(dio_id=1, line=0, key="line0") is True
+
+
+def test_io_dio_sim_rejects_out_of_range_masks(io_runtime_context: RuntimeContext, io_bench) -> None:
+    load_config(
+        io_bench(
+            """
+            [io.dio]
+            dio_id = 1
+            driver = sim
+            port_lines = 8
+            direction = 0x0F
+            """,
+        ),
+    )
+    with pytest.raises(IoConfigError, match="outside port mask"):
+        col.io.dio.configure(dio_id=1, direction=0x1FF)
+    with pytest.raises(IoConfigError, match="input-only bits"):
+        col.io.dio.write_port(dio_id=1, value=0xF0)
+    with pytest.raises(IoConfigError, match="out of range"):
+        col.io.dio.write_pin(dio_id=1, line=8, value=True)
 
 
 def test_io_dio_sim_measurement_domain_equipment(io_runtime_context: RuntimeContext, io_bench) -> None:
@@ -107,7 +132,10 @@ def test_io_dio_scpi_fallback_write_read(
     from tests.support.stubs import RfStubTransport
 
     _ = io_runtime_context
-    transport = RfStubTransport({"SENS:DIG:DATA?": "10"})
+    transport = RfStubTransport({
+        "SENS:DIG:DATA?": "10",
+        "SYST:ERR?": "0,No error",
+    })
     monkeypatch.setattr(
         "colosseum_equipment.io.backends.scpi.dio.open_transport",
         lambda *_args, **_kwargs: transport,
@@ -117,7 +145,8 @@ def test_io_dio_scpi_fallback_write_read(
             """
             [io.dio]
             dio_id = 1
-            resource = "TCPIP0::127.0.0.1::inst0::INSTR"
+            driver = "scpi"
+            port = "COM5"
             direction = 255
             """,
         ),
@@ -126,6 +155,36 @@ def test_io_dio_scpi_fallback_write_read(
     assert col.io.dio.read_port(dio_id=1, key="scpi_port") == 10
     assert "DIG:DIR 255" in transport.written
     assert "SOUR:DIG:DATA 10" in transport.written
+
+
+def test_io_dio_scpi_syst_err_raises(
+    io_runtime_context: RuntimeContext,
+    io_bench,
+    monkeypatch,
+) -> None:
+    from colosseum_equipment.io.exceptions import IoConnectionError
+
+    from tests.support.stubs import RfStubTransport
+
+    _ = io_runtime_context
+    transport = RfStubTransport({"SYST:ERR?": "-113,\"Undefined header\""})
+    monkeypatch.setattr(
+        "colosseum_equipment.io.backends.scpi.dio.open_transport",
+        lambda *_args, **_kwargs: transport,
+    )
+    load_config(
+        io_bench(
+            """
+            [io.dio]
+            dio_id = 1
+            driver = "scpi"
+            port = "COM9"
+            direction = 0x0F
+            """,
+        ),
+    )
+    with pytest.raises(IoConnectionError, match="SCPI rejected"):
+        col.io.dio.write_port(dio_id=1, value=1)
 
 
 def test_dio_generic_driver_opens_scpi_and_warns_once(

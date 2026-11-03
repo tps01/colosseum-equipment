@@ -10,7 +10,6 @@ import colosseum as col
 import pytest
 from colosseum.config import load_config
 from colosseum.plugins import loader as plugin_loader
-
 from colosseum_equipment import register
 from colosseum_equipment.connections import close_all
 from colosseum_equipment.io.backends import _usb, totalphase
@@ -305,9 +304,14 @@ def test_public_analyzer_config_evidence_and_active_shutdown(
         driver = "sim"
         protocol = "usb"
     '''))
-    col.io.analyzer.start(analyzer_id=1, path="raw.jsonl")
+    path = col.io.analyzer.start(analyzer_id=1, path="raw.jsonl")
+    assert path == "raw.jsonl"
+    status = col.io.analyzer.status(analyzer_id=1)
+    assert "records" in status
     result = col.io.analyzer.stop(analyzer_id=1)
     assert result["records"] == 1
+    assert "started_at" in result
+    assert not col.io.analyzer.is_running(analyzer_id=1)
     summary = col.io.analyzer.export(analyzer_id=1, path="capture.jsonl", key="bus")
     assert summary["loss_detected"]
     rows = io_runtime_context.db.list_measurements(
@@ -321,3 +325,24 @@ def test_public_analyzer_config_evidence_and_active_shutdown(
     close_all()
     assert not backend._thread.is_alive()
     assert not io_runtime_context.resource_cache
+
+
+def test_empty_analyzer_export_is_fail(io_runtime_context, io_bench, monkeypatch):
+    monkeypatch.setattr(plugin_loader, "entry_points_for_group", lambda group: [EquipmentEntryPoint()])
+    load_config(io_bench('''
+        [io.analyzer]
+        analyzer_id = 1
+        driver = "sim"
+        protocol = "i2c"
+        records = []
+        max_duration_s = 0.05
+    '''))
+    path = col.io.analyzer.start(analyzer_id=1, path="empty.jsonl")
+    summary = col.io.analyzer.stop(analyzer_id=1)
+    assert summary["records"] == 0
+    exported = col.io.analyzer.export(analyzer_id=1, path=path, key="empty_bus")
+    assert exported["records"] == 0
+    rows = io_runtime_context.db.list_measurements(
+        domain="equipment", command="io.analyzer.export", key="empty_bus",
+    )
+    assert rows[0].status == "FAIL"

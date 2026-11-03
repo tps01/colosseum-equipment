@@ -90,7 +90,7 @@ class SimSpiBackend:
         mode: int | None = None,
         chip_select: int | None = None,
         bits_per_word: int | None = None,
-    ) -> None:
+    ) -> dict[str, int | str]:
         if clock_hz is not None:
             if clock_hz <= 0:
                 raise IoConfigError(f"spi clock_hz must be positive; got {clock_hz}")
@@ -110,6 +110,13 @@ class SimSpiBackend:
                 raise IoConfigError(f"spi bits_per_word must be 1..32; got {bits_per_word}")
             self._bits_per_word = bpw
         self._persist()
+        return {
+            "driver": "sim",
+            "clock_hz": self._clock_hz,
+            "mode": self._mode,
+            "chip_select": self._chip_select,
+            "bits_per_word": self._bits_per_word,
+        }
 
     def transfer(self, data: bytes) -> bytes:
         payload = bytes(data)

@@ -1,4 +1,4 @@
-"""NovAtel OEM7 / PwrPak7 / SMART7 GNSS (NMEA + BESTPOSB).
+"""NovAtel OEM7 / PwrPak7 / SMART7 GNSS (NMEA + BESTPOSB + field/sat logs).
 
 Manual: OEM7 Commands and Logs Reference Manual (docs.novatel.com).
 """
@@ -10,27 +10,65 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from colosseum.logging import get_logger
+
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentTimeoutError
 from colosseum_equipment.instruments.gnss.generic import GenericGnss
-from colosseum_equipment.instruments.gnss.nmea import NmeaFix
+from colosseum_equipment.instruments.gnss.messages import (
+    LOGICAL_CLOCK,
+    LOGICAL_DOP,
+    LOGICAL_POSECEF,
+    LOGICAL_PVT,
+    LOGICAL_RAWX,
+    LOGICAL_SAT,
+    LOGICAL_STATUS,
+    LOGICAL_TIME,
+    MESSAGE_PROFILES,
+    expand_profile_specs,
+)
+from colosseum_equipment.instruments.gnss.nmea import NmeaDop, NmeaFix
 from colosseum_equipment.instruments.gnss.oem7 import (
     MSG_BESTPOS,
+    MSG_BESTXYZ,
+    MSG_CLOCKMODEL,
+    MSG_PSRDOP,
+    MSG_RANGE,
+    MSG_RXSTATUS,
+    MSG_SATVIS2,
+    MSG_TIME,
+    MSG_TRACKSTAT,
     Oem7StreamParser,
+    bestpos_fields,
     parse_bestpos,
+    parse_bestxyz,
+    parse_clockmodel,
+    parse_psrdop,
+    parse_range,
+    parse_rxstatus,
+    parse_satvis2,
+    parse_time,
+    parse_trackstat,
 )
 from colosseum_equipment.instruments.registry import instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
-_DEFAULT_LOGS = (
-    ("BESTPOSB", 1.0),
-    ("GPGGA", 1.0),
-    ("GPRMC", 1.0),
-    ("GPGSV", 1.0),
-)
+_logger = get_logger("colosseum.equipment")
+
+_CMD_TERMINATOR = b"\r\n"
+_ACK_WAIT_S = 0.25
+
+
+def _period_s(rate_hz: float) -> float:
+    """Convert rate_hz to an OEM7 ONTIME period (allows fractional seconds)."""
+    if rate_hz <= 0:
+        return 0.0
+    period = 1.0 / rate_hz
+    # OEM7 accepts fractional periods; keep a sane floor for very high rates.
+    return max(0.01, period)
 
 
 @instrument_model(
@@ -42,14 +80,15 @@ _DEFAULT_LOGS = (
     "novatel-smart7",
 )
 class NovatelGnss(GenericGnss):
-    """Shared NovAtel OEM7 driver; ASCII LOG + BESTPOSB."""
+    """Shared NovAtel OEM7 driver; ASCII LOG + BESTPOSB + evidence epochs."""
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         super().__init__(transport, config)
         self._parser = Oem7StreamParser()
         self._best: object | None = None
-        self._enabled_logs: dict[str, float] = {name: rate for name, rate in _DEFAULT_LOGS}
-        self._enable_logs()
+        # name -> (rate_hz, trigger)
+        self._enabled_logs: dict[str, tuple[float, str]] = {}
+        self._apply_message_profile("default")
 
     def _wire_suffix(self) -> str:
         return ".gps"
@@ -65,10 +104,77 @@ class NovatelGnss(GenericGnss):
             return
         self._transport.write(payload.decode("latin-1"))
 
-    def _enable_logs(self) -> None:
-        for name, rate_hz in self._enabled_logs.items():
-            period = max(1, int(round(1.0 / rate_hz))) if rate_hz > 0 else 1
-            self._write_bytes(f"LOG {name} ONTIME {period}\n".encode("ascii"))
+    def _send_command(self, command: str, *, wait_ack: bool = True) -> None:
+        text = command.strip()
+        if not text:
+            return
+        self._write_bytes(text.encode("ascii") + _CMD_TERMINATOR)
+        if wait_ack:
+            self._drain_command_ack(text)
+
+    def _drain_command_ack(self, command: str) -> None:
+        deadline = time.monotonic() + _ACK_WAIT_S
+        empty_streak = 0
+        while time.monotonic() < deadline:
+            chunk = self._read_bytes(512)
+            if not chunk:
+                empty_streak += 1
+                # Bail quickly when the port is quiet (unit tests / no ACK).
+                if empty_streak >= 3:
+                    return
+                time.sleep(0.01)
+                continue
+            empty_streak = 0
+            for kind, payload in self._parser.feed(chunk):
+                if kind == "ack" and isinstance(payload, str):
+                    upper = payload.upper()
+                    if "ERROR" in upper or upper.startswith("<ERROR"):
+                        _logger.warning(
+                            "gnss model `%s` command rejected (%s): %s",
+                            self._model,
+                            command,
+                            payload,
+                        )
+                        return
+                    if "OK" in upper or upper.startswith("<OK"):
+                        return
+                elif kind in {"nmea", "ascii", "oem7"}:
+                    # Stream data interleaved with ACK; apply nav events.
+                    self._apply_events([(kind, payload)])
+        # No ACK within window — common on busy ports; continue best-effort.
+
+    def _log_command(self, name: str, rate_hz: float, trigger: str) -> str:
+        if rate_hz <= 0:
+            return f"UNLOG {name}"
+        trig = trigger.strip().lower()
+        if trig == "onchanged":
+            return f"LOG {name} ONCHANGED"
+        period = _period_s(rate_hz)
+        # Prefer integer wording when exact.
+        if abs(period - round(period)) < 1e-9:
+            return f"LOG {name} ONTIME {int(round(period))}"
+        return f"LOG {name} ONTIME {period:g}"
+
+    def _enable_logs(self, *, reset: bool = False) -> None:
+        if reset:
+            self._send_command("UNLOGALL THISPORT")
+        for name, (rate_hz, trigger) in list(self._enabled_logs.items()):
+            self._send_command(self._log_command(name, rate_hz, trigger))
+
+    def _apply_message_profile(self, profile: str) -> None:
+        name = profile.strip().lower()
+        if name not in MESSAGE_PROFILES:
+            raise ValueError(
+                f"unknown message profile {profile!r}; expected one of {MESSAGE_PROFILES}",
+            )
+        self._message_profile = name
+        specs = expand_profile_specs(name, vendor="novatel")
+        managed = {spec.name.upper(): (float(spec.rate_hz), spec.trigger) for spec in specs}
+        # Replace managed set (UNLOG removed ones on next enable with reset).
+        self._enabled_logs = managed
+        for msg, (rate_hz, _trig) in managed.items():
+            self._session_message_rates[msg] = rate_hz
+        self._enable_logs(reset=True)
 
     def _drain_reads(self, *, settle_s: float = 0.05) -> None:
         deadline = time.monotonic() + settle_s
@@ -90,41 +196,33 @@ class NovatelGnss(GenericGnss):
             line = raw_line.split("#", 1)[0].strip()
             if not line:
                 continue
-            cmd = line if line.endswith("\n") else f"{line}\n"
-            self._write_bytes(cmd.encode("ascii"))
-            self._drain_reads(settle_s=0.05)
+            self._send_command(line)
 
     def save_config(self, path: str) -> Path:
         out_path = resolve_artifact_path(path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        for once in ("LOG VERSIONA ONCE\n", "LOG RXSTATUSA ONCE\n"):
-            self._write_bytes(once.encode("ascii"))
-            self._drain_reads(settle_s=0.1)
+        self._send_command("LOG VERSIONA ONCE")
+        self._send_command("LOG RXSTATUSA ONCE")
         lines = [
             "# Colosseum NovAtel OEM7 config snapshot (logging setup)",
             "# Re-apply with gnss.load_config",
         ]
-        for name, rate_hz in self._enabled_logs.items():
-            if rate_hz <= 0:
-                lines.append(f"UNLOG {name}")
-            else:
-                period = max(1, int(round(1.0 / rate_hz)))
-                lines.append(f"LOG {name} ONTIME {period}")
+        for name, (rate_hz, trigger) in self._enabled_logs.items():
+            lines.append(self._log_command(name, rate_hz, trigger))
         for name, rate_hz in self._session_message_rates.items():
             if name.upper() in self._enabled_logs:
                 continue
-            if rate_hz <= 0:
-                lines.append(f"UNLOG {name}")
-            else:
-                period = max(1, int(round(1.0 / rate_hz)))
-                lines.append(f"LOG {name} ONTIME {period}")
+            lines.append(self._log_command(name.upper(), rate_hz, "ontime"))
         out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         record_artifact(
             domain="equipment",
             command="save_config",
             key=f"gnss{self._gnss_id}.config",
             path=out_path,
-            value={"model": self._model, "logs": dict(self._enabled_logs)},
+            value={
+                "model": self._model,
+                "logs": {k: v[0] for k, v in self._enabled_logs.items()},
+            },
         )
         return out_path
 
@@ -132,13 +230,15 @@ class NovatelGnss(GenericGnss):
         name = message.strip().upper()
         if rate_hz < 0:
             raise ValueError("rate_hz must be >= 0")
+        trigger = "ontime"
+        existing = self._enabled_logs.get(name)
+        if existing is not None:
+            trigger = existing[1]
+        self._send_command(self._log_command(name, rate_hz, trigger))
         if rate_hz == 0:
-            self._write_bytes(f"UNLOG {name}\n".encode("ascii"))
-            self._enabled_logs[name] = 0.0
+            self._enabled_logs[name] = (0.0, trigger)
         else:
-            period = max(1, int(math.ceil(1.0 / rate_hz)))
-            self._write_bytes(f"LOG {name} ONTIME {period}\n".encode("ascii"))
-            self._enabled_logs[name] = float(rate_hz)
+            self._enabled_logs[name] = (float(rate_hz), trigger)
         self._session_message_rates[name] = float(rate_hz)
 
     def _apply_events(self, events: list[tuple[str, object]]) -> None:
@@ -147,39 +247,131 @@ class NovatelGnss(GenericGnss):
                 self._log_raw_line(payload)
                 record_track = self._best is None
                 self._ingest_nmea_line(payload, record_raw=False, record_track=record_track)
-            elif kind == "ascii" and isinstance(payload, str):
+            elif kind in {"ascii", "ack"} and isinstance(payload, str):
                 self._log_raw_line(payload)
             elif kind == "oem7" and isinstance(payload, tuple) and len(payload) == 2:
                 msg_id, body = payload
                 if not isinstance(body, bytes):
                     continue
                 self._log_raw_line(f"#OEM7 {msg_id} {body.hex()}")
-                if msg_id != MSG_BESTPOS:
-                    continue
-                best = parse_bestpos(body)
-                if best is None or best.fix_quality == 0:
-                    continue
-                self._best = best
-                hdop = self._fix.hdop if self._fix is not None else 0.0
-                fix = NmeaFix(
-                    latitude=best.latitude,
-                    longitude=best.longitude,
-                    altitude_m=best.altitude_m,
-                    fix_quality=best.fix_quality,
-                    satellites=best.satellites,
-                    hdop=hdop,
-                    utc_time=self._utc_iso,
-                )
-                now = time.monotonic()
-                with self._state_lock:
+                self._handle_oem7(msg_id, body)
+
+    def _handle_oem7(self, msg_id: int, body: bytes) -> None:
+        if msg_id == MSG_BESTPOS:
+            best = parse_bestpos(body)
+            if best is None:
+                return
+            self._best = best
+            hdop = self._fix.hdop if self._fix is not None else 0.0
+            fix = NmeaFix(
+                latitude=best.latitude,
+                longitude=best.longitude,
+                altitude_m=best.altitude_m,
+                fix_quality=best.fix_quality,
+                satellites=best.satellites,
+                hdop=hdop,
+                utc_time=self._utc_iso,
+            )
+            now = time.monotonic()
+            with self._state_lock:
+                if best.fix_quality > 0:
                     self._fix = fix
                     self._fix_recv_mono = now
-                    if getattr(best, "lat_stdev_m", None) is not None:
-                        self._h_acc_m = float(best.lat_stdev_m)  # type: ignore[attr-defined]
-                    if getattr(best, "hgt_stdev_m", None) is not None:
-                        self._v_acc_m = float(best.hgt_stdev_m)  # type: ignore[attr-defined]
-                if fix.fix_quality > 0:
-                    self._note_first_fix()
+                if best.lat_stdev_m is not None and best.lon_stdev_m is not None:
+                    self._h_acc_m = math.sqrt(best.lat_stdev_m**2 + best.lon_stdev_m**2)
+                if best.hgt_stdev_m is not None:
+                    self._v_acc_m = float(best.hgt_stdev_m)
+            if best.fix_quality > 0:
+                self._note_first_fix()
+            self._record_message_epoch(
+                logical_id=LOGICAL_PVT,
+                vendor_message="BESTPOSB",
+                fields=bestpos_fields(best),
+            )
+            return
+        if msg_id == MSG_PSRDOP:
+            fields = parse_psrdop(body)
+            if fields is None:
+                return
+            now = time.monotonic()
+            with self._state_lock:
+                self._dop = NmeaDop(
+                    fix_type="3d" if float(fields.get("pdop", 0)) > 0 else "none",
+                    pdop=float(fields.get("pdop", 0)),
+                    hdop=float(fields.get("hdop", 0)),
+                    vdop=float(fields.get("vdop", 0)),
+                    prns=(),
+                )
+                self._dop_recv_mono = now
+                self._gdop = float(fields.get("gdop", 0))
+            self._record_message_epoch(
+                logical_id=LOGICAL_DOP,
+                vendor_message="PSRDOPB",
+                fields=fields,
+            )
+            return
+        if msg_id == MSG_BESTXYZ:
+            fields = parse_bestxyz(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_POSECEF,
+                    vendor_message="BESTXYZB",
+                    fields=fields,
+                )
+            return
+        if msg_id == MSG_TIME:
+            fields = parse_time(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_TIME,
+                    vendor_message="TIMEB",
+                    fields=fields,
+                )
+            return
+        if msg_id == MSG_CLOCKMODEL:
+            fields = parse_clockmodel(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_CLOCK,
+                    vendor_message="CLOCKMODELB",
+                    fields=fields,
+                )
+            return
+        if msg_id == MSG_RXSTATUS:
+            fields = parse_rxstatus(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_STATUS,
+                    vendor_message="RXSTATUSB",
+                    fields=fields,
+                )
+            return
+        if msg_id == MSG_SATVIS2:
+            fields = parse_satvis2(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_SAT,
+                    vendor_message="SATVIS2B",
+                    fields=fields,
+                )
+            return
+        if msg_id == MSG_TRACKSTAT:
+            fields = parse_trackstat(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_SAT,
+                    vendor_message="TRACKSTATB",
+                    fields=fields,
+                )
+            return
+        if msg_id == MSG_RANGE:
+            fields = parse_range(body)
+            if fields is not None:
+                self._record_message_epoch(
+                    logical_id=LOGICAL_RAWX,
+                    vendor_message="RANGEB",
+                    fields=fields,
+                )
 
     def _on_listener_chunk(self, data: bytes) -> None:
         if data:
@@ -188,7 +380,7 @@ class NovatelGnss(GenericGnss):
         self._apply_events(self._parser.feed(data))
 
     def _has_fix(self) -> bool:
-        if self._best is not None:
+        if self._best is not None and getattr(self._best, "fix_quality", 0) > 0:
             return True
         return self._fix is not None and self._fix.fix_quality > 0
 
@@ -206,6 +398,7 @@ class NovatelGnss(GenericGnss):
         )
 
     def cold_start(self) -> None:
-        self._write_bytes(b"FRESET COLDSTART\n")
+        self._send_command("FRESET COLDSTART")
         self._best = None
         self._clear_nav_state()
+

@@ -1,13 +1,22 @@
 Digital I/O and protocol adapters (``col.io``)
 ==============================================
 
-Colosseum exposes bench digital I/O through ``col.io.dio``, and I2C/SPI masters
-through ``col.io.i2c`` and ``col.io.spi``. Use ``driver = sim`` for offline runs
-and CI. Live USB adapters use vendor runtimes loaded via ctypes (not pip packages):
+Colosseum exposes bench digital I/O through ``col.io.dio``, I2C/SPI masters
+through ``col.io.i2c`` / ``col.io.spi``, 1-Wire through ``col.io.onewire``, and
+passive captures through ``col.io.analyzer``. Use ``driver = sim`` for offline
+runs and CI.
+
+**First-contact addressing:** NI adapters use USB ``resource=`` (for example
+``USB0::...`` from NI-VISA / MAX). Non-NI SCPI DIO and Maxim DS9481R 1-Wire use
+serial ``port=`` (for example ``COM5``). FTDI keeps its USB URL ``resource=``;
+Total Phase / USB2ANY / Beagle keep vendor serial-number ``resource=``.
+
+Live USB adapters use vendor runtimes loaded via ctypes (not pip packages):
 
 * ``ftdi-ft232h`` — FT232H GPIO (pyftdi)
 * ``ni-6501`` — NI USB-6501 static DIO (NI-DAQmx: ``nicaiu.dll`` / ``libnidaqmx.so``)
 * ``ni-845x`` — NI USB-8451/8452 DIO, I2C, and SPI (NI-845x: ``Ni845x.dll`` / ``libni845x.so``)
+* ``maxim-ds9481r`` — DS9481R (DS2480B-over-COM) 1-Wire master via pyserial
 
 Configuration
 -------------
@@ -36,55 +45,71 @@ NI USB-6501 (24 static lines)::
    [io.dio]
    dio_id = 1
    driver = ni-6501
-   resource = Dev1
+   resource = "USB0::0x3923::0x718A::01A12345::RAW"
    port_lines = 24
    direction = 0x0000FF
    drive = open-drain
+   initial_output = 0x000000
 
 Lines map as ``P0.0..P2.7`` → ``0..23``. ``drive`` is ``open-drain`` (default,
 onboard 4.7 kΩ to USB 5 V) or ``push-pull`` (active drive; keep total source
 current within the device limit). ``set_pull`` is refused: the pull-up is fixed
 hardware. Optional ``library`` overrides the DAQmx shared-library path.
+``initial_output`` is applied before outputs are enabled. Out-of-range direction
+or value bits raise ``IoConfigError`` instead of being silently masked.
 
 NI USB-8452 DIO (8 lines on port 0)::
 
    [io.dio]
    dio_id = 2
    driver = ni-845x
-   resource = USB-8452
+   resource = "USB0::0x3923::0x12D8::01B67890::RAW"
    model = usb-8452
    port_lines = 8
    direction = 0x0F
    drive = push-pull
    voltage = 3.3
+   timeout_ms = 500
 
 ``model`` is ``usb-8451`` or ``usb-8452``. Voltage is device-wide (8451 fixed at
 3.3 V; 8452 allows 1.2 / 1.5 / 1.8 / 2.5 / 3.3 V). Multiple ``io.*`` rows that
-share the same ``resource`` must use the same voltage.
+share the same ``resource`` must use the same voltage. MAX aliases are still
+accepted when that is the SDK open string.
 
 I2C and SPI (845x)::
 
    [io.i2c]
    i2c_id = 1
    driver = ni-845x
-   resource = USB-8452
+   resource = "USB0::0x3923::0x12D8::01B67890::RAW"
    model = usb-8452
    voltage = 3.3
    clock_hz = 100000
    address = 0x50
    address_bits = 7
    pullup = true
+   timeout_ms = 500
 
    [io.spi]
    spi_id = 1
    driver = ni-845x
-   resource = USB-8452
+   resource = "USB0::0x3923::0x12D8::01B67890::RAW"
    model = usb-8452
    voltage = 3.3
    clock_hz = 1000000
    mode = 0
    chip_select = 0
    bits_per_word = 8
+   timeout_ms = 500
+
+1-Wire (DS9481R / DS2480B over serial COM)::
+
+   [io.onewire]
+   onewire_id = 1
+   driver = maxim-ds9481r
+   port = COM5
+   baudrate = 9600
+   speed = standard
 
 8451 limits: I2C ≤ 250 kHz, SPI ≤ 12 MHz. 8452 limits: I2C ≤ 3.3 MHz, SPI ≤ 50 MHz.
 Simulated protocol adapters::
@@ -103,9 +128,11 @@ Simulated protocol adapters::
 API usage
 ---------
 
-Configure direction, drive outputs, and record readbacks as measurements::
+Configure direction, drive outputs, and record readbacks as measurements.
+``configure`` returns an applied-settings snapshot (direction, clock, voltage,
+timeout, … depending on the backend)::
 
-   col.io.dio.configure(dio_id=1, direction=0x0F)
+   settings = col.io.dio.configure(dio_id=1, direction=0x0F, initial=0x00)
    col.io.dio.write_port(dio_id=1, value=0b1010)
    value = col.io.dio.read_port(dio_id=1, key="port_a")
    col.io.dio.write_pin(dio_id=1, line=0, value=True)
@@ -122,10 +149,19 @@ SPI full-duplex transfer::
    col.io.spi.configure(spi_id=1, mode=0, chip_select=0, clock_hz=1000000)
    col.io.spi.transfer(spi_id=1, data=b"\x01\x02", key="xfer")
 
-``read_port``, ``read_pin``, ``i2c.read``, ``i2c.write_read``, and ``spi.transfer``
-require ``key=`` and persist measurement rows under domain ``equipment`` in
-``execution.sqlite``. Byte payloads are stored as hex. Writes and configure calls
-are ``@command`` APIs.
+1-Wire (presence, ROM search, select, write/read)::
+
+   col.io.onewire.configure(onewire_id=1, speed="standard")
+   present = col.io.onewire.reset(onewire_id=1)
+   roms = col.io.onewire.search(onewire_id=1, key="roms")
+   col.io.onewire.select(onewire_id=1, rom=roms[0] if roms else None)
+
+``read_port``, ``read_pin``, ``i2c.read``, ``i2c.write_read``, ``spi.transfer``,
+and ``onewire.search`` / ``read`` / ``write_read`` require ``key=`` and persist
+measurement rows under domain ``equipment`` in ``execution.sqlite``. Byte
+payloads are stored as hex. Writes and configure calls are ``@command`` APIs.
+Live backends raise ``IoConnectionError`` (not only ``EquipmentConnectionError``)
+on transport failures.
 
 Named pins and per-line setup
 -----------------------------
@@ -279,21 +315,26 @@ explicitly.
 Analyzer workflow and evidence
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Start capture before creating bus activity::
+Start capture before creating bus activity. Export in an inner ``finally`` so a
+``stop`` worker error still leaves the capture in evidence::
 
-   col.io.analyzer.start(analyzer_id=1, path="capture/raw.jsonl")
+   path = col.io.analyzer.start(analyzer_id=1, path="capture/raw.jsonl")
    try:
        col.io.i2c.write_read(i2c_id=1, write_data=b"\x00", read_nbytes=2, key="reg0")
    finally:
-       summary = col.io.analyzer.stop(analyzer_id=1, timeout_s=2.0)
-       col.io.analyzer.export(analyzer_id=1, path="capture/raw.jsonl", key="bus")
+       try:
+           summary = col.io.analyzer.stop(analyzer_id=1, timeout_s=2.0)
+       finally:
+           col.io.analyzer.export(analyzer_id=1, path=path, key="bus")
 
-``start`` returns after monitoring is enabled, then a worker streams packets
-to disk. Omit ``path`` for a unique file name under ``captures/``. Existing
+``start`` enables monitoring, waits briefly for capture readiness, then returns
+the resolved relative capture path while a worker streams packets to disk.
+Omit ``path`` for a unique file name under ``captures/``. Existing
 capture/export destinations are never overwritten. Configure an idle analyzer
 with ``configure(analyzer_id=..., protocol=..., mode=..., sample_rate_hz=...)``.
 USB models have a fixed sampling rate; I2C/SPI defaults to 50 MHz. SPI capture
 uses active-low CS and MSB first. The selected mode determines the sample edge.
+Use ``is_running`` / ``status`` for mid-soak checks.
 
 ``stop`` drains until the bus is idle or its deadline expires, then disables
 monitoring. An SDK read can add up to 1.1 seconds beyond the drain deadline.
@@ -306,10 +347,11 @@ This API does not promise lossless full-rate USB 480 capture.
 Captures have finite ``max_duration_s`` (default 60), ``max_records`` (100,000),
 and ``max_bytes`` (64 MiB of serialized packet records, excluding metadata and
 summary). Reaching the record/byte limit stops capture and marks detected loss;
-a duration limit ends the observation window. A drain timeout also marks loss.
-There is no unbounded in-memory packet queue. Shutdown stops active workers
-before closing handles; if a native read hangs beyond its timeout, the handle
-is retained rather than closed beneath a running read.
+a duration limit with zero packets, drain timeout, or worker error also fails
+evidence. Packet lines are flushed periodically. There is no unbounded
+in-memory packet queue. Shutdown stops active workers before closing handles;
+if a native read hangs beyond its timeout, the handle is retained rather than
+closed beneath a running read.
 
 JSON Lines contains metadata, packet records, and a final summary. Packets
 retain numeric vendor status/events, device timestamps in sampling-clock ticks,
@@ -319,11 +361,12 @@ Short buffers and loss flags remain visible. USB class decoding, PCAP export,
 and proprietary Data Center formats are outside this initial implementation.
 
 ``export`` registers one artifact and summary measurement under domain
-``equipment``, command ``io.analyzer.export``. Detected loss or worker errors
-produce a FAIL measurement. Failed captures remain exportable for diagnosis,
-while ``stop`` raises their error. Inspect stop reason, flagged records, and
-stop-boundary uncertainty when accepting evidence; a PASS artifact row alone
-does not establish a valid protocol exchange.
+``equipment``, command ``io.analyzer.export``. Empty captures (``records==0``),
+detected loss, incomplete stop reasons, or worker errors produce a FAIL
+measurement. Failed captures remain exportable for diagnosis, while ``stop``
+raises their error. Inspect stop reason, flagged records, and stop-boundary
+uncertainty when accepting evidence; a PASS artifact row alone does not
+establish a valid protocol exchange.
 
 ``examples/test_protocol_capture.py`` uses
 ``examples/configs/config.analyzer.sim.toml`` for an offline example. Simulated

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import shutil
+from datetime import datetime, timezone
 from threading import Event, RLock, Thread
 from time import monotonic
 from typing import TYPE_CHECKING, Any, TextIO
@@ -15,6 +16,8 @@ from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+_FLUSH_EVERY = 16
 
 
 class AnalyzerBackend:
@@ -32,6 +35,7 @@ class AnalyzerBackend:
         self._summary: dict[str, Any] = {}
         self._drain_deadline = 0.0
         self._session = None
+        self._ready = Event()
         self.configure()
         if not self._sim:
             self._session = open_session("bg", config, exclusive=True)
@@ -45,7 +49,7 @@ class AnalyzerBackend:
     def configure(
         self, *, protocol: str | None = None, mode: int | None = None,
         sample_rate_hz: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         with self._lock:
             if self._closed:
                 raise IoConnectionError("analyzer is closed")
@@ -81,7 +85,17 @@ class AnalyzerBackend:
                 raise IoConfigError("USB 12/480 do not support target power control")
             self._config = config
             self._protocol, self._model, self._rate = selected, model, rate
-
+            return {
+                "protocol": self._protocol,
+                "model": self._model or ("sim" if self._sim else ""),
+                "sample_rate_hz": self._rate,
+                "mode": int(self._config.get("mode", 0)),
+                "max_duration_s": float(self._config.get("max_duration_s", 60)),
+                "max_records": int(self._config.get("max_records", 100_000)),
+                "max_bytes": int(self._config.get("max_bytes", 64 * 1024 * 1024)),
+                "resource": str(self._config.get("resource") or ""),
+                "driver": "sim" if self._sim else "totalphase-beagle",
+            }
     def _validate_hardware(self) -> None:
         assert self._session is not None
         s = self._session
@@ -123,7 +137,7 @@ class AnalyzerBackend:
         checked(s.api.bg_enable(s.handle, protocol), "bg_enable")
         return rate * 1000
 
-    def start(self, path: Path) -> None:
+    def start(self, path: Path, *, relative_path: str | None = None) -> None:
         with self._lock:
             if self._closed:
                 raise IoConnectionError("analyzer is closed")
@@ -140,12 +154,24 @@ class AnalyzerBackend:
             self._path = path
             self._error = None
             self._stop.clear()
+            self._ready.clear()
             self._summary = {
-                "protocol": self._protocol, "model": self._model or "sim",
-                "sample_rate_hz": rate, "records": 0, "bytes": 0,
-                "flagged_records": 0, "loss_detected": False,
-                "tail_may_be_discarded": False, "drained_to_idle": False,
+                "protocol": self._protocol,
+                "model": self._model or "sim",
+                "sample_rate_hz": rate,
+                "records": 0,
+                "bytes": 0,
+                "flagged_records": 0,
+                "loss_detected": False,
+                "tail_may_be_discarded": False,
+                "drained_to_idle": False,
                 "stop_reason": "running",
+                "path": relative_path or str(path),
+                "resource": str(self._config.get("resource") or ""),
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "max_duration_s": float(self._config.get("max_duration_s", 60)),
+                "max_records": int(self._config.get("max_records", 100_000)),
+                "max_bytes": int(self._config.get("max_bytes", 64 * 1024 * 1024)),
             }
             try:
                 handle.write(json.dumps({"type": "metadata", **self._summary}) + "\n")
@@ -163,6 +189,8 @@ class AnalyzerBackend:
                     if self._session is not None:
                         checked(self._session.api.bg_disable(self._session.handle), "bg_disable")
                 raise
+            # Best-effort readiness: first worker loop iteration (or short settle).
+            self._ready.wait(0.1)
 
     def _read(self) -> dict[str, Any] | None:
         assert self._session is not None
@@ -201,8 +229,11 @@ class AnalyzerBackend:
         sim_records = iter(self._config.get("records", []))
         try:
             while True:
+                self._ready.set()
                 if monotonic() - started >= max_duration:
                     self._summary["stop_reason"] = "duration_limit"
+                    if int(self._summary["records"]) <= 0:
+                        self._summary["loss_detected"] = True
                     break
                 if self._stop.is_set() and monotonic() >= self._drain_deadline:
                     self._summary["stop_reason"] = "drain_timeout"
@@ -231,6 +262,8 @@ class AnalyzerBackend:
                 self._summary["bytes"] += encoded_size
                 self._summary["flagged_records"] += int(bool(packet.get("flagged")))
                 self._summary["loss_detected"] |= bool(packet.get("loss"))
+                if self._summary["records"] % _FLUSH_EVERY == 0:
+                    handle.flush()
                 if self._summary["records"] >= max_records:
                     self._summary.update(stop_reason="record_limit", loss_detected=True)
                     break
@@ -290,6 +323,19 @@ class AnalyzerBackend:
                     shutil.copyfileobj(src, dst)
             # Failed captures remain exportable as diagnostic evidence.
             return dict(self._summary)
+
+    def is_running(self) -> bool:
+        thread = self._thread
+        return thread is not None and thread.is_alive()
+
+    def status(self) -> dict[str, Any]:
+        with self._lock:
+            summary = dict(self._summary)
+            summary["running"] = self.is_running()
+            summary["path"] = summary.get("path") or (
+                str(self._path) if self._path is not None else ""
+            )
+            return summary
 
     def close(self) -> None:
         with self._lock:

@@ -46,6 +46,20 @@ def _optional_float(config: dict[str, Any], key: str) -> float | None:
     return float(raw)
 
 
+def _optional_int(config: dict[str, Any], key: str) -> int | None:
+    raw = config.get(key)
+    if raw is None or raw == "":
+        return None
+    return int(raw)
+
+
+def _initial_output(config: dict[str, Any]) -> int:
+    raw = config.get("initial_output", 0)
+    if raw in (None, ""):
+        return 0
+    return int(raw)
+
+
 def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
     driver = _driver_name(config)
     if driver == "sim":
@@ -53,6 +67,7 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             dio_id=dio_id,
             port_lines=_port_lines(config),
             direction=_direction(config),
+            initial_output=_initial_output(config),
         )
     if driver == "ftdi-ft232h":
         from colosseum_equipment.io.backends.ftdi.dio import FtdiFt232hDioBackend
@@ -61,6 +76,7 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             resource=str(config.get("resource") or ""),
             port_lines=_port_lines(config),
             direction=_direction(config),
+            initial_output=_initial_output(config),
         )
     if driver == "ni-6501":
         from colosseum_equipment.io.backends.ni.dio_6501 import Ni6501DioBackend
@@ -73,6 +89,7 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             direction=_direction(config),
             drive=str(config.get("drive") or "open-drain"),
             library=_optional_str(config, "library"),
+            initial_output=_initial_output(config),
         )
     if driver == "ni-845x":
         from colosseum_equipment.io.backends.ni.dio_845x import Ni845xDioBackend
@@ -87,6 +104,8 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             drive=str(config.get("drive") or "push-pull"),
             voltage=_optional_float(config, "voltage"),
             library=_optional_str(config, "library"),
+            initial_output=_initial_output(config),
+            timeout_ms=_optional_int(config, "timeout_ms"),
         )
     if driver == "scpi" or driver in _SCPI_ALIASES:
         if driver in _SCPI_ALIASES and driver not in _alias_warned:
@@ -123,6 +142,7 @@ def open_i2c_backend(i2c_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             address_bits=int(config.get("address_bits", 7)),
             pullup=bool(config.get("pullup", True)),
             library=_optional_str(config, "library"),
+            timeout_ms=_optional_int(config, "timeout_ms"),
         )
     raise IoConfigError(f"col.io i2c: unsupported driver `{driver}`")
 
@@ -153,8 +173,24 @@ def open_spi_backend(spi_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
             chip_select=int(config.get("chip_select", 0)),
             bits_per_word=int(config.get("bits_per_word", 8)),
             library=_optional_str(config, "library"),
+            timeout_ms=_optional_int(config, "timeout_ms"),
         )
     raise IoConfigError(f"col.io spi: unsupported driver `{driver}`")
+
+
+def open_onewire_backend(onewire_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
+    driver = _driver_name(config)
+    if driver in ("", "sim"):
+        if driver == "":
+            raise IoConfigError("col.io onewire requires driver= maxim-ds9481r or sim")
+        from colosseum_equipment.io.backends.sim.onewire import SimOneWireBackend
+
+        return SimOneWireBackend.from_cache(onewire_id=onewire_id, config=config)
+    if driver in ("maxim-ds9481r", "ds9481r", "ds2480b"):
+        from colosseum_equipment.io.backends.ds2480b import Ds2480bOneWireBackend
+
+        return Ds2480bOneWireBackend.from_config(config)
+    raise IoConfigError(f"col.io onewire: unsupported driver `{driver}`")
 
 
 def open_backend(kind: str, resource_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
@@ -164,6 +200,8 @@ def open_backend(kind: str, resource_id: int, config: dict[str, Any]) -> Any:  #
         return open_i2c_backend(resource_id, config)
     if kind == "spi":
         return open_spi_backend(resource_id, config)
+    if kind == "onewire":
+        return open_onewire_backend(resource_id, config)
     if kind == "analyzer":
         if _driver_name(config) not in ("sim", "totalphase-beagle"):
             raise IoConfigError("analyzer driver must be sim or totalphase-beagle")

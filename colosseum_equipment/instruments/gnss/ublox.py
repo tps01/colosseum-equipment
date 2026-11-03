@@ -23,19 +23,37 @@ from colosseum_equipment.exceptions import (
 )
 from colosseum_equipment.instruments.gnss.generic import GenericGnss
 from colosseum_equipment.instruments.gnss.nmea import NmeaDop, NmeaFix, NmeaVelocity
+from colosseum_equipment.instruments.gnss.messages import (
+    LOGICAL_CLOCK,
+    LOGICAL_DOP,
+    LOGICAL_MEASX,
+    LOGICAL_POSECEF,
+    LOGICAL_PVT,
+    LOGICAL_RAWX,
+    LOGICAL_SAT,
+    LOGICAL_STATUS,
+    LOGICAL_TIME,
+    expand_profile,
+)
 from colosseum_equipment.instruments.gnss.ubx import (
     CLS_ACK,
     CLS_CFG,
     CLS_MON,
     CLS_NAV,
-    CLS_NMEA,
+    CLS_RXM,
     ID_ACK_ACK,
     ID_ACK_NAK,
     ID_CFG_VALGET,
     ID_MON_VER,
+    ID_NAV_CLOCK,
     ID_NAV_DOP,
+    ID_NAV_POSECEF,
     ID_NAV_PVT,
-    ID_NMEA_GSV,
+    ID_NAV_SAT,
+    ID_NAV_STATUS,
+    ID_NAV_TIMEGPS,
+    ID_RXM_MEASX,
+    ID_RXM_RAWX,
     LEGACY_CFG_POLLS,
     NavPvt,
     UbxStreamParser,
@@ -44,9 +62,18 @@ from colosseum_equipment.instruments.gnss.ubx import (
     cfg_rst_cold,
     cfg_valget_poll,
     mon_ver_poll,
+    nav_dop_fields,
+    nav_pvt_fields,
     parse_mon_ver_series,
+    parse_nav_clock,
     parse_nav_dop,
+    parse_nav_posecef,
     parse_nav_pvt,
+    parse_nav_sat,
+    parse_nav_status,
+    parse_nav_timegps,
+    parse_rxm_measx,
+    parse_rxm_rawx,
     resolve_message_id,
     ucenter_hex_line,
 )
@@ -106,9 +133,20 @@ class UbloxGnss(GenericGnss):
         self._transport.write(payload.decode("latin-1"))
 
     def _enable_messages(self) -> None:
-        self._write_bytes(cfg_msg_rate(CLS_NAV, ID_NAV_PVT, 1))
-        self._write_bytes(cfg_msg_rate(CLS_NAV, ID_NAV_DOP, 1))
-        self._write_bytes(cfg_msg_rate(CLS_NMEA, ID_NMEA_GSV, 1))
+        """Enable messages for the active profile (default if unset)."""
+        profile = getattr(self, "_message_profile", "default") or "default"
+        for name in expand_profile(profile, vendor="ublox"):
+            try:
+                msg_class, msg_id = resolve_message_id(name)
+            except KeyError:
+                _logger.warning("gnss model `%s` unknown profile message `%s`", self._model, name)
+                continue
+            self._write_bytes(cfg_msg_rate(msg_class, msg_id, 1))
+            self._session_message_rates[name.upper()] = 1.0
+
+    def _apply_message_profile(self, profile: str) -> None:
+        self._message_profile = profile.strip().lower()
+        self._enable_messages()
 
     def _is_m8_family(self) -> bool:
         series = (self._series or _series_from_model(self._model) or "").lower()
@@ -171,6 +209,11 @@ class UbloxGnss(GenericGnss):
                             self._velocity_recv_mono = now
                         if fix.fix_quality > 0:
                             self._note_first_fix()
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_PVT,
+                            vendor_message="NAV-PVT",
+                            fields=nav_pvt_fields(nav),
+                        )
                 elif msg_class == CLS_NAV and msg_id == ID_NAV_DOP:
                     dop = parse_nav_dop(body)
                     if dop is not None:
@@ -185,6 +228,67 @@ class UbloxGnss(GenericGnss):
                             )
                             self._dop_recv_mono = now
                             self._gdop = dop.gdop
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_DOP,
+                            vendor_message="NAV-DOP",
+                            fields=nav_dop_fields(dop),
+                        )
+                elif msg_class == CLS_NAV and msg_id == ID_NAV_STATUS:
+                    fields = parse_nav_status(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_STATUS,
+                            vendor_message="NAV-STATUS",
+                            fields=fields,
+                        )
+                elif msg_class == CLS_NAV and msg_id == ID_NAV_POSECEF:
+                    fields = parse_nav_posecef(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_POSECEF,
+                            vendor_message="NAV-POSECEF",
+                            fields=fields,
+                        )
+                elif msg_class == CLS_NAV and msg_id == ID_NAV_TIMEGPS:
+                    fields = parse_nav_timegps(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_TIME,
+                            vendor_message="NAV-TIMEGPS",
+                            fields=fields,
+                        )
+                elif msg_class == CLS_NAV and msg_id == ID_NAV_CLOCK:
+                    fields = parse_nav_clock(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_CLOCK,
+                            vendor_message="NAV-CLOCK",
+                            fields=fields,
+                        )
+                elif msg_class == CLS_NAV and msg_id == ID_NAV_SAT:
+                    fields = parse_nav_sat(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_SAT,
+                            vendor_message="NAV-SAT",
+                            fields=fields,
+                        )
+                elif msg_class == CLS_RXM and msg_id == ID_RXM_MEASX:
+                    fields = parse_rxm_measx(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_MEASX,
+                            vendor_message="RXM-MEASX",
+                            fields=fields,
+                        )
+                elif msg_class == CLS_RXM and msg_id == ID_RXM_RAWX:
+                    fields = parse_rxm_rawx(body)
+                    if fields is not None:
+                        self._record_message_epoch(
+                            logical_id=LOGICAL_RAWX,
+                            vendor_message="RXM-RAWX",
+                            fields=fields,
+                        )
 
     def _on_listener_chunk(self, data: bytes) -> None:
         if data:
