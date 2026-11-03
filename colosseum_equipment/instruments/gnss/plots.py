@@ -347,7 +347,7 @@ def write_deviation_plot(
     if not rows:
         raise ValueError("track has no samples to plot")
     east, north, origin_lat, origin_lon = _enu_offsets_m(rows, ref_lat=ref_lat, ref_lon=ref_lon)
-    radii = [math.hypot(e, n) for e, n in zip(east, north)]
+    radii = [math.hypot(e, n) for e, n in zip(east, north, strict=True)]
     sorted_r = sorted(radii)
     n = len(sorted_r)
 
