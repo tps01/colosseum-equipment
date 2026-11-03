@@ -271,17 +271,22 @@ class GenericGnss:
         if len(self._sky_history) > _MAX_SKY_HISTORY:
             self._sky_history = self._sky_history[-_MAX_SKY_HISTORY:]
         # Common GSV → gnss_sat evidence for all vendors while logging.
-        svs = [
-            {
-                "gnssId": constellation_to_gnss_id(str(row.get("constellation") or "GPS")),
-                "svId": int(row["prn"]) if row.get("prn") is not None else 0,
-                "cno": float(row["cn0"]) if row.get("cn0") is not None else 0.0,
-                "elev": float(row["elev"]) if row.get("elev") is not None else 0.0,
-                "azim": float(row["az"]) if row.get("az") is not None else 0.0,
-                "flags": 1 if row.get("used") else 0,
-            }
-            for row in snap
-        ]
+        svs = []
+        for row in snap:
+            prn = row.get("prn")
+            cn0 = row.get("cn0")
+            elev = row.get("elev")
+            az = row.get("az")
+            svs.append(
+                {
+                    "gnssId": constellation_to_gnss_id(str(row.get("constellation") or "GPS")),
+                    "svId": int(prn) if isinstance(prn, (int, float, str)) else 0,
+                    "cno": float(cn0) if isinstance(cn0, (int, float, str)) else 0.0,
+                    "elev": float(elev) if isinstance(elev, (int, float, str)) else 0.0,
+                    "azim": float(az) if isinstance(az, (int, float, str)) else 0.0,
+                    "flags": 1 if row.get("used") else 0,
+                },
+            )
         self._record_message_epoch(
             logical_id=LOGICAL_SAT,
             vendor_message="GSV",

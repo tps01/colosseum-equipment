@@ -927,7 +927,7 @@ def _field_values(rows: list[dict[str, Any]], field: str) -> list[float]:
         if field not in row:
             continue
         try:
-            values.append(float(row[field]))  # type: ignore[arg-type]
+            values.append(float(row[field]))
         except (TypeError, ValueError):
             continue
     return values

@@ -127,7 +127,7 @@ class Ds2480bOneWireBackend:
 
     def _read(self, n: int) -> bytes:
         assert self._ser is not None
-        data = self._ser.read(n)
+        data = bytes(self._ser.read(n))
         if len(data) < n:
             raise IoConnectionError(
                 f"1-Wire serial short read: expected {n} bytes, got {len(data)}",

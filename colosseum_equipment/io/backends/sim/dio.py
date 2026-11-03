@@ -89,7 +89,7 @@ class SimDioBackend:
         backend._pulls = dict(entry.get("pulls", {}))
         return backend
 
-    def configure(self, direction: int, *, initial: int | None = None) -> dict:
+    def configure(self, direction: int, *, initial: int | None = None) -> dict[str, int | str]:
         self._direction = require_mask_value(direction, self._mask, what="direction")
         if initial is not None:
             self._output = require_output_value(initial, direction=self._direction, mask=self._mask)
@@ -98,7 +98,7 @@ class SimDioBackend:
         self._persist()
         return self.applied_settings()
 
-    def applied_settings(self) -> dict:
+    def applied_settings(self) -> dict[str, int | str]:
         return {
             "driver": "sim",
             "port_lines": self._port_lines,

@@ -97,7 +97,7 @@ class SimI2cBackend:
         address: int | None = None,
         address_bits: int | None = None,
         clock_hz: int | None = None,
-    ) -> dict:
+    ) -> dict[str, int | str | bool]:
         if address is not None:
             self._address = int(address)
         if address_bits is not None:

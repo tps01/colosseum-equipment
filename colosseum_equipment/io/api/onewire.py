@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from colosseum.decorators import command, measurement
 
 from colosseum_equipment.io.connections import get_backend
 
 
 @command
-def configure(*, onewire_id: int, speed: str | None = None) -> dict:
+def configure(*, onewire_id: int, speed: str | None = None) -> dict[str, Any]:
     """Configure 1-Wire bus speed (``standard`` or ``overdrive``).
 
     :returns: Applied settings snapshot (port, baudrate, speed, driver).

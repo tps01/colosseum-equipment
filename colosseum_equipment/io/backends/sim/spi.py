@@ -90,7 +90,7 @@ class SimSpiBackend:
         mode: int | None = None,
         chip_select: int | None = None,
         bits_per_word: int | None = None,
-    ) -> dict:
+    ) -> dict[str, int | str]:
         if clock_hz is not None:
             if clock_hz <= 0:
                 raise IoConfigError(f"spi clock_hz must be positive; got {clock_hz}")

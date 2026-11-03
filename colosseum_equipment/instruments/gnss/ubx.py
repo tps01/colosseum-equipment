@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass
+from typing import Any
 
 UBX_SYNC = b"\xb5\x62"
 CLS_NAV = 0x01
@@ -228,7 +229,7 @@ def parse_nav_dop(payload: bytes) -> NavDop | None:
     return NavDop(*(v / 100.0 for v in values))
 
 
-def parse_nav_posecef(payload: bytes) -> dict[str, float | int] | None:
+def parse_nav_posecef(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-NAV-POSECEF (20 bytes) to a field dict."""
     if len(payload) < 20:
         return None
@@ -246,7 +247,7 @@ def parse_nav_posecef(payload: bytes) -> dict[str, float | int] | None:
     }
 
 
-def parse_nav_status(payload: bytes) -> dict[str, float | int] | None:
+def parse_nav_status(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-NAV-STATUS (16 bytes)."""
     if len(payload) < 16:
         return None
@@ -268,7 +269,7 @@ def parse_nav_status(payload: bytes) -> dict[str, float | int] | None:
     }
 
 
-def parse_nav_timegps(payload: bytes) -> dict[str, float | int] | None:
+def parse_nav_timegps(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-NAV-TIMEGPS (16 bytes)."""
     if len(payload) < 16:
         return None
@@ -286,7 +287,7 @@ def parse_nav_timegps(payload: bytes) -> dict[str, float | int] | None:
     }
 
 
-def parse_nav_clock(payload: bytes) -> dict[str, float | int] | None:
+def parse_nav_clock(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-NAV-CLOCK (20 bytes)."""
     if len(payload) < 20:
         return None
@@ -300,7 +301,7 @@ def parse_nav_clock(payload: bytes) -> dict[str, float | int] | None:
     }
 
 
-def parse_nav_sat(payload: bytes) -> dict[str, object] | None:
+def parse_nav_sat(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-NAV-SAT header + per-SV rows; include ``num_svs`` and ``svs``."""
     if len(payload) < 8:
         return None
@@ -337,7 +338,7 @@ def parse_nav_sat(payload: bytes) -> dict[str, object] | None:
     }
 
 
-def parse_rxm_rawx(payload: bytes) -> dict[str, object] | None:
+def parse_rxm_rawx(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-RXM-RAWX header; ``num_svs`` is measurement count."""
     if len(payload) < 16:
         return None
@@ -356,7 +357,7 @@ def parse_rxm_rawx(payload: bytes) -> dict[str, object] | None:
     }
 
 
-def parse_rxm_measx(payload: bytes) -> dict[str, object] | None:
+def parse_rxm_measx(payload: bytes) -> dict[str, Any] | None:
     """Decode UBX-RXM-MEASX header; ``num_svs`` from numSV field."""
     if len(payload) < 44:
         return None

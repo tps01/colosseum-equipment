@@ -343,6 +343,7 @@ def write_deviation_plot(
 
     mpl.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle
 
     if not rows:
         raise ValueError("track has no samples to plot")
@@ -369,7 +370,7 @@ def write_deviation_plot(
             (cep50, "-", "CEP50"),
             (cep95, "--", "CEP95"),
         ):
-            circle = plt.Circle((0, 0), radius, fill=False, linestyle=style, label=label)
+            circle = Circle((0, 0), radius, fill=False, linestyle=style, label=label)
             axis.add_patch(circle)
         axis.set_aspect("equal", adjustable="datalim")
         axis.set_xlabel("East (m)")
