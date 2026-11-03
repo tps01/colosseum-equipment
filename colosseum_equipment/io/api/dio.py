@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from colosseum.decorators import command, measurement
 
@@ -13,36 +13,28 @@ PullMode = Literal["up", "down", "float"]
 
 
 @command
-def configure(*, dio_id: int, direction: int) -> None:
+def configure(*, dio_id: int, direction: int, initial: int | None = None) -> dict[str, Any]:
     """Configure port direction bitmask.
 
     :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
     :param direction: Bitmask of input (0) vs output (1) per line.
-    :type direction: int
+    :param initial: Optional output level applied before enabling outputs.
 
-    :returns: None
+    :returns: Applied settings snapshot (direction, port_lines, initial_output, …).
 
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises IoConnectionError: Transport or instrument connection failed.
+    :raises IoConfigError: Invalid direction/value for the configured port.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_backend("dio", dio_id).configure(direction)
+    return dict(get_backend("dio", dio_id).configure(direction, initial=initial))
 
 
 @command
 def configure_pin(*, dio_id: int, line: int, output: bool) -> None:
     """Configure one GPIO line as input or output.
 
-    :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
-    :param line: Line index.
-    :type line: int
-    :param output: ``True`` for output, ``False`` for input.
-    :type output: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises IoConnectionError: Transport or instrument connection failed.
+    :raises IoConfigError: Line out of range or invalid for this backend.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     get_backend("dio", dio_id).configure_pin(line, output)
@@ -52,16 +44,7 @@ def configure_pin(*, dio_id: int, line: int, output: bool) -> None:
 def set_pull(*, dio_id: int, line: int, pull: PullMode) -> None:
     """Configure pull-up, pull-down, or floating on an input line when supported.
 
-    :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
-    :param line: Line index.
-    :type line: int
-    :param pull: ``up``, ``down``, or ``float``.
-    :type pull: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
+    :raises IoConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     get_backend("dio", dio_id).set_pull(line, pull)
@@ -71,15 +54,10 @@ def set_pull(*, dio_id: int, line: int, pull: PullMode) -> None:
 def write_port(*, dio_id: int, value: int) -> None:
     """Write a port value.
 
-    :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
-    :param value: Port output bitmask.
-    :type value: int
+    Bits outside ``port_lines`` or configured outputs are rejected (not masked).
 
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises IoConnectionError: Transport or instrument connection failed.
+    :raises IoConfigError: Value has illegal bits for the current direction.
     """
     get_backend("dio", dio_id).write_port(value)
 
@@ -88,17 +66,7 @@ def write_port(*, dio_id: int, value: int) -> None:
 def read_port(*, dio_id: int, key: str) -> int:
     """Read a full port value.
 
-    :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
-    :type key: str
-
-    :returns: Measured port bitmask as integer.
-    :rtype: int
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises IoConnectionError: Transport or instrument connection failed.
     """
     _ = key
     return int(get_backend("dio", dio_id).read_port())
@@ -114,19 +82,8 @@ def write_pin(
 ) -> None:
     """Write one GPIO line.
 
-    :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
-    :param value: Line level.
-    :type value: bool
-    :param line: Line index (mutually exclusive with ``name``).
-    :type line: int | None, optional
-    :param name: Named pin from bench ``pins`` map (mutually exclusive with ``line``).
-    :type name: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises IoConnectionError: Transport or instrument connection failed.
+    :raises IoConfigError: Line is not an output or is out of range.
     """
     resolved = resolve_pin_line(get_config("dio", dio_id), line=line, name=name)
     get_backend("dio", dio_id).write_pin(resolved, value)
@@ -142,21 +99,7 @@ def read_pin(
 ) -> bool:
     """Read one GPIO line.
 
-    :param dio_id: Configured ``io.dio`` id from config TOML.
-    :type dio_id: int
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
-    :type key: str
-    :param line: Line index (mutually exclusive with ``name``).
-    :type line: int | None, optional
-    :param name: Named pin from bench ``pins`` map (mutually exclusive with ``line``).
-    :type name: str | None, optional
-
-    :returns: Measured line level as bool.
-    :rtype: bool
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :raises IoConnectionError: Transport or instrument connection failed.
     """
     _ = key
     resolved = resolve_pin_line(get_config("dio", dio_id), line=line, name=name)

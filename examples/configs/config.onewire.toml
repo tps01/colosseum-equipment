@@ -1,0 +1,10 @@
+# Maxim DS9481R-3C7 (Prolific VCP + DS2480B protocol) first-contact example.
+# Enumerates as a serial COM port — use port=, not NI-style USB0::.
+
+[io.onewire]
+onewire_id = 1
+driver = "maxim-ds9481r"
+port = "COM5"
+baudrate = 9600
+timeout_s = 1.0
+speed = "standard"

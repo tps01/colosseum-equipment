@@ -32,9 +32,16 @@ from colosseum_equipment.instruments.gnss.nmea import (
     parse_rmc,
     parse_vtg,
 )
+from colosseum_equipment.instruments.gnss.messages import (
+    LOGICAL_SAT,
+    MESSAGE_PROFILES,
+    constellation_to_gnss_id,
+)
 from colosseum_equipment.instruments.gnss.plots import (
     read_track_csv,
+    write_deviation_plot,
     write_quality_plot,
+    write_signal_levels_plot,
     write_skyplot,
     write_track_plot,
 )
@@ -71,6 +78,7 @@ _SAT_EXPIRE_S = 10.0
 _STREAM_STALE_S = 3.0
 _EPOCH_INTERVAL_S = 1.0
 _MAX_TRACK_SAMPLES = 3600
+_MAX_SKY_HISTORY = 120
 
 
 def _host_iso() -> str:
@@ -105,6 +113,8 @@ class GenericGnss:
         self._gdop: float | None = None
         self._state_lock = threading.Lock()
         self._gsv: dict[tuple[str, int], tuple[NmeaSat, float]] = {}
+        self._sky_history: list[list[dict[str, float | str | int | None]]] = []
+        self._message_epochs: dict[str, int] = {}
         self._track_samples: list[dict[str, float | str | bool]] = []
         self._listener: GnssListener | None = None
         self._raw_log: TextIO | None = None
@@ -116,6 +126,7 @@ class GenericGnss:
         self._track_csv_path: Path | None = None
         self._nmea_buf = bytearray()
         self._logging_key = ""
+        self._message_profile = "default"
         self._session_message_rates: dict[str, float] = {}
         self._epoch_index = 0
         self._last_byte_mono = 0.0
@@ -165,13 +176,117 @@ class GenericGnss:
         line = self._read_line()
         return (line + "\n").encode("ascii", errors="replace")
 
-    def _arm_stream_outputs(self) -> None:
-        """Re-enable vendor message streams before a logging session."""
-        for name in ("_enable_messages", "_enable_streams", "_enable_logs"):
-            enable = getattr(self, name, None)
+    def _vendor_family(self) -> str:
+        model = self._model.lower()
+        if "novatel" in model:
+            return "novatel"
+        if "septentrio" in model:
+            return "septentrio"
+        if "ublox" in model:
+            return "ublox"
+        return "generic"
+
+    def _apply_message_profile(self, profile: str) -> None:
+        """Enable the named message profile (vendor override).
+
+        Default implementation falls back to the legacy single enable hook.
+        """
+        name = profile.strip().lower()
+        if name not in MESSAGE_PROFILES:
+            raise ValueError(
+                f"unknown message profile {profile!r}; expected one of {MESSAGE_PROFILES}",
+            )
+        self._message_profile = name
+        for hook in ("_enable_messages", "_enable_streams", "_enable_logs"):
+            enable = getattr(self, hook, None)
             if callable(enable):
                 enable()
                 return
+
+    def set_message_profile(self, messages: str = "default") -> None:
+        """Apply a message enable profile without starting a logging session."""
+        self._apply_message_profile(messages)
+
+    def _arm_stream_outputs(self, messages: str = "default") -> None:
+        """Re-enable vendor message streams before a logging session."""
+        self._apply_message_profile(messages)
+
+    def _record_message_epoch(
+        self,
+        *,
+        logical_id: str,
+        vendor_message: str,
+        fields: dict[str, Any],
+    ) -> None:
+        """Enqueue one multi-row evidence sample while logging (no-op if idle)."""
+        if not self._logging_key:
+            return
+        idx = self._message_epochs.get(logical_id, 0)
+        self._message_epochs[logical_id] = idx + 1
+        payload = {
+            "vendor_message": vendor_message,
+            "gnss_id": self._gnss_id,
+            "model": self._model,
+            "logging_key": self._logging_key,
+            **fields,
+        }
+        enqueue_measurement(
+            domain="equipment",
+            command=logical_id,
+            key=self._logging_key,
+            value=payload,
+            row_index=idx,
+        )
+
+    def _snapshot_sky_locked(self, now: float) -> list[dict[str, float | str | int | None]]:
+        rows: list[dict[str, float | str | int | None]] = []
+        used: set[int] = set()
+        if self._dop is not None:
+            used = set(self._dop.prns)
+        for sat, recv in self._gsv.values():
+            rows.append(
+                {
+                    "prn": sat.prn,
+                    "constellation": sat.constellation,
+                    "signal_id": sat.signal_id,
+                    "elev": sat.elevation_deg,
+                    "az": sat.azimuth_deg,
+                    "cn0": sat.snr,
+                    "used": sat.prn in used,
+                    "age_s": now - recv,
+                },
+            )
+        return rows
+
+    def _note_sky_history(self) -> None:
+        if not self._logging_key:
+            return
+        now = time.monotonic()
+        with self._state_lock:
+            self._expire_sats(now)
+            snap = self._snapshot_sky_locked(now)
+        if not snap:
+            return
+        self._sky_history.append(snap)
+        if len(self._sky_history) > _MAX_SKY_HISTORY:
+            self._sky_history = self._sky_history[-_MAX_SKY_HISTORY:]
+        # Common GSV → gnss_sat evidence for all vendors while logging.
+        svs = [
+            {
+                "gnssId": constellation_to_gnss_id(str(row.get("constellation") or "GPS")),
+                "svId": int(row["prn"]) if row.get("prn") is not None else 0,
+                "cno": float(row["cn0"]) if row.get("cn0") is not None else 0.0,
+                "elev": float(row["elev"]) if row.get("elev") is not None else 0.0,
+                "azim": float(row["az"]) if row.get("az") is not None else 0.0,
+                "flags": 1 if row.get("used") else 0,
+            }
+            for row in snap
+        ]
+        self._record_message_epoch(
+            logical_id=LOGICAL_SAT,
+            vendor_message="GSV",
+            fields={"num_svs": len(svs), "svs": svs},
+        )
 
     def _logging_active(self) -> bool:
         return self._listener is not None and self._listener.is_alive()
@@ -339,6 +454,7 @@ class GenericGnss:
                 for sat in sats:
                     self._gsv[(sat.constellation, sat.prn)] = (sat, now)
                 self._expire_sats(now)
+            self._note_sky_history()
             return
         dop = parse_gsa(line)
         if dop is not None:
@@ -566,26 +682,7 @@ class GenericGnss:
         now = time.monotonic()
         with self._state_lock:
             self._expire_sats(now)
-            rows: list[dict[str, float | str | int | None]] = []
-            for sat, recv in self._gsv.values():
-                rows.append(
-                    {
-                        "prn": sat.prn,
-                        "constellation": sat.constellation,
-                        "signal_id": sat.signal_id,
-                        "elev": sat.elevation_deg,
-                        "az": sat.azimuth_deg,
-                        "cn0": sat.snr,
-                        "used": False,
-                        "age_s": now - recv,
-                    },
-                )
-            if self._dop is not None:
-                used = set(self._dop.prns)
-                for row in rows:
-                    prn = row["prn"]
-                    row["used"] = int(prn) in used if prn is not None else False
-            return rows
+            return self._snapshot_sky_locked(now)
 
     def get_constellations_present(
         self, max_age_s: float = _DEFAULT_MAX_AGE_S,
@@ -680,7 +777,7 @@ class GenericGnss:
     def set_message_rate(self, message: str, rate_hz: float) -> None:
         unsupported(self._model, "set_message_rate", detail=f"message={message!r}")
 
-    def start_logging(self, path: str, key: str = "") -> None:
+    def start_logging(self, path: str, key: str = "", messages: str = "default") -> None:
         if self._logging_active():
             raise RuntimeError(f"gnss model `{self._model}` is already logging")
         if not key:
@@ -697,6 +794,8 @@ class GenericGnss:
         self._wire_log_path = wire_path
         self._track_csv_path = track_path
         self._track_samples.clear()
+        self._sky_history.clear()
+        self._message_epochs.clear()
         self._nmea_buf.clear()
         self._epoch_index = 0
         self._epochs_total = 0
@@ -722,9 +821,10 @@ class GenericGnss:
                 "raw": str(raw_path),
                 "wire": str(wire_path),
                 "track_csv": str(track_path),
+                "messages": messages,
             },
         )
-        self._arm_stream_outputs()
+        self._arm_stream_outputs(messages)
         self._listener = GnssListener(self._read_bytes, self._on_listener_chunk)
         self._listener.start()
         self._epoch_stop.clear()
@@ -820,12 +920,11 @@ class GenericGnss:
 
     def save_skyplot(self, path: str) -> Path:
         plot_path = resolve_artifact_path(path)
+        now = time.monotonic()
         with self._state_lock:
-            sats = {
-                sat.prn: (sat.elevation_deg, sat.azimuth_deg, sat.snr)
-                for sat, _ in self._gsv.values()
-            }
-        write_skyplot(sats, plot_path)
+            self._expire_sats(now)
+            snap = self._snapshot_sky_locked(now)
+        write_skyplot(snap, plot_path)
         if self._logging_key:
             record_artifact(
                 domain="equipment",
@@ -844,6 +943,48 @@ class GenericGnss:
                 command="save_quality_plot",
                 key=f"{self._logging_key}.quality_plot",
                 path=plot_path,
+            )
+        return plot_path
+
+    def save_signal_levels_plot(self, path: str) -> Path:
+        plot_path = resolve_artifact_path(path)
+        now = time.monotonic()
+        with self._state_lock:
+            self._expire_sats(now)
+            snap = self._snapshot_sky_locked(now)
+        if not snap and self._sky_history:
+            snap = self._sky_history[-1]
+        write_signal_levels_plot(snap, plot_path)
+        if self._logging_key:
+            record_artifact(
+                domain="equipment",
+                command="save_signal_levels_plot",
+                key=f"{self._logging_key}.signal_levels",
+                path=plot_path,
+            )
+        return plot_path
+
+    def save_deviation_plot(
+        self,
+        path: str,
+        *,
+        ref_lat: float | None = None,
+        ref_lon: float | None = None,
+    ) -> Path:
+        plot_path = resolve_artifact_path(path)
+        stats = write_deviation_plot(
+            self._track_rows(),
+            plot_path,
+            ref_lat=ref_lat,
+            ref_lon=ref_lon,
+        )
+        if self._logging_key:
+            record_artifact(
+                domain="equipment",
+                command="save_deviation_plot",
+                key=f"{self._logging_key}.deviation",
+                path=plot_path,
+                value=stats,
             )
         return plot_path
 

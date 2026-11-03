@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from ctypes import byref, c_uint32, create_string_buffer
+from typing import Any
 
 from colosseum_equipment.io.backends.ni import ni845x as api
 from colosseum_equipment.io.backends.ni import session845x
 from colosseum_equipment.io.backends.ni.models import check_spi_clock, resolve_voltage
-from colosseum_equipment.io.exceptions import IoConfigError
+from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
 
 
 def _mode_polarity_phase(mode: int) -> tuple[int, int]:
@@ -41,8 +42,11 @@ class Ni845xSpiBackend:
         chip_select: int = 0,
         bits_per_word: int = 8,
         library: str | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
+        self._resource = resource
         self._model = model
+        self._timeout_ms = timeout_ms
         self._voltage = resolve_voltage(model, voltage)
         self._clock_hz = check_spi_clock(model, clock_hz)
         self._mode = int(mode)
@@ -57,6 +61,7 @@ class Ni845xSpiBackend:
             resource=resource,
             voltage=self._voltage,
             library=library,
+            timeout_ms=timeout_ms,
         )
         self._config = api.NiHandle()
         try:
@@ -111,7 +116,7 @@ class Ni845xSpiBackend:
         mode: int | None = None,
         chip_select: int | None = None,
         bits_per_word: int | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         if clock_hz is not None:
             self._clock_hz = check_spi_clock(self._model, clock_hz)
         if mode is not None:
@@ -129,6 +134,20 @@ class Ni845xSpiBackend:
             self._bits_per_word = bpw
         with session845x.locked(self._session) as session:
             self._apply_config(session)
+        return self.applied_settings()
+
+    def applied_settings(self) -> dict[str, Any]:
+        return {
+            "driver": "ni-845x",
+            "resource": self._resource,
+            "model": self._model,
+            "voltage": self._voltage,
+            "clock_hz": self._clock_hz,
+            "mode": self._mode,
+            "chip_select": self._chip_select,
+            "bits_per_word": self._bits_per_word,
+            "timeout_ms": self._timeout_ms,
+        }
 
     def transfer(self, data: bytes) -> bytes:
         payload = bytes(data)
@@ -149,8 +168,12 @@ class Ni845xSpiBackend:
                 ),
                 action="SpiWriteRead",
             )
-        out_n = min(n, int(read_size.value))
-        return rbuf.raw[:out_n] if out_n else b""
+        out_n = int(read_size.value)
+        if out_n != n:
+            raise IoConnectionError(
+                f"ni-845x SPI short transfer: expected {n} bytes, got {out_n}",
+            )
+        return rbuf.raw[:n] if n else b""
 
     def _close_config(self) -> None:
         if self._config:

@@ -97,7 +97,7 @@ class SimI2cBackend:
         address: int | None = None,
         address_bits: int | None = None,
         clock_hz: int | None = None,
-    ) -> None:
+    ) -> dict:
         if address is not None:
             self._address = int(address)
         if address_bits is not None:
@@ -109,6 +109,13 @@ class SimI2cBackend:
                 raise IoConfigError(f"i2c clock_hz must be positive; got {clock_hz}")
             self._clock_hz = int(clock_hz)
         self._persist()
+        return {
+            "driver": "sim",
+            "clock_hz": self._clock_hz,
+            "address": self._address,
+            "address_bits": self._address_bits,
+            "pullup": self._pullup,
+        }
 
     def set_pullup(self, enabled: bool) -> None:
         self._pullup = bool(enabled)

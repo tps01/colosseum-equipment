@@ -1,12 +1,36 @@
-"""Matplotlib helpers for GNSS track, skyplot, and quality strips."""
+"""Matplotlib helpers for GNSS track, skyplot, quality, signal, and deviation plots."""
 
 from __future__ import annotations
 
 import csv
-from typing import TYPE_CHECKING
+import math
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+_TRACK_FIELD_NAMES = (
+    "host_ts_iso",
+    "receiver_utc_iso",
+    "fix_ok",
+    "fix_quality",
+    "latitude",
+    "longitude",
+    "altitude_m",
+    "sats_used",
+    "sats_visible",
+    "hdop",
+    "pdop",
+    "vdop",
+    "gdop",
+    "speed_m_s",
+    "course_deg",
+    "h_acc_m",
+    "v_acc_m",
+    "max_cn0_dbhz",
+    "data_age_s",
+    "stream_ok",
+)
 
 
 def _float_or_none(value: object) -> float | None:
@@ -19,32 +43,39 @@ def _float_or_none(value: object) -> float | None:
 
 
 def read_track_csv(path: Path) -> list[dict[str, float | str]]:
+    """Load track CSV preserving all known columns (blank numerics stay ``\"\"``)."""
     rows: list[dict[str, float | str]] = []
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
-            lat = _float_or_none(row.get("latitude"))
-            lon = _float_or_none(row.get("longitude"))
-            sats = row.get("sats_used") or row.get("satellites") or 0
-            rows.append(
-                {
-                    "utc_iso": row.get("receiver_utc_iso") or row.get("utc_iso") or "",
-                    "latitude": lat if lat is not None else "",
-                    "longitude": lon if lon is not None else "",
-                    "altitude_m": _float_or_none(row.get("altitude_m")) or 0,
-                    "fix_quality": _float_or_none(row.get("fix_quality")) or 0,
-                    "satellites": _float_or_none(sats) or 0,
-                    "hdop": _float_or_none(row.get("hdop")) or 0,
-                    "pdop": _float_or_none(row.get("pdop")) or 0,
-                    "vdop": _float_or_none(row.get("vdop")) or 0,
-                    "max_cn0_dbhz": _float_or_none(row.get("max_cn0_dbhz")) or 0,
-                    "fix_ok": row.get("fix_ok") or "",
-                },
-            )
+            out: dict[str, float | str] = {}
+            for name in _TRACK_FIELD_NAMES:
+                raw = row.get(name, "")
+                if name in {
+                    "host_ts_iso",
+                    "receiver_utc_iso",
+                    "fix_ok",
+                    "stream_ok",
+                }:
+                    out[name] = raw if raw is not None else ""
+                    continue
+                parsed = _float_or_none(raw)
+                out[name] = parsed if parsed is not None else ("" if raw in (None, "") else str(raw))
+            # Back-compat aliases used by older plot code / fabricated CSVs
+            if "satellites" not in out and out.get("sats_used") != "":
+                out["satellites"] = out.get("sats_used", "")
+            if not out.get("receiver_utc_iso") and row.get("utc_iso"):
+                out["receiver_utc_iso"] = str(row.get("utc_iso") or "")
+            rows.append(out)
     return rows
 
 
-def write_track_plot(rows: list[dict[str, float | str]], plot_path: Path) -> None:
+def write_track_plot(
+    rows: list[dict[str, float | str]],
+    plot_path: Path,
+    *,
+    color_by: str = "hdop",
+) -> None:
     import matplotlib as mpl
 
     mpl.use("Agg")
@@ -52,54 +83,101 @@ def write_track_plot(rows: list[dict[str, float | str]], plot_path: Path) -> Non
 
     if not rows:
         raise ValueError("track has no samples to plot")
-    points = [
-        (float(row["longitude"]), float(row["latitude"]))
-        for row in rows
-        if row.get("longitude") != "" and row.get("latitude") != ""
-    ]
+    points: list[tuple[float, float, float]] = []
+    for idx, row in enumerate(rows):
+        lat = row.get("latitude")
+        lon = row.get("longitude")
+        if lat == "" or lon == "" or lat is None or lon is None:
+            continue
+        try:
+            color_val = float(row.get(color_by, idx) or idx)
+        except (TypeError, ValueError):
+            color_val = float(idx)
+        points.append((float(lon), float(lat), color_val))
     if not points:
         raise ValueError("track has no fix samples to plot")
     lons = [p[0] for p in points]
     lats = [p[1] for p in points]
+    colors = [p[2] for p in points]
     plot_path.parent.mkdir(parents=True, exist_ok=True)
     figure, axis = plt.subplots(figsize=(7, 7))
     try:
-        axis.plot(lons, lats, marker="o", markersize=3, linewidth=1)
+        scatter = axis.scatter(lons, lats, c=colors, cmap="viridis", s=12)
+        axis.plot(lons, lats, color="0.5", linewidth=0.8, alpha=0.5)
         axis.set_xlabel("Longitude (deg)")
         axis.set_ylabel("Latitude (deg)")
-        axis.set_title("GNSS track")
+        axis.set_title(f"GNSS track (color={color_by})")
         axis.grid(True, alpha=0.3)
         axis.set_aspect("equal", adjustable="datalim")
+        figure.colorbar(scatter, ax=axis, fraction=0.046, pad=0.04)
         figure.savefig(plot_path, dpi=120, bbox_inches="tight")
     finally:
         plt.close(figure)
 
 
 def write_skyplot(
-    sats: dict[int, tuple[float, float, float]],
+    sats: dict[int, tuple[float, float, float]] | list[dict[str, Any]],
     plot_path: Path,
 ) -> None:
-    """Polar skyplot: elevation from zenith, azimuth clockwise from north."""
+    """Polar skyplot: elevation from zenith, azimuth clockwise from north.
+
+    Accepts either legacy ``{prn: (elev, az, cn0)}`` or snapshot dict rows with
+    ``prn`` / ``elev`` / ``az`` / ``cn0`` / ``constellation`` / ``used``.
+    """
     import matplotlib as mpl
 
     mpl.use("Agg")
     import matplotlib.pyplot as plt
 
-    if not sats:
+    rows: list[dict[str, Any]]
+    if isinstance(sats, dict):
+        rows = [
+            {"prn": prn, "elev": elev, "az": az, "cn0": cn0, "constellation": "", "used": False}
+            for prn, (elev, az, cn0) in sats.items()
+        ]
+    else:
+        rows = list(sats)
+    if not rows:
         raise ValueError("no GSV satellites to plot")
+
+    constellation_colors = {
+        "GPS": "C0",
+        "GLONASS": "C1",
+        "Galileo": "C2",
+        "BeiDou": "C3",
+        "QZSS": "C4",
+    }
     plot_path.parent.mkdir(parents=True, exist_ok=True)
     figure, axis = plt.subplots(figsize=(6, 6), subplot_kw={"projection": "polar"})
     try:
-        snrs = [float(snr) for _, (_, _, snr) in sats.items()]
+        snrs = [float(r.get("cn0") or 0) for r in rows]
         vmax = max(snrs) if snrs else 1.0
-        for prn, (elev, az, snr) in sats.items():
-            # Elevation 90 at center → radius = 90 - elev.
-            radius = max(0.0, 90.0 - float(elev))
-            theta = float(az) * (3.141592653589793 / 180.0)
-            size = 20 + 40 * (float(snr) / vmax if vmax else 0)
-            axis.scatter(theta, radius, s=size, c=[float(snr)], cmap="viridis", vmin=0, vmax=max(vmax, 1))
-            axis.text(theta, radius, str(prn), fontsize=8)
-        # PolarAxes methods are not on the generic Axes stub.
+        for row in rows:
+            elev = float(row.get("elev") or 0)
+            az = float(row.get("az") or 0)
+            cn0 = float(row.get("cn0") or 0)
+            prn = row.get("prn")
+            used = bool(row.get("used"))
+            constellation = str(row.get("constellation") or "")
+            radius = max(0.0, 90.0 - elev)
+            theta = az * (math.pi / 180.0)
+            size = 20 + 40 * (cn0 / vmax if vmax else 0)
+            edge = "black" if used else "0.6"
+            face = constellation_colors.get(constellation, "C5")
+            axis.scatter(
+                theta,
+                radius,
+                s=size,
+                c=[cn0],
+                cmap="viridis",
+                vmin=0,
+                vmax=max(vmax, 1),
+                edgecolors=edge,
+                linewidths=1.2 if used else 0.5,
+                alpha=1.0 if used else 0.55,
+            )
+            # Keep constellation hue as a thin ring via annotation color
+            axis.text(theta, radius, str(prn), fontsize=8, color=face)
         axis.set_theta_zero_location("N")  # type: ignore[attr-defined]
         axis.set_theta_direction(-1)  # type: ignore[attr-defined]
         axis.set_rlim(0, 90)  # type: ignore[attr-defined]
@@ -118,7 +196,6 @@ def write_quality_plot(rows: list[dict[str, float | str]], plot_path: Path) -> N
 
     if not rows:
         raise ValueError("track has no samples to plot")
-    elapsed = list(range(len(rows)))
 
     def _series(name: str, fallback: str = "") -> list[float]:
         out: list[float] = []
@@ -130,25 +207,185 @@ def write_quality_plot(rows: list[dict[str, float | str]], plot_path: Path) -> N
                 out.append(0.0)
         return out
 
+    # Prefer host timestamps when present; else sample index
+    times: list[float] = []
+    for idx, row in enumerate(rows):
+        host = str(row.get("host_ts_iso") or "")
+        if host:
+            times.append(float(idx))
+        else:
+            times.append(float(idx))
     hdop = _series("hdop")
     pdop = _series("pdop")
+    vdop = _series("vdop")
     sats = _series("sats_used", "satellites")
+    visible = _series("sats_visible")
     cn0 = _series("max_cn0_dbhz")
+    h_acc = _series("h_acc_m")
+    fix_ok = []
+    for row in rows:
+        raw = row.get("fix_ok")
+        if raw in (True, "True", "true", "1", 1):
+            fix_ok.append(1.0)
+        elif raw in (False, "False", "false", "0", 0):
+            fix_ok.append(0.0)
+        else:
+            fix_ok.append(0.0)
+
     plot_path.parent.mkdir(parents=True, exist_ok=True)
-    figure, axis_hdop = plt.subplots(figsize=(8, 4))
+    figure, axes = plt.subplots(3, 1, figsize=(9, 8), sharex=True)
     try:
-        axis_hdop.plot(elapsed, hdop, color="C0", label="HDOP")
+        axes[0].plot(times, hdop, label="HDOP")
         if any(pdop):
-            axis_hdop.plot(elapsed, pdop, color="C2", label="PDOP", alpha=0.8)
-        axis_hdop.set_xlabel("Sample index")
-        axis_hdop.set_ylabel("DOP", color="C0")
-        axis_sats = axis_hdop.twinx()
-        axis_sats.plot(elapsed, sats, color="C1", label="Satellites")
+            axes[0].plot(times, pdop, label="PDOP", alpha=0.85)
+        if any(vdop):
+            axes[0].plot(times, vdop, label="VDOP", alpha=0.85)
+        axes[0].set_ylabel("DOP")
+        axes[0].legend(loc="upper right", fontsize=8)
+        axes[0].grid(True, alpha=0.3)
+        axes[0].set_title("GNSS quality")
+
+        axes[1].plot(times, sats, label="sats used")
+        if any(visible):
+            axes[1].plot(times, visible, label="sats visible", alpha=0.85)
         if any(cn0):
-            axis_sats.plot(elapsed, cn0, color="C3", label="max C/N0", alpha=0.7)
-        axis_sats.set_ylabel("Sats / C/N0", color="C1")
-        axis_hdop.set_title("GNSS quality (DOP, satellites, C/N0)")
-        axis_hdop.grid(True, alpha=0.3)
+            axes[1].plot(times, cn0, label="max C/N0", alpha=0.7)
+        axes[1].set_ylabel("Sats / C/N0")
+        axes[1].legend(loc="upper right", fontsize=8)
+        axes[1].grid(True, alpha=0.3)
+
+        if any(h_acc):
+            axes[2].plot(times, h_acc, label="h_acc_m", color="C3")
+        axes[2].fill_between(times, 0, fix_ok, alpha=0.25, color="C2", label="fix_ok")
+        axes[2].set_ylabel("h_acc / fix")
+        axes[2].set_xlabel("Sample index")
+        axes[2].legend(loc="upper right", fontsize=8)
+        axes[2].grid(True, alpha=0.3)
+        figure.tight_layout()
         figure.savefig(plot_path, dpi=120, bbox_inches="tight")
     finally:
         plt.close(figure)
+
+
+def write_signal_levels_plot(
+    snapshot: list[dict[str, Any]],
+    plot_path: Path,
+) -> None:
+    """Bar chart of per-satellite C/N0 grouped by constellation."""
+    import matplotlib as mpl
+
+    mpl.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if not snapshot:
+        raise ValueError("no satellites for signal levels plot")
+    ordered = sorted(
+        snapshot,
+        key=lambda row: (str(row.get("constellation") or ""), int(row.get("prn") or 0)),
+    )
+    labels = [
+        f"{row.get('constellation', '')[:3]}{row.get('prn')}"
+        for row in ordered
+    ]
+    values = [float(row.get("cn0") or 0) for row in ordered]
+    used_flags = [bool(row.get("used")) for row in ordered]
+    colors = ["C0" if used else "0.75" for used in used_flags]
+    plot_path.parent.mkdir(parents=True, exist_ok=True)
+    figure, axis = plt.subplots(figsize=(max(8, len(labels) * 0.35), 4))
+    try:
+        axis.bar(range(len(labels)), values, color=colors)
+        axis.set_xticks(range(len(labels)))
+        axis.set_xticklabels(labels, rotation=75, ha="right", fontsize=8)
+        axis.set_ylabel("C/N0 (dB-Hz)")
+        axis.set_title("GNSS signal levels (faint = unused)")
+        axis.grid(True, axis="y", alpha=0.3)
+        figure.tight_layout()
+        figure.savefig(plot_path, dpi=120, bbox_inches="tight")
+    finally:
+        plt.close(figure)
+
+
+def _enu_offsets_m(
+    rows: list[dict[str, float | str]],
+    *,
+    ref_lat: float | None,
+    ref_lon: float | None,
+) -> tuple[list[float], list[float], float, float]:
+    fix_rows = [
+        row
+        for row in rows
+        if row.get("latitude") not in ("", None) and row.get("longitude") not in ("", None)
+    ]
+    if not fix_rows:
+        raise ValueError("track has no fix samples for deviation plot")
+    lats = [float(row["latitude"]) for row in fix_rows]
+    lons = [float(row["longitude"]) for row in fix_rows]
+    mean_lat = sum(lats) / len(lats)
+    mean_lon = sum(lons) / len(lons)
+    origin_lat = mean_lat if ref_lat is None else ref_lat
+    origin_lon = mean_lon if ref_lon is None else ref_lon
+    meters_per_deg_lat = 111_320.0
+    meters_per_deg_lon = 111_320.0 * math.cos(math.radians(origin_lat))
+    east = [(lon - origin_lon) * meters_per_deg_lon for lon in lons]
+    north = [(lat - origin_lat) * meters_per_deg_lat for lat in lats]
+    return east, north, origin_lat, origin_lon
+
+
+def write_deviation_plot(
+    rows: list[dict[str, float | str]],
+    plot_path: Path,
+    *,
+    ref_lat: float | None = None,
+    ref_lon: float | None = None,
+) -> dict[str, float]:
+    """East/north scatter about mean or supplied reference; return CEP stats."""
+    import matplotlib as mpl
+
+    mpl.use("Agg")
+    import matplotlib.pyplot as plt
+
+    if not rows:
+        raise ValueError("track has no samples to plot")
+    east, north, origin_lat, origin_lon = _enu_offsets_m(rows, ref_lat=ref_lat, ref_lon=ref_lon)
+    radii = [math.hypot(e, n) for e, n in zip(east, north)]
+    sorted_r = sorted(radii)
+    n = len(sorted_r)
+
+    def _percentile(p: float) -> float:
+        if n == 0:
+            return 0.0
+        idx = min(n - 1, max(0, int(math.ceil(p / 100.0 * n) - 1)))
+        return float(sorted_r[idx])
+
+    cep50 = _percentile(50)
+    cep95 = _percentile(95)
+    plot_path.parent.mkdir(parents=True, exist_ok=True)
+    figure, axis = plt.subplots(figsize=(6, 6))
+    try:
+        axis.scatter(east, north, s=10, alpha=0.7)
+        axis.axhline(0.0, color="0.5", linewidth=0.8)
+        axis.axvline(0.0, color="0.5", linewidth=0.8)
+        for radius, style, label in (
+            (cep50, "-", "CEP50"),
+            (cep95, "--", "CEP95"),
+        ):
+            circle = plt.Circle((0, 0), radius, fill=False, linestyle=style, label=label)
+            axis.add_patch(circle)
+        axis.set_aspect("equal", adjustable="datalim")
+        axis.set_xlabel("East (m)")
+        axis.set_ylabel("North (m)")
+        axis.set_title(
+            f"GNSS deviation (ref {origin_lat:.6f},{origin_lon:.6f}; n={n})",
+        )
+        axis.legend(loc="best", fontsize=8)
+        axis.grid(True, alpha=0.3)
+        figure.savefig(plot_path, dpi=120, bbox_inches="tight")
+    finally:
+        plt.close(figure)
+    return {
+        "cep50_m": cep50,
+        "cep95_m": cep95,
+        "n": float(n),
+        "ref_lat": origin_lat,
+        "ref_lon": origin_lon,
+    }

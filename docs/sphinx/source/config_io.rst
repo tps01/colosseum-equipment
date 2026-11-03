@@ -1,10 +1,16 @@
 I/O config
 ==========
 
-One row uses ``[io.dio]`` (and the same form for ``i2c``, ``spi``, and
-``analyzer``). ``[[io.dio]]`` is for a file that shows two or more DIO rows.
-The id field is required when the section is present. No I/O key other than
-``io.analyzer`` ``driver`` is required.
+One row uses ``[io.dio]`` (and the same form for ``i2c``, ``spi``,
+``analyzer``, and ``onewire``). ``[[io.dio]]`` is for a file that shows two
+or more DIO rows. The id field is required when the section is present. No
+I/O key other than ``io.analyzer`` ``driver`` is required.
+
+**Addressing defaults (first-contact):** NI adapters use USB ``resource=``
+(for example ``USB0::...`` as shown by NI-VISA / MAX). Non-NI SCPI DIO and
+DS9481R 1-Wire use serial ``port=`` (for example ``COM5``). Total Phase /
+USB2ANY / Beagle keep vendor serial-number ``resource=``; FTDI keeps its USB
+URL ``resource=``.
 
 io.dio
 ------
@@ -15,18 +21,31 @@ io.dio
 
 .. code-block:: toml
 
+   # NI USB DIO (preferred first-contact form)
    [io.dio]
-   dio_id = 1                         # required integer id
-   driver = "sim"                     # optional; sim, ftdi-ft232h, ni-6501, ni-845x, or scpi
-   resource = ""                      # optional address string for the selected driver
-   port_lines = 8                     # optional; default 8; ni-6501 requires 24; ni-845x requires 8; FT232H allows 8 or 16; sim and SCPI allow 1..16
-   direction = 0                      # optional bitmask; default 0; 0 is input and 1 is output per line
-   model = ""                         # optional; ni-845x passes it; default empty
-   drive = "open-drain"               # optional; ni-6501 default open-drain; ni-845x default push-pull; open-drain, open-collector, opendrain, push-pull, active-drive, or pushpull
-   voltage = 3.3                      # optional; ni-845x passes a float when set
-   library = ""                       # optional path; ni-6501 and ni-845x pass it when set
-   pins = { enable = 0 }              # optional map of name to line
-   pin_names = { enable = 0 }         # optional; alias of pins; used when pins is absent
+   dio_id = 1
+   driver = "ni-6501"
+   resource = "USB0::0x3923::0x718A::01A12345::RAW"  # NI-VISA / MAX USB resource
+   port_lines = 24
+   direction = 0x0000FF
+   drive = "open-drain"
+
+   # Non-NI SCPI DIO over serial (preferred first-contact form)
+   # [io.dio]
+   # dio_id = 2
+   # driver = "scpi"
+   # port = "COM5"
+   # port_lines = 8
+   # direction = 0x0F
+
+``resource`` is the USB / VISA / FTDI / MAX address for NI and USB adapters.
+``port`` is the serial COM port for SCPI DIO. Prefer ``port=`` for SCPI trials;
+use ``resource=`` when the box is on VISA USB/GPIB.
+
+Other optional keys: ``port_lines`` (default 8; ni-6501 requires 24; ni-845x
+requires 8; FT232H allows 8 or 16; sim and SCPI allow 1..16), ``direction``
+(default 0; bit 1 = output), ``model``, ``drive``, ``voltage``, ``library``,
+``initial_output``, ``pins`` / ``pin_names``.
 
 ``resolve_pin_line`` reads ``pins`` or, when that value is missing, ``pin_names``.
 The value must be a table of names to line numbers.
@@ -42,19 +61,15 @@ and ``ni-845x``. Any other driver, including an empty one, raises
 
    [io.i2c]
    i2c_id = 1                         # required integer id
-   driver = "sim"                     # optional; totalphase-aardvark, ti-usb2any, sim, or ni-845x
-   resource = ""                      # optional; Total Phase numeric serial, or USB2ANY ASCII serial
-   model = ""                         # optional; ni-845x passes it; default empty
-   voltage = 3.3                      # optional; Total Phase and USB2ANY reject a value other than 3.3; ni-845x passes a float
-   clock_hz = 100000                  # optional; default 100000; Aardvark allows 1000..800000
-   address = 0x50                     # optional; default 0x50; must fit address_bits
-   address_bits = 7                   # optional; default 7; 7 or 10
-   pullup = true                      # optional; default true
-   library = "USB2ANY.dll"            # optional; USB2ANY default USB2ANY.dll; Total Phase rejects library=
-   nack = false                       # optional; sim backend; default false; true raises on write and read
-   read_data = ""                     # optional; sim read bytes; hex text or bytes; default empty
-   target_power = false               # optional; default false
-   timeout_ms = 500                   # optional; Total Phase default 500 (1..1000); USB2ANY default 25 (2..200)
+   driver = "ni-845x"                 # totalphase-aardvark, ti-usb2any, sim, or ni-845x
+   resource = "USB0::0x3923::..."     # NI: USB resource; Total Phase/USB2ANY: adapter serial
+   model = "usb-8452"                 # optional; ni-845x passes it
+   voltage = 3.3
+   clock_hz = 100000
+   address = 0x50
+   address_bits = 7
+   pullup = true
+   timeout_ms = 500                   # NI-845x / Total Phase / USB2ANY
 
 io.spi
 ------
@@ -65,22 +80,36 @@ io.spi
 .. code-block:: toml
 
    [io.spi]
-   spi_id = 1                         # required integer id
-   driver = "sim"                     # optional; totalphase-aardvark, totalphase-cheetah, ti-usb2any, sim, or ni-845x
-   resource = ""                      # optional; Total Phase numeric serial, or USB2ANY ASCII serial
-   model = ""                         # optional; ni-845x passes it; default empty
-   voltage = 3.3                      # optional; Total Phase and USB2ANY reject a value other than 3.3; ni-845x passes a float
-   clock_hz = 1000000                 # optional; default 1000000; Aardvark 125000..8000000; Cheetah 100000..40000000
-   mode = 0                           # optional; default 0; 0..3
-   chip_select = 0                    # optional; default 0; adapter chip-select index
-   bits_per_word = 8                  # optional; default 8; these adapter backends require 8
-   library = "USB2ANY.dll"            # optional; USB2ANY default USB2ANY.dll; Total Phase rejects library=
-   read_data = ""                     # optional; sim returns these bytes; omitted sim SPI echoes the write
-   target_power = false               # optional; default false
-   timeout_ms = 500                   # optional; Total Phase default 500 except Cheetah, which rejects the key; USB2ANY default 25
+   spi_id = 1
+   driver = "ni-845x"
+   resource = "USB0::0x3923::..."     # NI USB resource (or adapter serial for TP/USB2ANY)
+   model = "usb-8452"
+   voltage = 3.3
+   clock_hz = 1000000
+   mode = 0
+   chip_select = 0
+   bits_per_word = 8
+   timeout_ms = 500
 
 ``spi_settings`` allows chip select ``0`` only on Aardvark (``max_cs`` 0) and
 ``0..2`` on Cheetah.
+
+io.onewire
+----------
+
+``open_onewire_backend`` accepts ``sim`` and ``maxim-ds9481r`` (aliases
+``ds9481r``, ``ds2480b``). The DS9481R enumerates as a Prolific virtual COM
+port and speaks the DS2480B serial protocol.
+
+.. code-block:: toml
+
+   [io.onewire]
+   onewire_id = 1
+   driver = "maxim-ds9481r"
+   port = "COM5"                      # serial COM (preferred); not USB0::
+   baudrate = 9600                    # DS2480B power-on default
+   timeout_s = 1.0
+   speed = "standard"                 # standard or overdrive
 
 io.analyzer
 -----------

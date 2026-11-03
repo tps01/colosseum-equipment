@@ -27,10 +27,14 @@ def acquire_session(
     resource: str,
     voltage: float,
     library: str | None = None,
+    timeout_ms: int | None = None,
 ) -> _Session:
     """Open or reuse a device session. Voltage must match an existing session."""
     if not resource:
-        raise IoConfigError("ni-845x requires resource= (MAX alias or device string)")
+        raise IoConfigError(
+            "ni-845x requires resource= (USB resource from NI-VISA/MAX, "
+            "e.g. USB0::0x3923::...::RAW; MAX aliases still accepted)",
+        )
     with _lock:
         existing = _sessions.get(resource)
         if existing is not None:
@@ -50,6 +54,15 @@ def acquire_session(
                 lib.ni845xSetIoVoltageLevel(handle, level),
                 action="SetIoVoltageLevel",
             )
+            if timeout_ms is not None:
+                ms = int(timeout_ms)
+                if ms <= 0:
+                    raise IoConfigError("timeout_ms must be positive")
+                api.check_status(
+                    lib,
+                    lib.ni845xSetTimeout(handle, ms),
+                    action="SetTimeout",
+                )
         except Exception:
             lib.ni845xClose(handle)
             raise

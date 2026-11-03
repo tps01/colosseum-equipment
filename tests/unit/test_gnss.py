@@ -233,9 +233,9 @@ def test_septentrio_aliases_registered() -> None:
 
 
 def test_septentrio_uses_pvt_geodetic() -> None:
-    reply = b"$R: setNMEAOutput,Stream1,COM1,GGA+RMC+GSV,sec1\n"
-    reply2 = b"$R: setSBFOutput,Stream2,COM1,PVTGeodetic,sec1\n"
-    transport = _ByteTransport([reply, reply2, _pvt_geodetic_frame()])
+    ok = b"$R:\n"
+    # setDataInOut + NMEA + SBF each drain one reply, then PVT for wait_for_fix.
+    transport = _ByteTransport([ok, ok, ok, _pvt_geodetic_frame()])
     instrument = build_instrument(
         "gnss",
         1,
@@ -246,13 +246,15 @@ def test_septentrio_uses_pvt_geodetic() -> None:
     assert abs(instrument.measure_latitude() - 37.7749) < 1e-4
     assert instrument.measure_satellites() == 12.0
     written = b"".join(transport.written_bytes).decode("ascii", errors="replace")
+    assert "setDataInOut,COM1,,+NMEA+SBF" in written
     assert "setNMEAOutput,Stream1,COM1,GGA+RMC+GSV,sec1" in written
-    assert "setSBFOutput,Stream2,COM1,PVTGeodetic,sec1" in written
+    assert "setSBFOutput,Stream2,COM1,PVTGeodetic+DOP,sec1" in written
 
 
 def test_septentrio_nmea_fallback() -> None:
     gga = (_gga_line() + "\n").encode("ascii")
-    transport = _ByteTransport([b"$R?\n", b"$R?\n", gga])
+    # Three enable commands may reject; leave GGA for wait_for_fix.
+    transport = _ByteTransport([b"$R?\n", b"$R?\n", b"$R?\n", gga])
     instrument = build_instrument("gnss", 1, {"model": "septentrio-asterx-u3"}, transport)
     instrument.wait_for_fix(1.0)
     assert abs(instrument.measure_latitude() - 37.7749) < 1e-4
@@ -290,7 +292,7 @@ def test_ublox_cold_start_writes_cfg_rst() -> None:
 
 
 def test_septentrio_cold_start_writes_exe_reset() -> None:
-    transport = _ByteTransport([b"$R:\n"])
+    transport = _ByteTransport([b"$R:\n"] * 6)
     instrument = build_instrument("gnss", 1, {"model": "septentrio-asterx-u3"}, transport)
     transport.written_bytes.clear()
     instrument.cold_start()
@@ -530,7 +532,19 @@ def test_novatel_cold_start() -> None:
     instrument = build_instrument("gnss", 1, {"model": "novatel-oem7"}, transport)
     transport.written_bytes.clear()
     instrument.cold_start()
-    assert b"FRESET COLDSTART\n" in transport.written_bytes
+    assert b"FRESET COLDSTART\r\n" in transport.written_bytes
+
+
+def test_novatel_enable_uses_crlf_and_unlogall() -> None:
+    transport = _ByteTransport([])
+    build_instrument("gnss", 1, {"model": "novatel-oem7"}, transport)
+    written = b"".join(transport.written_bytes)
+    assert b"UNLOGALL THISPORT\r\n" in written
+    assert b"LOG BESTPOSB ONTIME 1\r\n" in written
+    assert b"LOG PSRDOPB ONCHANGED\r\n" in written
+    assert b"\n" in written and b"\r\n" in written
+    # No LF-only LOG commands.
+    assert b"LOG BESTPOSB ONTIME 1\n" not in written.replace(b"\r\n", b"")
 
 
 def test_save_plots_via_instrument(unit_runtime_context) -> None:

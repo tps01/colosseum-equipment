@@ -211,7 +211,7 @@ def test_novatel_load_and_set_rate(tmp_path: Path) -> None:
 
 def test_septentrio_save_config(unit_runtime_context) -> None:
     _ = unit_runtime_context
-    transport = _ByteTransport([b"$R:\n", b"$R:\n"])
+    transport = _ByteTransport([b"$R:\n"] * 8)
     instrument = build_instrument(
         "gnss",
         1,
@@ -220,6 +220,7 @@ def test_septentrio_save_config(unit_runtime_context) -> None:
     )
     path = instrument.save_config("configs/sept.txt")
     text = path.read_text(encoding="utf-8")
+    assert "setDataInOut" in text
     assert "setNMEAOutput" in text
     assert "setSBFOutput" in text
     assert "PVTGeodetic" in text

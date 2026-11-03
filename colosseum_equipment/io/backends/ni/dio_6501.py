@@ -6,11 +6,17 @@ from ctypes import byref, c_int32, c_uint8
 from typing import Any
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError
+from colosseum_equipment.io._dio_validate import (
+    require_line,
+    require_mask_value,
+    require_output_value,
+)
 from colosseum_equipment.io.backends.ni import daqmx as api
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
 
 _PORT_LINES = 24
 _MASK = (1 << _PORT_LINES) - 1
+_task_seq = 0
 
 
 def _line_channel(device: str, line: int) -> str:
@@ -33,9 +39,14 @@ class Ni6501DioBackend:
         direction: int,
         drive: str = "open-drain",
         library: str | None = None,
+        initial_output: int = 0,
     ) -> None:
+        global _task_seq
         if not resource:
-            raise IoConfigError("ni-6501 requires resource= (DAQmx device name, e.g. Dev1)")
+            raise IoConfigError(
+                "ni-6501 requires resource= (USB resource from NI-VISA/MAX, "
+                "e.g. USB0::0x3923::...::RAW; MAX aliases still accepted)",
+            )
         drive_key = drive.strip().lower().replace("_", "-")
         if drive_key in ("open-drain", "open-collector", "opendrain"):
             self._drive_type = api.DAQmx_Val_OpenCollector
@@ -50,8 +61,12 @@ class Ni6501DioBackend:
         self._device = resource
         self._lib = api.load_daqmx(library=library)
         self._mask = _MASK
-        self._direction = direction & self._mask
-        self._output = 0
+        self._direction = require_mask_value(direction, self._mask, what="direction")
+        self._output = require_output_value(
+            initial_output, direction=self._direction, mask=self._mask,
+        )
+        _task_seq += 1
+        self._task_suffix = f"{_task_seq}"
         self._di_task: Any = None
         self._do_task: Any = None
         self._di_lines: list[int] = []
@@ -85,7 +100,7 @@ class Ni6501DioBackend:
         do_lines = self._line_list(outputs=True)
         di_lines = self._line_list(outputs=False)
         if do_lines:
-            task = api.create_task(self._lib, "col_dio_do")
+            task = api.create_task(self._lib, f"col_dio_do_{self._task_suffix}")
             channels = _channels_csv(self._device, do_lines)
             api.check_status(
                 self._lib,
@@ -106,12 +121,12 @@ class Ni6501DioBackend:
                 ),
                 action="SetDOOutputDriveType",
             )
-            api.check_status(self._lib, self._lib.DAQmxStartTask(task), action="StartTask(DO)")
+            # Write with autoStart so the first driven level is initial_output.
             self._do_task = task
             self._do_lines = do_lines
-            self._write_do_lines()
+            self._write_do_lines(autostart=True)
         if di_lines:
-            task = api.create_task(self._lib, "col_dio_di")
+            task = api.create_task(self._lib, f"col_dio_di_{self._task_suffix}")
             channels = _channels_csv(self._device, di_lines)
             api.check_status(
                 self._lib,
@@ -127,7 +142,7 @@ class Ni6501DioBackend:
             self._di_task = task
             self._di_lines = di_lines
 
-    def _write_do_lines(self) -> None:
+    def _write_do_lines(self, *, autostart: bool = False) -> None:
         if self._do_task is None or not self._do_lines:
             return
         n = len(self._do_lines)
@@ -139,7 +154,7 @@ class Ni6501DioBackend:
             self._lib.DAQmxWriteDigitalLines(
                 self._do_task,
                 1,
-                1,
+                1 if autostart else 1,
                 10.0,
                 api.DAQmx_Val_GroupByChannel,
                 data,
@@ -148,6 +163,12 @@ class Ni6501DioBackend:
             ),
             action="WriteDigitalLines",
         )
+        # DAQmx reports samples-per-channel written (numSampsPerChan=1).
+        if int(written.value) != 1:
+            raise IoConnectionError(
+                f"ni-6501 WriteDigitalLines wrote {written.value} samples "
+                f"(expected 1) across {n} lines",
+            )
 
     def _read_di_lines(self) -> int:
         if self._di_task is None or not self._di_lines:
@@ -172,20 +193,39 @@ class Ni6501DioBackend:
             ),
             action="ReadDigitalLines",
         )
+        if int(read.value) != 1:
+            raise IoConnectionError(
+                f"ni-6501 ReadDigitalLines returned {read.value} samples (expected 1)",
+            )
         result = 0
         for index, line in enumerate(self._di_lines):
             if data[index]:
                 result |= 1 << line
         return result
 
-    def configure(self, direction: int) -> None:
-        self._direction = direction & self._mask
-        self._output &= self._direction
+    def configure(self, direction: int, *, initial: int | None = None) -> dict[str, Any]:
+        self._direction = require_mask_value(direction, self._mask, what="direction")
+        if initial is not None:
+            self._output = require_output_value(
+                initial, direction=self._direction, mask=self._mask,
+            )
+        else:
+            self._output &= self._direction
         self._rebuild_tasks()
+        return self.applied_settings()
+
+    def applied_settings(self) -> dict[str, Any]:
+        return {
+            "driver": "ni-6501",
+            "port_lines": _PORT_LINES,
+            "direction": self._direction,
+            "initial_output": self._output,
+            "drive": self._drive_name,
+            "resource": self._device,
+        }
 
     def configure_pin(self, line: int, output: bool) -> None:
-        if line < 0 or line >= _PORT_LINES:
-            raise IoConfigError(f"line {line} out of range for port_lines={_PORT_LINES}")
+        require_line(line, _PORT_LINES)
         bit = 1 << line
         if output:
             self._direction |= bit
@@ -202,7 +242,7 @@ class Ni6501DioBackend:
         )
 
     def write_port(self, value: int) -> None:
-        self._output = value & self._direction & self._mask
+        self._output = require_output_value(value, direction=self._direction, mask=self._mask)
         self._write_do_lines()
 
     def read_port(self) -> int:
@@ -210,8 +250,7 @@ class Ni6501DioBackend:
         return ((self._output & self._direction) | (inputs & ~self._direction)) & self._mask
 
     def write_pin(self, line: int, value: bool) -> None:
-        if line < 0 or line >= _PORT_LINES:
-            raise IoConfigError(f"line {line} out of range for port_lines={_PORT_LINES}")
+        require_line(line, _PORT_LINES)
         bit = 1 << line
         if not (self._direction & bit):
             raise IoConfigError(f"line {line} is not configured as output")
@@ -222,8 +261,7 @@ class Ni6501DioBackend:
         self._write_do_lines()
 
     def read_pin(self, line: int) -> bool:
-        if line < 0 or line >= _PORT_LINES:
-            raise IoConfigError(f"line {line} out of range for port_lines={_PORT_LINES}")
+        require_line(line, _PORT_LINES)
         return bool(self.read_port() & (1 << line))
 
     def close(self) -> None:
