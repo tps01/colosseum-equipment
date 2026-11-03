@@ -20,6 +20,11 @@ def configure(
 ) -> dict[str, Any]:
     """Update SPI clock, mode (0..3), chip select, and/or bits per word.
 
+    :param spi_id: Configured ``io.spi`` id from config TOML.
+    :param clock_hz: SCLK rate in hertz.
+    :param mode: SPI mode 0..3 (CPOL/CPHA).
+    :param chip_select: Chip-select index 0..7.
+    :param bits_per_word: Bits per SPI sample (typically 8).
     :returns: Applied settings snapshot (clock_hz, mode, chip_select, …).
 
     :raises IoConnectionError: Transport or instrument connection failed.
@@ -40,6 +45,12 @@ def transfer(*, spi_id: int, data: bytes, key: str) -> bytes:
     """Full-duplex SPI transfer; returns bytes shifted in from MISO.
 
     Short transfers raise ``IoConnectionError`` rather than returning truncated data.
+
+    :param spi_id: Configured ``io.spi`` id from config TOML.
+    :param data: MOSI payload bytes.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Bytes shifted in from MISO.
 
     :raises IoConnectionError: Transport failure or incomplete transfer.
     :raises IoConfigError: Payload rejected by the configured model limits.

@@ -103,13 +103,15 @@ outage summaries. Freshness-gated `measure_*` raise `NoFixError` /
 
 **GNSS message profiles (vendor enables):**
 
-| Profile | u-blox | NovAtel | Septentrio |
-| --- | --- | --- | --- |
-| `default` | NAV-PVT, NAV-DOP, NMEA-GSV | BESTPOSB, PSRDOPB ONCHANGED, GGA/RMC/GSV | NMEA GGA+RMC+GSV; SBF PVTGeodetic+DOP |
-| `nmea` | + GGA/RMC/GSA/VTG | + GPGSA/GPVTG | + GSA/VTG |
-| `field` | + POSECEF/TIMEGPS/CLOCK/STATUS | + BESTXYZB, TIMEB, CLOCKMODELB, RXSTATUSB | + PVTCartesian, ReceiverTime, ReceiverStatus |
-| `sat` | + NAV-SAT, MEASX, RAWX | + SATVIS2B, TRACKSTATB, RANGEB | + SatVisibility, ChannelStatus, MeasEpoch |
-| `all` | union | union | union |
+- `default` — u-blox: NAV-PVT, NAV-DOP, NMEA-GSV; NovAtel: BESTPOSB,
+  PSRDOPB ONCHANGED, GGA/RMC/GSV; Septentrio: NMEA GGA+RMC+GSV and SBF
+  PVTGeodetic+DOP
+- `nmea` — adds GGA/RMC/GSA/VTG family enables on each vendor
+- `field` — u-blox POSECEF/TIMEGPS/CLOCK/STATUS; NovAtel BESTXYZB/TIMEB/
+  CLOCKMODELB/RXSTATUSB; Septentrio PVTCartesian/ReceiverTime/ReceiverStatus
+- `sat` — u-blox NAV-SAT/MEASX/RAWX; NovAtel SATVIS2B/TRACKSTATB/RANGEB;
+  Septentrio SatVisibility/ChannelStatus/MeasEpoch
+- `all` — union of the profiles above
 
 Logical aliases include `BESTPOS`/`BESTPOSB`/`PVTGeodetic` → `gnss_pvt`;
 `PSRDOP`/`DOP` → `gnss_dop`; `SATVIS2`/`SatVisibility`/`GSV` → `gnss_sat`;

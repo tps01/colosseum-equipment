@@ -33,6 +33,10 @@ def configure(*, dio_id: int, direction: int, initial: int | None = None) -> dic
 def configure_pin(*, dio_id: int, line: int, output: bool) -> None:
     """Configure one GPIO line as input or output.
 
+    :param dio_id: Configured ``io.dio`` id from config TOML.
+    :param line: Zero-based line index.
+    :param output: ``True`` for output, ``False`` for input.
+
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Line out of range or invalid for this backend.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
@@ -43,6 +47,10 @@ def configure_pin(*, dio_id: int, line: int, output: bool) -> None:
 @command
 def set_pull(*, dio_id: int, line: int, pull: PullMode) -> None:
     """Configure pull-up, pull-down, or floating on an input line when supported.
+
+    :param dio_id: Configured ``io.dio`` id from config TOML.
+    :param line: Zero-based line index.
+    :param pull: ``up``, ``down``, or ``float``.
 
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
@@ -56,6 +64,9 @@ def write_port(*, dio_id: int, value: int) -> None:
 
     Bits outside ``port_lines`` or configured outputs are rejected (not masked).
 
+    :param dio_id: Configured ``io.dio`` id from config TOML.
+    :param value: Port output bitmask.
+
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Value has illegal bits for the current direction.
     """
@@ -65,6 +76,11 @@ def write_port(*, dio_id: int, value: int) -> None:
 @measurement
 def read_port(*, dio_id: int, key: str) -> int:
     """Read a full port value.
+
+    :param dio_id: Configured ``io.dio`` id from config TOML.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Measured port bitmask as integer.
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
@@ -82,6 +98,11 @@ def write_pin(
 ) -> None:
     """Write one GPIO line.
 
+    :param dio_id: Configured ``io.dio`` id from config TOML.
+    :param value: Line level.
+    :param line: Line index (mutually exclusive with ``name``).
+    :param name: Named pin from bench ``pins`` map (mutually exclusive with ``line``).
+
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Line is not an output or is out of range.
     """
@@ -98,6 +119,13 @@ def read_pin(
     name: str | None = None,
 ) -> bool:
     """Read one GPIO line.
+
+    :param dio_id: Configured ``io.dio`` id from config TOML.
+    :param key: Unique measurement key within domain ``equipment``.
+    :param line: Line index (mutually exclusive with ``name``).
+    :param name: Named pin from bench ``pins`` map (mutually exclusive with ``line``).
+
+    :returns: Measured line level as bool.
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """

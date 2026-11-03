@@ -19,6 +19,10 @@ def configure(
 ) -> dict[str, Any]:
     """Update I2C address, address width, and/or clock rate.
 
+    :param i2c_id: Configured ``io.i2c`` id from config TOML.
+    :param address: 7-bit or 10-bit slave address.
+    :param address_bits: ``7`` or ``10``.
+    :param clock_hz: SCL rate in hertz.
     :returns: Applied settings snapshot (clock_hz, address, pullup, …).
 
     :raises IoConnectionError: Transport or instrument connection failed.
@@ -35,6 +39,9 @@ def configure(
 def set_pullup(*, i2c_id: int, enabled: bool) -> None:
     """Enable or disable the adapter I2C pull-ups when supported.
 
+    :param i2c_id: Configured ``io.i2c`` id from config TOML.
+    :param enabled: ``True`` to enable pull-ups.
+
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
@@ -45,6 +52,9 @@ def set_pullup(*, i2c_id: int, enabled: bool) -> None:
 def write(*, i2c_id: int, data: bytes) -> None:
     """Write bytes to the configured I2C slave (empty ``data`` probes address ACK).
 
+    :param i2c_id: Configured ``io.i2c`` id from config TOML.
+    :param data: Bytes to write; ``b\"\"`` is an address-only ACK probe.
+
     :raises IoConnectionError: Transport or instrument connection failed.
     """
     get_backend("i2c", i2c_id).write(bytes(data))
@@ -53,6 +63,12 @@ def write(*, i2c_id: int, data: bytes) -> None:
 @measurement
 def read(*, i2c_id: int, nbytes: int, key: str) -> bytes:
     """Read bytes from the configured I2C slave.
+
+    :param i2c_id: Configured ``io.i2c`` id from config TOML.
+    :param nbytes: Number of bytes to read.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Received payload bytes.
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
@@ -63,6 +79,13 @@ def read(*, i2c_id: int, nbytes: int, key: str) -> bytes:
 @measurement
 def write_read(*, i2c_id: int, write_data: bytes, read_nbytes: int, key: str) -> bytes:
     """Write then read (repeated START when the adapter supports it).
+
+    :param i2c_id: Configured ``io.i2c`` id from config TOML.
+    :param write_data: Bytes to write before the repeated START.
+    :param read_nbytes: Number of bytes to read after the write.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Bytes read from the slave.
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """

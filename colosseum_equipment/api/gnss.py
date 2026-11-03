@@ -1013,7 +1013,19 @@ def verify_field_avg(
     limit: float | None = None,
     optional: bool = False,
 ) -> VerificationResult:
-    """Verify the mean of ``field`` over multi-row logging evidence for ``message``."""
+    """Verify the mean of ``field`` over multi-row logging evidence for ``message``.
+
+    :param key: Logging measurement key that owns the multi-row evidence.
+    :param message: Logical message alias (for example ``pvt`` or ``sat``).
+    :param field: Numeric field name within each evidence row.
+    :param expected_val: Optional expected mean; used with ``tolerance``.
+    :param tolerance: Absolute tolerance around ``expected_val``.
+    :param minimum: Optional inclusive lower bound on the mean.
+    :param maximum: Optional inclusive upper bound on the mean.
+    :param limit: Optional inclusive upper bound alias (same as ``maximum``).
+    :param optional: When ``True``, failures do not fail the overall run.
+    :returns: Pass/fail verification result for the computed mean.
+    """
     try:
         rows = _field_rows(key=key, message=message)
     except KeyError:
@@ -1055,7 +1067,20 @@ def verify_field_avg_delta(
     limit: float | None = None,
     optional: bool = False,
 ) -> VerificationResult:
-    """Verify ``avg(key_b) - avg(key_a)`` for ``field`` (B minus A)."""
+    """Verify ``avg(key_b) - avg(key_a)`` for ``field`` (B minus A).
+
+    :param key_a: Logging key for the baseline (A) capture.
+    :param key_b: Logging key for the comparison (B) capture.
+    :param message: Logical message alias (for example ``pvt`` or ``sat``).
+    :param field: Numeric field name within each evidence row.
+    :param expected_val: Optional expected delta; used with ``tolerance``.
+    :param tolerance: Absolute tolerance around ``expected_val``.
+    :param minimum: Optional inclusive lower bound on the delta.
+    :param maximum: Optional inclusive upper bound on the delta.
+    :param limit: Optional inclusive upper bound alias (same as ``maximum``).
+    :param optional: When ``True``, failures do not fail the overall run.
+    :returns: Pass/fail verification result for ``avg(B) - avg(A)``.
+    """
     try:
         rows_a = _field_rows(key=key_a, message=message)
         rows_b = _field_rows(key=key_b, message=message)
@@ -1098,7 +1123,19 @@ def verify_field_equal_percent(
     limit: float | None = None,
     optional: bool = False,
 ) -> VerificationResult:
-    """Verify the percentage of rows where ``field`` equals ``expected_val``."""
+    """Verify the percentage of rows where ``field`` equals ``expected_val``.
+
+    :param key: Logging measurement key that owns the multi-row evidence.
+    :param message: Logical message alias (for example ``pvt`` or ``status``).
+    :param field: Numeric field name within each evidence row.
+    :param expected_val: Target field value counted as a match.
+    :param tolerance: Absolute tolerance when matching ``expected_val``.
+    :param minimum: Optional inclusive lower bound on the match percentage.
+    :param maximum: Optional inclusive upper bound on the match percentage.
+    :param limit: Optional inclusive upper bound alias (same as ``maximum``).
+    :param optional: When ``True``, failures do not fail the overall run.
+    :returns: Pass/fail verification result for the match percentage.
+    """
     try:
         rows = _field_rows(key=key, message=message)
     except KeyError:
@@ -1142,7 +1179,21 @@ def verify_sat_avg_delta(
     limit: float | None = None,
     optional: bool = False,
 ) -> VerificationResult:
-    """Verify absolute (or percent) difference of average satellite counts between keys."""
+    """Verify absolute (or percent) difference of average satellite counts between keys.
+
+    :param key_a: Logging key for the baseline (A) capture.
+    :param key_b: Logging key for the comparison (B) capture.
+    :param message: Logical message alias that carries satellite lists.
+    :param gnss_id: Optional constellation filter; ``None`` counts all SVs.
+    :param as_percent: When ``True``, express the delta as a percent of avg(A).
+    :param expected_val: Optional expected delta; used with ``tolerance``.
+    :param tolerance: Absolute tolerance around ``expected_val``.
+    :param minimum: Optional inclusive lower bound on the delta.
+    :param maximum: Optional inclusive upper bound on the delta.
+    :param limit: Optional inclusive upper bound alias (same as ``maximum``).
+    :param optional: When ``True``, failures do not fail the overall run.
+    :returns: Pass/fail verification result for the sat-count delta.
+    """
     try:
         rows_a = _field_rows(key=key_a, message=message)
         rows_b = _field_rows(key=key_b, message=message)
@@ -1197,7 +1248,21 @@ def verify_sat_diff(
     limit: float | None = None,
     optional: bool = False,
 ) -> VerificationResult:
-    """Verify the largest epoch-aligned absolute sat-count delta between two keys."""
+    """Verify the largest epoch-aligned absolute sat-count delta between two keys.
+
+    :param key_a: Logging key for the baseline (A) capture.
+    :param key_b: Logging key for the comparison (B) capture.
+    :param message: Logical message alias that carries satellite lists.
+    :param gnss_id: Optional constellation filter; ``None`` counts all SVs.
+    :param as_percent: When ``True``, express the max delta as a percent of A.
+    :param expected_val: Optional expected delta; used with ``tolerance``.
+    :param tolerance: Absolute tolerance around ``expected_val``.
+    :param minimum: Optional inclusive lower bound on the delta.
+    :param maximum: Optional inclusive upper bound on the delta.
+    :param limit: Optional inclusive upper bound alias (same as ``maximum``).
+    :param optional: When ``True``, failures do not fail the overall run.
+    :returns: Pass/fail verification result for the max epoch sat-count delta.
+    """
     try:
         rows_a = _field_rows(key=key_a, message=message)
         rows_b = _field_rows(key=key_b, message=message)
