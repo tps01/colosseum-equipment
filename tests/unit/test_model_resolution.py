@@ -17,11 +17,16 @@ class _Probe:
         fail_star: bool = False,
         fail_bare: bool = False,
         bare: str = "",
+        require_adr: bool = False,
+        adr_ack: str = "OK\r",
     ) -> None:
         self._idn = idn
         self._fail_star = fail_star
         self._fail_bare = fail_bare
         self._bare = bare
+        self._require_adr = require_adr
+        self._adr_ack = adr_ack
+        self._addressed = False
         self.queries: list[str] = []
         self.raw: list[bytes] = []
 
@@ -36,11 +41,18 @@ class _Probe:
 
     def write_bytes(self, payload: bytes) -> None:
         self.raw.append(payload)
+        if payload.startswith(b"ADR ") and payload.endswith(b"\r"):
+            self._addressed = self._adr_ack.strip().upper() == "OK"
 
     def read_until(self, terminator: bytes) -> str:
         assert terminator == b"\r"
+        last = self.raw[-1] if self.raw else b""
+        if last.startswith(b"ADR "):
+            return self._adr_ack
         if self._fail_bare:
             raise EquipmentTimeoutError("timeout")
+        if self._require_adr and not self._addressed:
+            return "ERR\r"
         return self._bare
 
 
@@ -80,7 +92,7 @@ def test_serial_visa_bare_idn_selects_genesys_serial_without_star() -> None:
     )
     for config, identity in cases:
         probe = _Probe(bare=identity)
-        assert resolve_instrument_model("psu", config, probe) == "tdk-genesys-serial"
+        assert resolve_instrument_model("psu", dict(config), probe) == "tdk-genesys-serial"
         assert probe.queries == []
         assert probe.raw == [b"IDN?\r"]
     addressed = instrument_config("psu", cases[0][0], "tdk-genesys-serial")
@@ -92,10 +104,27 @@ def test_serial_visa_bare_idn_selects_genesys_serial_without_star() -> None:
     assert omitted["baudrate"] == 9600
 
 
+def test_serial_genesys_adr_then_idn_when_cold() -> None:
+    config: dict = {"resource": "ASRL15::INSTR"}
+    probe = _Probe(bare="LAMBDA,GEN30-80\r", require_adr=True)
+    assert resolve_instrument_model("psu", config, probe) == "tdk-genesys-serial"
+    assert probe.raw == [b"IDN?\r", b"ADR 6\r", b"IDN?\r"]
+    assert config["device_address"] == 6
+    assert probe.queries == []
+
+
+def test_serial_genesys_uses_configured_device_address_for_adr() -> None:
+    config = {"port": "COM5", "device_address": 3, "baudrate": 9600}
+    probe = _Probe(bare="LAMBDA, GEN30-50\r", require_adr=True)
+    assert resolve_instrument_model("psu", config, probe) == "tdk-genesys-serial"
+    assert probe.raw == [b"IDN?\r", b"ADR 3\r", b"IDN?\r"]
+
+
 def test_serial_visa_non_lambda_idn_falls_back_to_star() -> None:
     failed = _Probe("LAMBDA_GEN40-38-IEEE", fail_bare=True)
     assert resolve_instrument_model("psu", {"resource": "ASRL15::INSTR"}, failed) == "tdk-genesys"
-    assert failed.raw == [b"IDN?\r"]
+    assert failed.raw[0] == b"IDN?\r"
+    assert b"ADR 6\r" in failed.raw
     assert failed.queries == ["*IDN?"]
     other = _Probe("LAMBDA,GEN60-25-LAN,1,1", bare="ACME,WIDGET\r")
     assert resolve_instrument_model("psu", {"port": "COM5"}, other) == "tdk-genesys"

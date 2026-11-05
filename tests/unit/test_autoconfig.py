@@ -61,9 +61,19 @@ class _FakeInstrument:
 
     def write_raw(self, payload: bytes) -> None:
         self.raw.append(payload)
+        if payload.startswith(b"ADR ") and payload.endswith(b"\r"):
+            # Genesys address select; accept default bus address 6.
+            token = payload[4:-1].decode("ascii", errors="replace").strip()
+            self._pending = "OK\r" if token in {"6", "06"} else "E01\r"
+            return
         if payload == b"IDN?\r":
             if self._fail_bare:
                 raise TimeoutError("bare timeout")
+            # Without a prior ADR, emulate the short reject seen on cold Genesys.
+            if not any(p.startswith(b"ADR ") for p in self.raw[:-1]):
+                if self._bare and "LAMBDA" in self._bare.upper():
+                    self._pending = "ERR\r"
+                    return
             self._pending = self._bare + "\r"
             return
         if payload == b"QM\r":
@@ -170,7 +180,11 @@ class _FakeSerialPort:
         return None
 
     def write(self, payload: bytes) -> None:
-        if payload == b"IDN?\r":
+        if payload.startswith(b"ADR ") and payload.endswith(b"\r"):
+            self._stage = "adr"
+            token = payload[4:-1].decode("ascii", errors="replace").strip()
+            self._adr_ok = token in {"6", "06"}
+        elif payload == b"IDN?\r":
             self._stage = "bare"
         elif payload == b"*IDN?\n":
             self._stage = "star"
@@ -195,6 +209,8 @@ class _FakeSerialPort:
 
     def read_until(self, terminator: bytes) -> bytes:
         _ = terminator
+        if self._stage == "adr":
+            return b"OK\r" if getattr(self, "_adr_ok", False) else b"E01\r"
         if self._stage == "bare":
             if self.fail_idn and not self.bare:
                 raise TimeoutError("bare")
@@ -293,6 +309,8 @@ def test_asrl_bare_lambda_selects_genesys_serial() -> None:
     assert row["baudrate"] == 9600
     assert row["port"] == "COM5"
     assert row["resource"] == "ASRL5::INSTR"
+    assert row["device_address"] == 6
+    assert any(b.startswith(b"ADR 6\r") for b in rm.opened[0].raw)
 
 
 def test_asrl_bare_fail_falls_back_to_star_idn() -> None:
