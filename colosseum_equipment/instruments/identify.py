@@ -198,11 +198,7 @@ def probe_identity(
             bare = ""
         if bare and lambda_gen_identity(bare):
             return bare, True, None
-        addresses: Sequence[int] | None
-        if device_address is not None:
-            addresses = (device_address,)
-        else:
-            addresses = None
+        addresses = (device_address,) if device_address is not None else None
         genesys = probe_genesys_serial_identity(
             transport, addresses=addresses, log_kind=log_kind,
         )
