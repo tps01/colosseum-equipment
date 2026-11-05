@@ -77,6 +77,7 @@ class AutoconfigAssignment:
     port: str | None = None
     driver: str | None = None
     baudrate: int | None = None
+    device_address: int | None = None
 
 
 @dataclass(frozen=True)
@@ -289,6 +290,8 @@ def _build_raw_config(assignments: Sequence[AutoconfigAssignment]) -> dict[str, 
             row["driver"] = assignment.driver
         if assignment.baudrate is not None:
             row["baudrate"] = assignment.baudrate
+        if assignment.device_address is not None:
+            row["device_address"] = assignment.device_address
         existing = equipment.get(section_name)
         if existing is None:
             equipment[section_name] = [row]
@@ -390,6 +393,7 @@ def discover_equipment_config(
         resource: str,
         port: str | None,
         baudrate: int | None,
+        device_address: int | None = None,
     ) -> None:
         section, _id_field = KIND_SECTIONS[kind]
         item_id = next_id.get(kind, 0) + 1
@@ -419,6 +423,7 @@ def discover_equipment_config(
             port=port_out,
             driver=driver,
             baudrate=baud_out,
+            device_address=device_address,
         )
         assignments.append(assignment)
         log_assignment(logger, assignment)
@@ -460,7 +465,7 @@ def discover_equipment_config(
         try:
             inst.timeout = open_timeout_ms
             adapter = _VisaProbeAdapter(inst)
-            idn, bare = probe_identity(adapter, asrl=False, log_kind="autoconfig")
+            idn, bare, _addr = probe_identity(adapter, asrl=False, log_kind="autoconfig")
         except Exception as exc:
             _skip(resource, f"probe_failed: {exc}")
             return
@@ -508,11 +513,14 @@ def discover_equipment_config(
                 return
             if probe is None:
                 continue
+            device_address: int | None = None
             try:
-                idn, bare = probe_identity(probe, asrl=True, log_kind="autoconfig")
+                idn, bare, device_address = probe_identity(
+                    probe, asrl=True, log_kind="autoconfig",
+                )
             except Exception as exc:
                 last_errors.append(f"baud={baud} idn:{exc}")
-                idn, bare = None, False
+                idn, bare, device_address = None, False, None
             finally:
                 close = getattr(probe, "close", None)
                 if callable(close):
@@ -534,6 +542,7 @@ def discover_equipment_config(
                 resource=resource,
                 port=port,
                 baudrate=baud,
+                device_address=device_address,
             )
             return
 
