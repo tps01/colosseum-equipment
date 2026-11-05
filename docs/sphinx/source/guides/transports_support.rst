@@ -53,7 +53,8 @@ Connection/open failures can still raise; identity query failures are logged
 and use generic. Fallback is not a replacement
 for a working backend or resource. Inspect the resolved-model log entry before
 qualifying a procedure. ``col.equipment.autoconfig`` discovers VISA ``?*INSTR``
-and serial COM (Genesys bare ``IDN?``, then Fluke ``QM`` if IDN misses); review
+and serial COM (Genesys bare ``IDN?``; opt-in ``qm=True`` / ``gnss=True`` for
+Fluke ``QM`` and GNSS after IDN misses); review
 its generated configuration before enabling outputs. FTDI adapters stay manual.
 See :doc:`/api/autoconfig`.
 

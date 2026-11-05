@@ -417,8 +417,9 @@ Autoconfig
 
 ``col.equipment.autoconfig()`` scans VISA ``?*INSTR`` resources and local COM
 ports, logging each assignment as it happens. Serial ports try bare ``IDN?``
-then ``*IDN?`` across common bauds; Fluke handheld ``QM`` runs only after IDN
-fails; GNSS vendor probes run after both miss. FTDI / digital IO adapters are
+then ``*IDN?`` across common bauds. Pass ``qm=True`` / ``gnss=True`` to enable
+Fluke handheld ``QM`` or GNSS vendor probes after IDN fails (both off by
+default). FTDI / digital IO adapters are
 not discovered. When a config is already loaded, discovery replaces the
 ``equipment`` table only; other tables (messaging, ``io``, metadata) stay.
 To review a reusable

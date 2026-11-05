@@ -44,12 +44,15 @@ def autoconfig(
     blacklist: str | Sequence[str] | None = None,
     export_path: str | Path | None = None,
     no_artifacts: bool = False,
+    qm: bool = False,
+    gnss: bool = False,
 ) -> ConfigStore:
     """Scan VISA ``?*INSTR`` and serial COM ports; build equipment config.
 
     Serial ASRL/COM ports try bare ``IDN?`` then ``*IDN?`` across common bauds.
-    Fluke handheld ``QM`` is probed only after IDN fails. FTDI adapters are not
-    discovered.
+    Fluke handheld ``QM`` and GNSS vendor probes are off by default; pass
+    ``qm=True`` / ``gnss=True`` to enable them after IDN fails. FTDI adapters are
+    not discovered.
 
     When a config is already loaded, discovered ``equipment`` replaces that table
     only. Other top-level tables (for example messaging, ``io``,
@@ -67,6 +70,10 @@ def autoconfig(
     :type export_path: str | Path | None, optional
     :param no_artifacts: When ``True``, skip ``outputs/``, ``debug.log``, and on-disk SQLite.
     :type no_artifacts: bool, optional
+    :param qm: When ``True``, probe Fluke handheld ``QM`` after serial IDN fails.
+    :type qm: bool, optional
+    :param gnss: When ``True``, run GNSS vendor probes after IDN (and QM if enabled) miss.
+    :type gnss: bool, optional
 
     :returns: Normalized configuration store for discovered equipment.
     :rtype: ConfigStore
@@ -93,6 +100,8 @@ def autoconfig(
         visa_library=visa_library,
         blacklist=blacklist,
         logger=ctx.logger,
+        qm=qm,
+        gnss=gnss,
     )
     raw = _raw_with_discovered_equipment(ctx, result.raw)
     store = apply_raw_config(ctx, raw, source_label="(autoconfig)")

@@ -380,6 +380,7 @@ def test_fluke_qm_after_idn_phase() -> None:
         timeout=1.0,
         list_comports=lambda: [_ComPort("COM3")],
         open_serial=_open,
+        qm=True,
     )
     row = result.raw["equipment"]["dmm"][0]
     assert row["model"] == "fluke-189"
@@ -411,9 +412,67 @@ def test_fluke_289_qm_dialect() -> None:
         timeout=1.0,
         list_comports=lambda: [_ComPort("COM4")],
         open_serial=_open,
+        qm=True,
     )
     assert result.raw["equipment"]["dmm"][0]["model"] == "fluke-289"
     assert result.raw["equipment"]["dmm"][0]["baudrate"] == 115200
+
+
+def test_qm_and_gnss_skipped_by_default() -> None:
+    rm = _FakeResourceManager({})
+    opens: list[str] = []
+
+    def _open(port: str, baud: int, timeout: float) -> _FakeSerialPort:
+        _ = port, timeout
+        opens.append(f"idn:{baud}")
+        return _FakeSerialPort(
+            fail_idn=True,
+            qm_ack="0",
+            qm_data="QM, +1.234 VDC",
+        )
+
+    with pytest.raises(ConfigError, match="no classifiable"):
+        discover_equipment_config(
+            resource_manager=rm,
+            timeout=1.0,
+            list_comports=lambda: [_ComPort("COM3")],
+            open_serial=_open,
+        )
+    assert opens == ["idn:9600", "idn:115200", "idn:19200"]
+
+
+def test_gnss_probe_after_idn_miss() -> None:
+    from colosseum_equipment.instruments.gnss.ubx import CLS_MON, ID_MON_VER, build_ubx
+
+    body = bytearray(70)
+    body[40:51] = b"MOD=NEO-M9N"
+    frame = build_ubx(CLS_MON, ID_MON_VER, bytes(body))
+    rm = _FakeResourceManager({})
+    state = {"idn_done": False}
+
+    def _open(port: str, baud: int, timeout: float) -> _FakeSerialPort:
+        _ = port, timeout
+        if not state["idn_done"]:
+            if baud == 19200:
+                state["idn_done"] = True
+            return _FakeSerialPort(fail_idn=True)
+        if baud == 9600:
+            return _FakeSerialPort(fail_idn=True, gnss_reply=frame)
+        raise TimeoutError("skip")
+
+    result = discover_equipment_config(
+        resource_manager=rm,
+        timeout=1.0,
+        list_comports=lambda: [_ComPort("COM5")],
+        open_serial=_open,
+        gnss=True,
+    )
+    row = result.raw["equipment"]["gnss"][0]
+    assert row["model"] == "ublox-m9"
+    assert row["driver"] == "serial"
+    assert row["port"] == "COM5"
+    assert row["baudrate"] == 9600
+    assert state["idn_done"]
 
 
 def test_gnss_probe_after_idn_and_qm_miss() -> None:
@@ -444,6 +503,8 @@ def test_gnss_probe_after_idn_and_qm_miss() -> None:
         timeout=1.0,
         list_comports=lambda: [_ComPort("COM5")],
         open_serial=_open,
+        qm=True,
+        gnss=True,
     )
     row = result.raw["equipment"]["gnss"][0]
     assert row["model"] == "ublox-m9"
