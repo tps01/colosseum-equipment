@@ -492,6 +492,54 @@ def test_autoconfig_populates_config_store(monkeypatch: pytest.MonkeyPatch) -> N
     assert ctx.logger is not None
 
 
+def test_autoconfig_preserves_non_equipment_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prior load_config tables outside equipment survive rediscovery."""
+    import colosseum_equipment.api._autoconfig as autoconfig_module
+    from colosseum.config.loader import apply_raw_config
+    from colosseum.context import init_context
+
+    context_module._ACTIVE_CONTEXT = None
+    ctx = init_context(test_case_name="autoconfig_merge", no_artifacts=True)
+    apply_raw_config(
+        ctx,
+        {
+            "equipment": {
+                "psu": [{"psu_id": 1, "resource": "SIM::OLD", "driver": "sim"}],
+            },
+            "io": {
+                "i2c": [{"i2c_id": 1, "driver": "sim"}],
+            },
+            "messaging": {
+                "broker": {"host": "10.0.0.5", "port": 1883},
+            },
+            "colosseum": {"metadata": {"location": "Lab-A"}},
+        },
+        source_label="prior.toml",
+    )
+    rm = _FakeResourceManager(
+        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"},
+    )
+
+    def _fake_discover(**kwargs: object) -> object:
+        return discover_equipment_config(
+            resource_manager=rm,
+            timeout=float(kwargs.get("timeout", 1.0)),  # type: ignore[arg-type]
+            blacklist=kwargs.get("blacklist"),  # type: ignore[arg-type]
+            list_comports=lambda: [],
+            logger=kwargs.get("logger"),  # type: ignore[arg-type]
+        )
+
+    monkeypatch.setattr(autoconfig_module, "discover_equipment_config", _fake_discover)
+    store = autoconfig(timeout=1.0)
+    assert store.require_item("equipment.dmm", 1)["model"] == "keysight-edu34450a"
+    assert store.list_items("equipment.psu") == []
+    assert store.require_item("io.i2c", 1)["driver"] == "sim"
+    assert store.get_section("messaging.broker") == {"host": "10.0.0.5", "port": 1883}
+    assert store.get_section("colosseum.metadata") == {"location": "Lab-A"}
+
+
 def test_autoconfig_export_writes_toml(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

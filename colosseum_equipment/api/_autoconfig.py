@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any
 
 from colosseum.config.loader import (
     ConfigError,
@@ -20,6 +21,21 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from colosseum.context import RuntimeContext
+
+
+def _raw_with_discovered_equipment(
+    ctx: RuntimeContext,
+    discovered: dict[str, Any],
+) -> dict[str, Any]:
+    """Replace only discovery tables (``equipment``); keep other loaded sections."""
+    if ctx.config is None:
+        return discovered
+    merged = deepcopy(ctx.config.raw())
+    for key, value in discovered.items():
+        merged[key] = deepcopy(value)
+    return merged
+
 
 def autoconfig(
     *,
@@ -34,6 +50,11 @@ def autoconfig(
     Serial ASRL/COM ports try bare ``IDN?`` then ``*IDN?`` across common bauds.
     Fluke handheld ``QM`` is probed only after IDN fails. FTDI adapters are not
     discovered.
+
+    When a config is already loaded, discovered ``equipment`` replaces that table
+    only. Other top-level tables (for example messaging, ``io``,
+    ``colosseum.metadata``) stay as loaded. ``export_path`` still writes the
+    discovered equipment TOML alone.
 
     :param timeout: Probe timeout in seconds for each resource/port.
     :type timeout: float, optional
@@ -73,7 +94,8 @@ def autoconfig(
         blacklist=blacklist,
         logger=ctx.logger,
     )
-    store = apply_raw_config(ctx, result.raw, source_label="(autoconfig)")
+    raw = _raw_with_discovered_equipment(ctx, result.raw)
+    store = apply_raw_config(ctx, raw, source_label="(autoconfig)")
     if export_path is not None:
         try:
             exported = write_config_toml(result.raw, export_path)

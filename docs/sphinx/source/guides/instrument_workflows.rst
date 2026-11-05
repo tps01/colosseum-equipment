@@ -419,7 +419,9 @@ Autoconfig
 ports, logging each assignment as it happens. Serial ports try bare ``IDN?``
 then ``*IDN?`` across common bauds; Fluke handheld ``QM`` runs only after IDN
 fails; GNSS vendor probes run after both miss. FTDI / digital IO adapters are
-not discovered. To review a reusable
+not discovered. When a config is already loaded, discovery replaces the
+``equipment`` table only; other tables (messaging, ``io``, metadata) stay.
+To review a reusable
 file, pass ``export_path="config.toml"`` and inspect model, resource/port, and
 assigned IDs before writing acceptance tests. Do not run discovery in offline
 documentation checks. An explicit config gives stable IDs across benches and
