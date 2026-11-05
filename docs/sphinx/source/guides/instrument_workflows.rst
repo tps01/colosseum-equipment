@@ -417,7 +417,8 @@ Autoconfig
 
 ``col.equipment.autoconfig()`` scans VISA ``?*INSTR`` resources and local COM
 ports, logging each assignment as it happens. Serial ports try bare ``IDN?``
-then ``*IDN?`` across common bauds; VISA ASRL sessions use CR termination.
+then, for Genesys, ``ADR 6`` + ``IDN?`` (default bus address) before ``*IDN?``;
+VISA ASRL sessions use CR termination.
 Hard ASRL open errors (for example parity) abort further baud tries on that
 port. Pass ``qm=True`` / ``gnss=True`` to enable Fluke handheld ``QM`` or GNSS
 vendor probes after IDN fails (both off by default). Unreachable TCPIP hosts

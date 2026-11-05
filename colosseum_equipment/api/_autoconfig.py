@@ -49,11 +49,12 @@ def autoconfig(
 ) -> ConfigStore:
     """Scan VISA ``?*INSTR`` and serial COM ports; build equipment config.
 
-    Serial ASRL/COM ports try bare ``IDN?`` then ``*IDN?`` across common bauds.
-    VISA ASRL sessions enable CR termination. Hard ASRL open errors abort further
-    baud tries on that port. Fluke handheld ``QM`` and GNSS vendor probes are off
-    by default; pass ``qm=True`` / ``gnss=True`` to enable them after IDN fails.
-    FTDI adapters are not discovered.
+    Serial ASRL/COM ports try bare ``IDN?``, then Genesys ``ADR 6`` + ``IDN?`` if
+    needed, then ``*IDN?`` across common bauds. VISA ASRL sessions enable CR
+    termination. Hard ASRL open errors abort further baud tries on that port.
+    Fluke handheld ``QM`` and GNSS vendor probes are off by default; pass
+    ``qm=True`` / ``gnss=True`` to enable them after IDN fails. FTDI adapters are
+    not discovered.
 
     When a config is already loaded, discovered ``equipment`` replaces that table
     only. Other top-level tables (for example messaging, ``io``,
