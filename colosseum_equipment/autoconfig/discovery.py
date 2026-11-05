@@ -1,8 +1,10 @@
 """VISA INSTR + serial COM scan, probe, classify, and config construction.
 
 Serial ASRL/COM ports are probed with bare ``IDN?`` then ``*IDN?`` across a short
-baud list. Fluke handheld ``QM`` is tried only after IDN fails. FTDI / digital IO
-adapters are not discovered here.
+baud list. VISA ASRL sessions enable CR termination (matching bench tools). Fluke
+handheld ``QM`` and GNSS vendor probes are opt-in (``qm=True`` / ``gnss=True``)
+and run only after IDN fails. Hard serial open errors abort further baud tries.
+FTDI / digital IO adapters are not discovered here.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ import contextlib
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from colosseum.config.loader import ConfigError
 
@@ -46,6 +48,20 @@ _IDN_BAUDS = (9600, 115200, 19200)
 _QM_BAUDS = (9600, 115200)
 _ASRL_NUM = re.compile(r"^ASRL(\d+)", re.IGNORECASE)
 _COM_NUM = re.compile(r"^COM(\d+)$", re.IGNORECASE)
+_HARD_OPEN_MARKERS = (
+    "ASRL_PARITY",
+    "ASRL_FRAMING",
+    "ASRL_OVERRUN",
+    "VI_ERROR_ASRL_PARITY",
+    "VI_ERROR_ASRL_FRAMING",
+    "VI_ERROR_ASRL_OVERRUN",
+    "0xBFFF0060",
+    "0xBFFF0061",
+    "0xBFFF0062",
+    "BFFF0060",
+    "BFFF0061",
+    "BFFF0062",
+)
 
 
 @dataclass(frozen=True)
@@ -85,11 +101,40 @@ class AutoconfigResult:
     unresolved_blacklist: list[str] = field(default_factory=list)
 
 
+def _is_hard_serial_open_error(exc: BaseException) -> bool:
+    """Return whether ``exc`` is a hard ASRL open failure (skip remaining bauds)."""
+    text = f"{type(exc).__name__}: {exc}".upper()
+    if "TMO" in text or "TIMEOUT" in text:
+        return False
+    return any(marker in text for marker in _HARD_OPEN_MARKERS) or (
+        "PARITY" in text and "ASRL" in text
+    ) or ("FRAMING" in text and "ASRL" in text) or ("OVERRUN" in text and "ASRL" in text)
+
+
+def _configure_asrl_cr_termchar(inst: object) -> None:
+    """Enable CR termination on a VISA ASRL session (matches working bench tools)."""
+    with contextlib.suppress(Exception):
+        inst.read_termination = "\r"  # type: ignore[attr-defined]
+        inst.write_termination = "\r"  # type: ignore[attr-defined]
+        return
+    try:
+        import pyvisa.constants as visa_constants
+
+        set_attr = getattr(inst, "set_visa_attribute", None)
+        if not callable(set_attr):
+            return
+        set_attr(visa_constants.VI_ATTR_TERMCHAR, ord("\r"))
+        set_attr(visa_constants.VI_ATTR_TERMCHAR_EN, visa_constants.VI_TRUE)
+    except Exception:
+        return
+
+
 class _VisaProbeAdapter:
     """Adapt a pyVISA instrument to identify/QM probe helpers."""
 
-    def __init__(self, inst: object) -> None:
+    def __init__(self, inst: object, *, cr_termchar: bool = False) -> None:
         self._inst = inst
+        self._cr_termchar = cr_termchar
 
     def query(self, command: str) -> str:
         return str(self._inst.query(command))  # type: ignore[attr-defined]
@@ -145,6 +190,11 @@ class _VisaProbeAdapter:
         return -1
 
     def read_until(self, terminator: bytes) -> str:
+        # Prefer a single cooked VISA read when CR termchar is enabled (bulk line).
+        if self._cr_termchar and terminator in {b"\r", b"\r\n"}:
+            read = getattr(self._inst, "read", None)
+            if callable(read):
+                return str(read())
         read_until = getattr(self._inst, "read_until", None)
         if callable(read_until):
             return str(read_until(terminator))
@@ -291,12 +341,15 @@ def discover_equipment_config(
     logger: AutoconfigProgress | None = None,
     list_comports: Callable[[], Sequence[Any]] | None = None,
     open_serial: OpenSerial | None = None,
+    qm: bool = False,
+    gnss: bool = False,
 ) -> AutoconfigResult:
     """Scan VISA ``?*INSTR`` and local COM ports; build a raw equipment config dict.
 
     Serial ports use bare ``IDN?`` then ``*IDN?`` across bauds ``9600``, ``115200``,
-    ``19200``. Fluke ``QM`` is tried only after IDN fails (bauds ``9600``, ``115200``).
-    GNSS vendor probes run after IDN and QM miss. FTDI adapters are not discovered.
+    ``19200``. With ``qm=True``, Fluke ``QM`` runs after IDN fails (bauds ``9600``,
+    ``115200``). With ``gnss=True``, GNSS vendor probes run after IDN (and QM when
+    enabled) miss. FTDI adapters are not discovered.
     """
     import pyvisa
 
@@ -389,13 +442,23 @@ def discover_equipment_config(
             )
             return
         log_probing(logger, resource)
+        open_timeout_ms = max(1, int(timeout * 1000))
         try:
-            inst = rm.open_resource(resource)  # type: ignore[attr-defined]
+            inst = rm.open_resource(  # type: ignore[attr-defined]
+                resource,
+                open_timeout=open_timeout_ms,
+            )
+        except TypeError:
+            try:
+                inst = rm.open_resource(resource)  # type: ignore[attr-defined]
+            except Exception as exc:
+                _skip(resource, f"probe_failed: {exc}")
+                return
         except Exception as exc:
             _skip(resource, f"probe_failed: {exc}")
             return
         try:
-            inst.timeout = int(timeout * 1000)
+            inst.timeout = open_timeout_ms
             adapter = _VisaProbeAdapter(inst)
             idn, bare = probe_identity(adapter, asrl=False, log_kind="autoconfig")
         except Exception as exc:
@@ -425,12 +488,25 @@ def discover_equipment_config(
         open_probe: Callable[[int], Any],
     ) -> None:
         last_errors: list[str] = []
+        abort_bauds = object()
+
+        def _open_or_abort(baud: int, *, phase: str) -> object | None:
+            try:
+                return cast("object", open_probe(baud))
+            except Exception as exc:
+                last_errors.append(f"baud={baud} {phase}:{exc}")
+                if _is_hard_serial_open_error(exc):
+                    detail = "; ".join(last_errors)
+                    _skip(label, f"probe_failed: hard_open:{exc}; {detail}")
+                    return abort_bauds
+                return None
+
         for baud in _IDN_BAUDS:
             log_probing(logger, label, baud=baud)
-            try:
-                probe = open_probe(baud)
-            except Exception as exc:
-                last_errors.append(f"baud={baud} open:{exc}")
+            probe = _open_or_abort(baud, phase="open")
+            if probe is abort_bauds:
+                return
+            if probe is None:
                 continue
             try:
                 idn, bare = probe_identity(probe, asrl=True, log_kind="autoconfig")
@@ -461,65 +537,67 @@ def discover_equipment_config(
             )
             return
 
-        for baud in _QM_BAUDS:
-            log_probing(logger, f"{label} QM", baud=baud)
-            try:
-                probe = open_probe(baud)
-            except Exception as exc:
-                last_errors.append(f"baud={baud} qm_open:{exc}")
-                continue
-            try:
-                qm_model = query_qm_model(probe)
-            except Exception as exc:
-                last_errors.append(f"baud={baud} qm:{exc}")
-                qm_model = None
-            finally:
-                close = getattr(probe, "close", None)
-                if callable(close):
-                    with contextlib.suppress(Exception):
-                        close()
-            if qm_model is None:
-                continue
-            _assign(
-                kind="dmm",
-                model=qm_model,
-                idn=f"QM:{qm_model}",
-                resource=resource,
-                port=port,
-                baudrate=baud,
-            )
-            return
+        if qm:
+            for baud in _QM_BAUDS:
+                log_probing(logger, f"{label} QM", baud=baud)
+                probe = _open_or_abort(baud, phase="qm_open")
+                if probe is abort_bauds:
+                    return
+                if probe is None:
+                    continue
+                try:
+                    qm_model = query_qm_model(probe)
+                except Exception as exc:
+                    last_errors.append(f"baud={baud} qm:{exc}")
+                    qm_model = None
+                finally:
+                    close = getattr(probe, "close", None)
+                    if callable(close):
+                        with contextlib.suppress(Exception):
+                            close()
+                if qm_model is None:
+                    continue
+                _assign(
+                    kind="dmm",
+                    model=qm_model,
+                    idn=f"QM:{qm_model}",
+                    resource=resource,
+                    port=port,
+                    baudrate=baud,
+                )
+                return
 
-        from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
+        if gnss:
+            from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
 
-        for baud in _IDN_BAUDS:
-            log_probing(logger, f"{label} GNSS", baud=baud)
-            try:
-                probe = open_probe(baud)
-            except Exception as exc:
-                last_errors.append(f"baud={baud} gnss_open:{exc}")
-                continue
-            try:
-                gnss_model = probe_gnss_model(probe)
-            except Exception as exc:
-                last_errors.append(f"baud={baud} gnss:{exc}")
-                gnss_model = None
-            finally:
-                close = getattr(probe, "close", None)
-                if callable(close):
-                    with contextlib.suppress(Exception):
-                        close()
-            if gnss_model is None:
-                continue
-            _assign(
-                kind="gnss",
-                model=gnss_model,
-                idn=f"GNSS:{gnss_model}",
-                resource=resource,
-                port=port,
-                baudrate=baud,
-            )
-            return
+            for baud in _IDN_BAUDS:
+                log_probing(logger, f"{label} GNSS", baud=baud)
+                probe = _open_or_abort(baud, phase="gnss_open")
+                if probe is abort_bauds:
+                    return
+                if probe is None:
+                    continue
+                try:
+                    gnss_model = probe_gnss_model(probe)
+                except Exception as exc:
+                    last_errors.append(f"baud={baud} gnss:{exc}")
+                    gnss_model = None
+                finally:
+                    close = getattr(probe, "close", None)
+                    if callable(close):
+                        with contextlib.suppress(Exception):
+                            close()
+                if gnss_model is None:
+                    continue
+                _assign(
+                    kind="gnss",
+                    model=gnss_model,
+                    idn=f"GNSS:{gnss_model}",
+                    resource=resource,
+                    port=port,
+                    baudrate=baud,
+                )
+                return
 
         detail = "; ".join(last_errors) if last_errors else "no response"
         _skip(label, f"probe_failed: {detail}")
@@ -527,11 +605,19 @@ def discover_equipment_config(
     def _open_visa_probe(
         manager: object, resource: str, baud: int, seconds: float,
     ) -> _VisaProbeAdapter:
-        inst = manager.open_resource(resource)  # type: ignore[attr-defined]
-        inst.timeout = int(seconds * 1000)
+        open_timeout_ms = max(1, int(seconds * 1000))
+        try:
+            inst = manager.open_resource(  # type: ignore[attr-defined]
+                resource,
+                open_timeout=open_timeout_ms,
+            )
+        except TypeError:
+            inst = manager.open_resource(resource)  # type: ignore[attr-defined]
+        inst.timeout = open_timeout_ms
         with contextlib.suppress(Exception):
             inst.baud_rate = int(baud)
-        adapter = _VisaProbeAdapter(inst)
+        _configure_asrl_cr_termchar(inst)
+        adapter = _VisaProbeAdapter(inst, cr_termchar=True)
 
         def _close() -> None:
             with contextlib.suppress(Exception):
