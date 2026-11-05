@@ -27,9 +27,12 @@ class _FakeInstrument:
         fail_bare: bool = False,
         qm_ack: str = "",
         qm_data: str = "",
+        open_error: Exception | None = None,
     ) -> None:
         self.timeout = 0
         self.baud_rate = 0
+        self.read_termination = ""
+        self.write_termination = ""
         self._idn = idn
         self._bare = bare
         self._fail_star = fail_star
@@ -37,9 +40,12 @@ class _FakeInstrument:
         self._qm_ack = qm_ack
         self._qm_data = qm_data
         self._qm_stage = 0
+        self._open_error = open_error
+        self._pending = ""
         self.closed = False
         self.queries: list[str] = []
         self.raw: list[bytes] = []
+        self.open_timeouts: list[int] = []
 
     def query(self, command: str) -> str:
         self.queries.append(command)
@@ -55,30 +61,35 @@ class _FakeInstrument:
 
     def write_raw(self, payload: bytes) -> None:
         self.raw.append(payload)
-        if payload == b"IDN?\r" and self._fail_bare:
-            raise TimeoutError("bare timeout")
+        if payload == b"IDN?\r":
+            if self._fail_bare:
+                raise TimeoutError("bare timeout")
+            self._pending = self._bare + "\r"
+            return
         if payload == b"QM\r":
             self._qm_stage = 1
+            self._pending = self._qm_ack + "\r"
 
     def read_raw(self, size: int = 1) -> bytes:
         _ = size
-        if self.raw and self.raw[-1] == b"IDN?\r":
-            return (self._bare.encode("ascii") + b"\r")[:1] and self._emit_line(self._bare)
-        if self._qm_stage == 1:
-            self._qm_stage = 2
-            return self._emit_line(self._qm_ack)
-        if self._qm_stage == 2:
-            self._qm_stage = 0
-            return self._emit_line(self._qm_data)
-        return b""
-
-    def _emit_line(self, text: str) -> bytes:
-        # read_until loops one byte; provide full line via read() fallback path instead
-        self._pending = text + "\r"
+        if self._pending:
+            ch = self._pending[:1].encode("ascii")
+            self._pending = self._pending[1:]
+            return ch
         return b""
 
     def read(self) -> str:
-        pending = getattr(self, "_pending", "")
+        if self._qm_stage == 1:
+            self._qm_stage = 2
+            pending = self._pending or (self._qm_ack + "\r")
+            self._pending = self._qm_data + "\r"
+            return pending
+        if self._qm_stage == 2:
+            self._qm_stage = 0
+            pending = self._pending or (self._qm_data + "\r")
+            self._pending = ""
+            return pending
+        pending = self._pending
         self._pending = ""
         return pending
 
@@ -87,17 +98,7 @@ class _FakeInstrument:
 
     def read_until(self, terminator: bytes) -> str:
         assert terminator == b"\r"
-        if self.raw and self.raw[-1] == b"IDN?\r":
-            if self._fail_bare:
-                raise TimeoutError("bare timeout")
-            return self._bare + "\r"
-        if self._qm_stage == 1:
-            self._qm_stage = 2
-            return self._qm_ack + "\r"
-        if self._qm_stage == 2:
-            self._qm_stage = 0
-            return self._qm_data + "\r"
-        return "\r"
+        return self.read()
 
     def close(self) -> None:
         self.closed = True
@@ -110,16 +111,20 @@ class _FakeResourceManager:
             for key, value in resources.items()
         }
         self.opened: list[_FakeInstrument] = []
+        self.open_kwargs: list[dict[str, object]] = []
 
     def list_resources(self, query: str) -> tuple[str, ...]:
         _ = query
         return tuple(self._resources)
 
-    def open_resource(self, resource: str) -> _FakeInstrument:
+    def open_resource(self, resource: str, **kwargs: object) -> _FakeInstrument:
+        self.open_kwargs.append(dict(kwargs))
         if resource not in self._resources:
             raise RuntimeError(f"unknown resource: {resource}")
         # Return a fresh copy-like instance so baud retries reopen cleanly.
         template = self._resources[resource]
+        if template._open_error is not None:
+            raise template._open_error
         inst = _FakeInstrument(
             template._idn,
             bare=template._bare,
@@ -303,6 +308,62 @@ def test_asrl_bare_fail_falls_back_to_star_idn() -> None:
     assert result.raw["equipment"]["dmm"][0]["model"] == "keysight-edu34450a"
 
 
+def test_asrl_probe_sets_cr_termchar() -> None:
+    rm = _FakeResourceManager(
+        {
+            "ASRL5::INSTR": _FakeInstrument(bare="LAMBDA,GEN30-50", fail_star=True),
+        },
+    )
+    _discover(rm)
+    assert rm.opened
+    assert rm.opened[0].read_termination == "\r"
+    assert rm.opened[0].write_termination == "\r"
+    assert any("open_timeout" in kwargs for kwargs in rm.open_kwargs)
+
+
+def test_hard_asrl_open_error_skips_remaining_bauds() -> None:
+    from colosseum_equipment.autoconfig.discovery import _IDN_BAUDS
+
+    asrl4_attempts = 0
+
+    class _CountingRM(_FakeResourceManager):
+        def open_resource(self, resource: str, **kwargs: object) -> _FakeInstrument:
+            nonlocal asrl4_attempts
+            if resource.startswith("ASRL4"):
+                asrl4_attempts += 1
+            return super().open_resource(resource, **kwargs)
+
+    rm = _CountingRM(
+        {
+            "ASRL4::INSTR": _FakeInstrument(
+                open_error=RuntimeError("VI_ERROR_ASRL_PARITY (0xBFFF0060)"),
+            ),
+            "GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1",
+        },
+    )
+    result = discover_equipment_config(
+        resource_manager=rm,
+        timeout=1.0,
+        list_comports=lambda: [],
+    )
+    assert asrl4_attempts == 1
+    assert asrl4_attempts < len(_IDN_BAUDS)
+    assert result.raw["equipment"]["dmm"][0]["model"] == "keysight-edu34450a"
+
+
+def test_non_asrl_open_passes_open_timeout() -> None:
+    rm = _FakeResourceManager(
+        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"},
+    )
+    discover_equipment_config(
+        resource_manager=rm,
+        timeout=0.5,
+        list_comports=lambda: [],
+    )
+    assert rm.open_kwargs
+    assert rm.open_kwargs[0].get("open_timeout") == 500
+
+
 def test_com_port_only_genesys_and_dedupe_asrl(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -380,6 +441,7 @@ def test_fluke_qm_after_idn_phase() -> None:
         timeout=1.0,
         list_comports=lambda: [_ComPort("COM3")],
         open_serial=_open,
+        qm=True,
     )
     row = result.raw["equipment"]["dmm"][0]
     assert row["model"] == "fluke-189"
@@ -411,9 +473,67 @@ def test_fluke_289_qm_dialect() -> None:
         timeout=1.0,
         list_comports=lambda: [_ComPort("COM4")],
         open_serial=_open,
+        qm=True,
     )
     assert result.raw["equipment"]["dmm"][0]["model"] == "fluke-289"
     assert result.raw["equipment"]["dmm"][0]["baudrate"] == 115200
+
+
+def test_qm_and_gnss_skipped_by_default() -> None:
+    rm = _FakeResourceManager({})
+    opens: list[str] = []
+
+    def _open(port: str, baud: int, timeout: float) -> _FakeSerialPort:
+        _ = port, timeout
+        opens.append(f"idn:{baud}")
+        return _FakeSerialPort(
+            fail_idn=True,
+            qm_ack="0",
+            qm_data="QM, +1.234 VDC",
+        )
+
+    with pytest.raises(ConfigError, match="no classifiable"):
+        discover_equipment_config(
+            resource_manager=rm,
+            timeout=1.0,
+            list_comports=lambda: [_ComPort("COM3")],
+            open_serial=_open,
+        )
+    assert opens == ["idn:9600", "idn:115200", "idn:19200"]
+
+
+def test_gnss_probe_after_idn_miss() -> None:
+    from colosseum_equipment.instruments.gnss.ubx import CLS_MON, ID_MON_VER, build_ubx
+
+    body = bytearray(70)
+    body[40:51] = b"MOD=NEO-M9N"
+    frame = build_ubx(CLS_MON, ID_MON_VER, bytes(body))
+    rm = _FakeResourceManager({})
+    state = {"idn_done": False}
+
+    def _open(port: str, baud: int, timeout: float) -> _FakeSerialPort:
+        _ = port, timeout
+        if not state["idn_done"]:
+            if baud == 19200:
+                state["idn_done"] = True
+            return _FakeSerialPort(fail_idn=True)
+        if baud == 9600:
+            return _FakeSerialPort(fail_idn=True, gnss_reply=frame)
+        raise TimeoutError("skip")
+
+    result = discover_equipment_config(
+        resource_manager=rm,
+        timeout=1.0,
+        list_comports=lambda: [_ComPort("COM5")],
+        open_serial=_open,
+        gnss=True,
+    )
+    row = result.raw["equipment"]["gnss"][0]
+    assert row["model"] == "ublox-m9"
+    assert row["driver"] == "serial"
+    assert row["port"] == "COM5"
+    assert row["baudrate"] == 9600
+    assert state["idn_done"]
 
 
 def test_gnss_probe_after_idn_and_qm_miss() -> None:
@@ -444,6 +564,8 @@ def test_gnss_probe_after_idn_and_qm_miss() -> None:
         timeout=1.0,
         list_comports=lambda: [_ComPort("COM5")],
         open_serial=_open,
+        qm=True,
+        gnss=True,
     )
     row = result.raw["equipment"]["gnss"][0]
     assert row["model"] == "ublox-m9"
@@ -490,6 +612,54 @@ def test_autoconfig_populates_config_store(monkeypatch: pytest.MonkeyPatch) -> N
     assert ctx.config_path == "(autoconfig)"
     assert store.require_item("equipment.dmm", 1)["model"] == "keysight-edu34450a"
     assert ctx.logger is not None
+
+
+def test_autoconfig_preserves_non_equipment_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prior load_config tables outside equipment survive rediscovery."""
+    import colosseum_equipment.api._autoconfig as autoconfig_module
+    from colosseum.config.loader import apply_raw_config
+    from colosseum.context import init_context
+
+    context_module._ACTIVE_CONTEXT = None
+    ctx = init_context(test_case_name="autoconfig_merge", no_artifacts=True)
+    apply_raw_config(
+        ctx,
+        {
+            "equipment": {
+                "psu": [{"psu_id": 1, "resource": "SIM::OLD", "driver": "sim"}],
+            },
+            "io": {
+                "i2c": [{"i2c_id": 1, "driver": "sim"}],
+            },
+            "messaging": {
+                "broker": {"host": "10.0.0.5", "port": 1883},
+            },
+            "colosseum": {"metadata": {"location": "Lab-A"}},
+        },
+        source_label="prior.toml",
+    )
+    rm = _FakeResourceManager(
+        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"},
+    )
+
+    def _fake_discover(**kwargs: object) -> object:
+        return discover_equipment_config(
+            resource_manager=rm,
+            timeout=float(kwargs.get("timeout", 1.0)),  # type: ignore[arg-type]
+            blacklist=kwargs.get("blacklist"),  # type: ignore[arg-type]
+            list_comports=lambda: [],
+            logger=kwargs.get("logger"),  # type: ignore[arg-type]
+        )
+
+    monkeypatch.setattr(autoconfig_module, "discover_equipment_config", _fake_discover)
+    store = autoconfig(timeout=1.0)
+    assert store.require_item("equipment.dmm", 1)["model"] == "keysight-edu34450a"
+    assert store.list_items("equipment.psu") == []
+    assert store.require_item("io.i2c", 1)["driver"] == "sim"
+    assert store.get_section("messaging.broker") == {"host": "10.0.0.5", "port": 1883}
+    assert store.get_section("colosseum.metadata") == {"location": "Lab-A"}
 
 
 def test_autoconfig_export_writes_toml(
