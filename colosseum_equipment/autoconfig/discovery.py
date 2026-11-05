@@ -13,7 +13,7 @@ import contextlib
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from colosseum.config.loader import ConfigError
 
@@ -492,7 +492,7 @@ def discover_equipment_config(
 
         def _open_or_abort(baud: int, *, phase: str) -> object | None:
             try:
-                return open_probe(baud)
+                return cast("object", open_probe(baud))
             except Exception as exc:
                 last_errors.append(f"baud={baud} {phase}:{exc}")
                 if _is_hard_serial_open_error(exc):
