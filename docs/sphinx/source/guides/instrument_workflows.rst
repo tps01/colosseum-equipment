@@ -417,9 +417,11 @@ Autoconfig
 
 ``col.equipment.autoconfig()`` scans VISA ``?*INSTR`` resources and local COM
 ports, logging each assignment as it happens. Serial ports try bare ``IDN?``
-then ``*IDN?`` across common bauds. Pass ``qm=True`` / ``gnss=True`` to enable
-Fluke handheld ``QM`` or GNSS vendor probes after IDN fails (both off by
-default). FTDI / digital IO adapters are
+then ``*IDN?`` across common bauds; VISA ASRL sessions use CR termination.
+Hard ASRL open errors (for example parity) abort further baud tries on that
+port. Pass ``qm=True`` / ``gnss=True`` to enable Fluke handheld ``QM`` or GNSS
+vendor probes after IDN fails (both off by default). Unreachable TCPIP hosts
+may still need ``blacklist=``. FTDI / digital IO adapters are
 not discovered. When a config is already loaded, discovery replaces the
 ``equipment`` table only; other tables (messaging, ``io``, metadata) stay.
 To review a reusable
