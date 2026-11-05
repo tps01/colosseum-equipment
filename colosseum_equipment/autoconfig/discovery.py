@@ -488,8 +488,9 @@ def discover_equipment_config(
         open_probe: Callable[[int], Any],
     ) -> None:
         last_errors: list[str] = []
+        abort_bauds = object()
 
-        def _open_or_abort(baud: int, *, phase: str) -> Any | None:
+        def _open_or_abort(baud: int, *, phase: str) -> object | None:
             try:
                 return open_probe(baud)
             except Exception as exc:
@@ -497,13 +498,13 @@ def discover_equipment_config(
                 if _is_hard_serial_open_error(exc):
                     detail = "; ".join(last_errors)
                     _skip(label, f"probe_failed: hard_open:{exc}; {detail}")
-                    return False
+                    return abort_bauds
                 return None
 
         for baud in _IDN_BAUDS:
             log_probing(logger, label, baud=baud)
             probe = _open_or_abort(baud, phase="open")
-            if probe is False:
+            if probe is abort_bauds:
                 return
             if probe is None:
                 continue
@@ -540,7 +541,7 @@ def discover_equipment_config(
             for baud in _QM_BAUDS:
                 log_probing(logger, f"{label} QM", baud=baud)
                 probe = _open_or_abort(baud, phase="qm_open")
-                if probe is False:
+                if probe is abort_bauds:
                     return
                 if probe is None:
                     continue
@@ -572,7 +573,7 @@ def discover_equipment_config(
             for baud in _IDN_BAUDS:
                 log_probing(logger, f"{label} GNSS", baud=baud)
                 probe = _open_or_abort(baud, phase="gnss_open")
-                if probe is False:
+                if probe is abort_bauds:
                     return
                 if probe is None:
                     continue
