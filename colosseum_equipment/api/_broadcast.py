@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Literal, ParamSpec, cast
+from typing import Any, Literal, ParamSpec, cast
 
 from colosseum.config.loader import ConfigError
 from colosseum.context import get_context
@@ -70,8 +70,8 @@ def broadcastable(kind: str, id_param: str) -> Callable[[Callable[P, None]], Cal
             failures: list[tuple[int, BaseException]] = []
             for item_id in ids:
                 try:
-                    # Rebuild kwargs for the concrete id; cast keeps ParamSpec for callers.
-                    call_kwargs = cast("P.kwargs", {**dict(kwargs), id_param: item_id})
+                    # Concrete id replaces Literal["all"]; Any avoids ParamSpec component bans.
+                    call_kwargs = cast(Any, {**dict(kwargs), id_param: item_id})
                     fn(*args, **call_kwargs)
                 except BaseException as exc:
                     if isinstance(exc, (KeyboardInterrupt, SystemExit)):
