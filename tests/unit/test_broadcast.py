@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from unittest.mock import MagicMock
 
 import colosseum as col
@@ -76,6 +77,18 @@ def test_psu_numeric_id_unchanged(unit_runtime_context, monkeypatch) -> None:
     monkeypatch.setattr(psu_api, "_inst", lambda psu_id: mock)
     psu_api.set_output(psu_id=2, enabled=True)
     mock.set_output.assert_called_once_with(True, channel=1)
+
+
+def test_broadcastable_preserves_signature_and_docstring() -> None:
+    """Static tools and inspect should see the wrapped API, not **kwargs: object."""
+    params = inspect.signature(psu_api.set_output).parameters
+    # @command may append ``optional``; core params must still be present.
+    assert ["psu_id", "enabled", "channel"] == [n for n in params if n != "optional"]
+    assert params["psu_id"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert params["enabled"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert params["channel"].default == 1
+    assert psu_api.set_output.__doc__ is not None
+    assert "Enable or disable the output" in psu_api.set_output.__doc__
 
 
 def test_vsg_upload_waveform_all(tmp_path, monkeypatch) -> None:

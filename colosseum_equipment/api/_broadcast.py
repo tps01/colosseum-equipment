@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Literal, TypeVar
+from typing import Literal, ParamSpec, cast
 
 from colosseum.config.loader import ConfigError
 from colosseum.context import get_context
@@ -13,7 +13,7 @@ from colosseum.context import get_context
 from colosseum_equipment.exceptions import EquipmentError
 
 EquipmentId = int | Literal["all"]
-_F = TypeVar("_F", bound=Callable[..., None])
+P = ParamSpec("P")
 
 _logger = logging.getLogger("colosseum.equipment.broadcast")
 
@@ -46,28 +46,31 @@ def require_int_id(equipment_id: EquipmentId, *, kind: str) -> int:
     )
 
 
-def broadcastable(kind: str, id_param: str) -> Callable[[_F], _F]:
+def broadcastable(kind: str, id_param: str) -> Callable[[Callable[P, None]], Callable[P, None]]:
     """Decorator (under ``@command``) that fans out when ``id_param=\"all\"``.
 
     Continues after per-id failures and raises :class:`EquipmentError` summarizing
     which ids failed. Numeric ids call the wrapped function once unchanged.
+
+    Typed with ``ParamSpec`` so static tools keep the wrapped function's signature
+    and docstring for hover / Ctrl+Click (for example ``col.equipment.psu.set_output``).
     """
 
-    def decorate(fn: _F) -> _F:
+    def decorate(fn: Callable[P, None]) -> Callable[P, None]:
         @wraps(fn)
-        def wrapper(**kwargs: object) -> None:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
             if id_param not in kwargs:
                 raise TypeError(f"{fn.__name__} missing keyword-only argument '{id_param}'")
             equipment_id = kwargs[id_param]
             if equipment_id != "all":
-                fn(**kwargs)
+                fn(*args, **kwargs)
                 return
 
             ids = resolve_equipment_ids(kind, "all")
             failures: list[tuple[int, BaseException]] = []
             for item_id in ids:
                 try:
-                    fn(**{**kwargs, id_param: item_id})
+                    fn(*args, **{**kwargs, id_param: item_id})
                 except BaseException as exc:
                     if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                         raise
@@ -89,6 +92,6 @@ def broadcastable(kind: str, id_param: str) -> Callable[[_F], _F]:
                 + "; ".join(parts),
             )
 
-        return wrapper  # type: ignore[return-value]
+        return cast("Callable[P, None]", wrapper)
 
     return decorate
