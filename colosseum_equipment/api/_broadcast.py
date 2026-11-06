@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from functools import wraps
-from typing import Any, Literal, ParamSpec, cast
+from typing import TYPE_CHECKING, Any, Literal, ParamSpec, cast
 
 from colosseum.config.loader import ConfigError
 from colosseum.context import get_context
 
 from colosseum_equipment.exceptions import EquipmentError
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 EquipmentId = int | Literal["all"]
 P = ParamSpec("P")
@@ -71,7 +73,7 @@ def broadcastable(kind: str, id_param: str) -> Callable[[Callable[P, None]], Cal
             for item_id in ids:
                 try:
                     # Concrete id replaces Literal["all"]; Any avoids ParamSpec component bans.
-                    call_kwargs = cast(Any, {**dict(kwargs), id_param: item_id})
+                    call_kwargs = cast("Any", {**dict(kwargs), id_param: item_id})
                     fn(*args, **call_kwargs)
                 except BaseException as exc:
                     if isinstance(exc, (KeyboardInterrupt, SystemExit)):
