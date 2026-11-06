@@ -70,7 +70,9 @@ def broadcastable(kind: str, id_param: str) -> Callable[[Callable[P, None]], Cal
             failures: list[tuple[int, BaseException]] = []
             for item_id in ids:
                 try:
-                    fn(*args, **{**kwargs, id_param: item_id})
+                    # Rebuild kwargs for the concrete id; cast keeps ParamSpec for callers.
+                    call_kwargs = cast("P.kwargs", {**dict(kwargs), id_param: item_id})
+                    fn(*args, **call_kwargs)
                 except BaseException as exc:
                     if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                         raise
