@@ -6,10 +6,13 @@ from typing import Any
 from uuid import uuid4
 
 from colosseum.decorators import command
+from colosseum.logging import get_logger
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.io.connections import get_backend
+
+_logger = get_logger("colosseum.equipment")
 
 
 def _export_failed(summary: dict[str, Any]) -> bool:
@@ -36,6 +39,7 @@ def configure(
     :param sample_rate_hz: Optional I2C/SPI sample rate in hertz.
     :returns: Applied analyzer settings snapshot.
     """
+    _logger.info("Configuring analyzer %s protocol %s", analyzer_id, protocol)
     return dict(
         get_backend("analyzer", analyzer_id).configure(
             protocol=protocol, mode=mode, sample_rate_hz=sample_rate_hz,
@@ -51,6 +55,7 @@ def start(*, analyzer_id: int, path: str | None = None) -> str:
     :param path: New capture file relative to run output. Defaults to a unique name.
     :returns: Relative capture path used for this session.
     """
+    _logger.info("Starting capture on analyzer %s", analyzer_id)
     relative = path or f"captures/analyzer_{analyzer_id}_{uuid4().hex}.jsonl"
     get_backend("analyzer", analyzer_id).start(
         resolve_artifact_path(relative),
@@ -67,6 +72,7 @@ def stop(*, analyzer_id: int, timeout_s: float = 2.0) -> dict[str, Any]:
     :param timeout_s: Drain deadline in seconds after stop is requested.
     :returns: Summary including limits, detected loss, path, and stop-boundary uncertainty.
     """
+    _logger.info("Stopping capture on analyzer %s", analyzer_id)
     return dict(get_backend("analyzer", analyzer_id).stop(timeout_s))
 
 
@@ -85,6 +91,7 @@ def export(*, analyzer_id: int, path: str, key: str) -> dict[str, Any]:
     :param key: Unique evidence key within domain ``equipment``.
     :returns: Capture summary dict recorded with the artifact.
     """
+    _logger.info("Exporting capture from analyzer %s to %s", analyzer_id, path)
     artifact = resolve_artifact_path(path)
     summary = dict(get_backend("analyzer", analyzer_id).export(artifact))
     record_artifact(
@@ -104,6 +111,7 @@ def is_running(*, analyzer_id: int) -> bool:
     :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
     :returns: ``True`` while the capture worker thread is alive.
     """
+    _logger.info("Reading run state from analyzer %s", analyzer_id)
     return bool(get_backend("analyzer", analyzer_id).is_running())
 
 
@@ -113,4 +121,5 @@ def status(*, analyzer_id: int) -> dict[str, Any]:
     :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
     :returns: Status dict including ``running`` and capture counters.
     """
+    _logger.info("Reading status from analyzer %s", analyzer_id)
     return dict(get_backend("analyzer", analyzer_id).status())

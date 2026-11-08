@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -25,6 +28,7 @@ def set_path(*, rfswitch_id: EquipmentId, path: str, wait_settle_s: float | None
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting path on RF switch %s to %s", rfswitch_id, path)
     get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).set_path(path, wait_settle_s=wait_settle_s)
 
 
@@ -53,6 +57,7 @@ def set_switch(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting switch %s on RF switch %s to %s", switch, rfswitch_id, state)
     get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).set_switch(
         switch,
         state,
@@ -74,6 +79,7 @@ def wait_settle(*, rfswitch_id: int, settle_s: float | None = None) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Waiting for RF switch %s to settle", rfswitch_id)
     get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).wait_settle(settle_s=settle_s)
 
 
@@ -90,6 +96,7 @@ def preset(*, rfswitch_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Presetting RF switch %s", rfswitch_id)
     get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).preset()
 
 
@@ -109,5 +116,6 @@ def measure_path(*, rfswitch_id: int, key: str) -> str:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading path from RF switch %s", rfswitch_id)
     _ = key
     return str(get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).measure_path())

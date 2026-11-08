@@ -10,10 +10,13 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment import calibration as _cal
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 def _inst(asg_id: EquipmentId) -> Any:
@@ -49,6 +52,7 @@ def set_frequency(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting frequency on ASG %s channel %s to %s Hz", asg_id, channel, frequency)
     inst = _inst(asg_id)
     inst.set_frequency(frequency, channel=channel)
     _cal.bind_frequency(inst, frequency, channel=channel)
@@ -76,6 +80,7 @@ def set_waveform(*, asg_id: EquipmentId, waveform: str, channel: int = 1) -> Non
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting waveform on ASG %s channel %s to %s", asg_id, channel, waveform)
     _inst(asg_id).set_waveform(waveform, channel=channel)
 
 
@@ -96,6 +101,7 @@ def set_amplitude_vpp(*, asg_id: EquipmentId, vpp: float, channel: int = 1) -> N
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting amplitude on ASG %s channel %s to %s Vpp", asg_id, channel, vpp)
     _inst(asg_id).set_amplitude_vpp(vpp, channel=channel)
 
 
@@ -116,6 +122,7 @@ def set_amplitude_vrms(*, asg_id: EquipmentId, vrms: float, channel: int = 1) ->
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting amplitude on ASG %s channel %s to %s Vrms", asg_id, channel, vrms)
     _inst(asg_id).set_amplitude_vrms(vrms, channel=channel)
 
 
@@ -136,6 +143,7 @@ def set_offset_v(*, asg_id: EquipmentId, offset_v: float, channel: int = 1) -> N
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting offset on ASG %s channel %s to %s V", asg_id, channel, offset_v)
     _inst(asg_id).set_offset_v(offset_v, channel=channel)
 
 
@@ -156,6 +164,7 @@ def set_load_ohms(*, asg_id: EquipmentId, ohms: float, channel: int = 1) -> None
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting load on ASG %s channel %s to %s ohms", asg_id, channel, ohms)
     _inst(asg_id).set_load_ohms(ohms, channel=channel)
 
 
@@ -176,6 +185,7 @@ def get_load_ohms(*, asg_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading load from ASG %s channel %s", asg_id, channel)
     _ = key
     return float(_inst(asg_id).get_load_ohms(channel=channel))
 
@@ -208,6 +218,7 @@ def set_power(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting output power on ASG %s channel %s to %s dBm", asg_id, channel, power_dbm)
     inst = _inst(asg_id)
     if calibration is None:
         _cal.clear_desired_power(inst, channel=channel)
@@ -236,6 +247,7 @@ def set_duty_cycle_pct(*, asg_id: EquipmentId, pct: float, channel: int = 1) -> 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting duty cycle on ASG %s channel %s to %s %%", asg_id, channel, pct)
     _inst(asg_id).set_duty_cycle_pct(pct, channel=channel)
 
 
@@ -256,6 +268,12 @@ def set_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "%s output on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
     _inst(asg_id).set_output(enabled, channel=channel)
 
 
@@ -276,6 +294,12 @@ def set_modulation_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "%s modulation on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
     _inst(asg_id).set_modulation_state(enabled, channel=channel)
 
 
@@ -296,6 +320,12 @@ def set_burst_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "%s burst on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
     _inst(asg_id).set_burst_state(enabled, channel=channel)
 
 
@@ -316,6 +346,12 @@ def set_pulsegen_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1)
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "%s pulse generator on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
     _inst(asg_id).set_pulsegen_output(enabled, channel=channel)
 
 
@@ -336,6 +372,12 @@ def set_pulsemod_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1)
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "%s pulse modulation on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
     _inst(asg_id).set_pulsemod_output(enabled, channel=channel)
 
 
@@ -356,6 +398,7 @@ def set_pulse_period(*, asg_id: EquipmentId, period_s: float, channel: int = 1) 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting pulse period on ASG %s channel %s to %s s", asg_id, channel, period_s)
     _inst(asg_id).set_pulse_period(period_s, channel=channel)
 
 
@@ -376,4 +419,5 @@ def set_pulse_width(*, asg_id: EquipmentId, width_s: float, channel: int = 1) ->
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting pulse width on ASG %s channel %s to %s s", asg_id, channel, width_s)
     _inst(asg_id).set_pulse_width(width_s, channel=channel)

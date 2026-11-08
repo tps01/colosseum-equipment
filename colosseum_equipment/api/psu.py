@@ -5,10 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 def _inst(psu_id: EquipmentId) -> Any:
@@ -32,6 +35,7 @@ def set_voltage(*, psu_id: EquipmentId, voltage: float, channel: int = 1) -> Non
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting voltage on PSU %s channel %s to %s V", psu_id, channel, voltage)
     _inst(psu_id).set_voltage(voltage, channel=channel)
 
 
@@ -52,6 +56,7 @@ def set_current_limit(*, psu_id: EquipmentId, current: float, channel: int = 1) 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting current limit on PSU %s channel %s to %s A", psu_id, channel, current)
     _inst(psu_id).set_current_limit(current, channel=channel)
 
 
@@ -72,6 +77,7 @@ def set_output(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("%s output on PSU %s channel %s", "Enabling" if enabled else "Disabling", psu_id, channel)
     _inst(psu_id).set_output(enabled, channel=channel)
 
 
@@ -93,6 +99,7 @@ def set_ovp_v(*, psu_id: EquipmentId, voltage: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting OVP on PSU %s channel %s to %s V", psu_id, channel, voltage)
     _inst(psu_id).set_ovp_v(voltage, channel=channel)
 
 
@@ -114,6 +121,7 @@ def set_ocp_a(*, psu_id: EquipmentId, current: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting OCP on PSU %s channel %s to %s A", psu_id, channel, current)
     _inst(psu_id).set_ocp_a(current, channel=channel)
 
 
@@ -134,6 +142,7 @@ def toggle_ovp(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("%s OVP on PSU %s channel %s", "Enabling" if enabled else "Disabling", psu_id, channel)
     _inst(psu_id).toggle_ovp(enabled, channel=channel)
 
 
@@ -154,6 +163,7 @@ def toggle_ocp(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("%s OCP on PSU %s channel %s", "Enabling" if enabled else "Disabling", psu_id, channel)
     _inst(psu_id).toggle_ocp(enabled, channel=channel)
 
 
@@ -173,6 +183,7 @@ def clear_protection(*, psu_id: EquipmentId, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Clearing protection on PSU %s channel %s", psu_id, channel)
     _inst(psu_id).clear_protection(channel=channel)
 
 
@@ -193,6 +204,7 @@ def set_remote_sense(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) ->
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("%s remote sense on PSU %s channel %s", "Enabling" if enabled else "Disabling", psu_id, channel)
     _inst(psu_id).set_remote_sense(enabled, channel=channel)
 
 
@@ -214,6 +226,7 @@ def set_slew_voltage(*, psu_id: EquipmentId, volts_per_s: float, channel: int = 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting voltage slew on PSU %s channel %s to %s V/s", psu_id, channel, volts_per_s)
     _inst(psu_id).set_slew_voltage(volts_per_s, channel=channel)
 
 
@@ -235,6 +248,7 @@ def set_slew_current(*, psu_id: EquipmentId, amps_per_s: float, channel: int = 1
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting current slew on PSU %s channel %s to %s A/s", psu_id, channel, amps_per_s)
     _inst(psu_id).set_slew_current(amps_per_s, channel=channel)
 
 
@@ -256,6 +270,7 @@ def set_tracking_mode(*, psu_id: EquipmentId, mode: str, channel: int = 1) -> No
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting tracking mode on PSU %s channel %s to %s", psu_id, channel, mode)
     _inst(psu_id).set_tracking_mode(mode, channel=channel)
 
 
@@ -286,6 +301,7 @@ def wait_for_current(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Waiting for current on PSU %s channel %s to reach %s A", psu_id, channel, current)
     _inst(psu_id).wait_for_current(
         current,
         timeout_s=timeout_s,
@@ -322,6 +338,7 @@ def wait_for_voltage(
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Waiting for voltage on PSU %s channel %s to reach %s V", psu_id, channel, voltage)
     _inst(psu_id).wait_for_voltage(
         voltage,
         timeout_s=timeout_s,
@@ -347,6 +364,7 @@ def get_voltage(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading voltage setpoint from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).get_voltage(channel=channel))
 
@@ -371,6 +389,7 @@ def get_current_limit(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading current limit from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).get_current_limit(channel=channel))
 
@@ -399,6 +418,7 @@ def get_output(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading output state from PSU %s channel %s", psu_id, channel)
     _ = key
     enabled = _inst(psu_id).get_output(channel=channel)
     return 1.0 if enabled else 0.0
@@ -428,6 +448,7 @@ def get_ovp_v(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading OVP from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).get_ovp_v(channel=channel))
 
@@ -449,6 +470,7 @@ def get_ocp_a(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading OCP from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).get_ocp_a(channel=channel))
 
@@ -470,6 +492,7 @@ def get_ovp_enabled(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading OVP enable from PSU %s channel %s", psu_id, channel)
     _ = key
     return 1.0 if _inst(psu_id).get_ovp_enabled(channel=channel) else 0.0
 
@@ -491,6 +514,7 @@ def get_ocp_enabled(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading OCP enable from PSU %s channel %s", psu_id, channel)
     _ = key
     return 1.0 if _inst(psu_id).get_ocp_enabled(channel=channel) else 0.0
 
@@ -512,6 +536,7 @@ def get_regulation_mode(*, psu_id: int, channel: int = 1, key: str) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading regulation mode from PSU %s channel %s", psu_id, channel)
     _ = key
     return str(_inst(psu_id).get_regulation_mode(channel=channel))
 
@@ -533,6 +558,7 @@ def get_fault_status(*, psu_id: int, channel: int = 1, key: str) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading fault status from PSU %s channel %s", psu_id, channel)
     _ = key
     return str(_inst(psu_id).get_fault_status(channel=channel))
 
@@ -555,6 +581,7 @@ def measure_voltage(*, psu_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading voltage from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).measure_voltage(channel=channel))
 
@@ -580,6 +607,7 @@ def measure_current(*, psu_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading current from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).measure_current(channel=channel))
 
@@ -604,6 +632,7 @@ def measure_power_w(*, psu_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading power from PSU %s channel %s", psu_id, channel)
     _ = key
     return float(_inst(psu_id).measure_power_w(channel=channel))
 
@@ -629,6 +658,7 @@ def measure_output_state(*, psu_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading output state from PSU %s channel %s", psu_id, channel)
     _ = key
     enabled = _inst(psu_id).measure_output_state(channel=channel)
     return 1.0 if enabled else 0.0

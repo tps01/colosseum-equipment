@@ -5,9 +5,12 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.io._pins import resolve_pin_line
 from colosseum_equipment.io.connections import get_backend, get_config
+
+_logger = get_logger("colosseum.equipment")
 
 PullMode = Literal["up", "down", "float"]
 
@@ -26,6 +29,7 @@ def configure(*, dio_id: int, direction: int, initial: int | None = None) -> dic
     :raises IoConfigError: Invalid direction/value for the configured port.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Configuring DIO %s direction %s", dio_id, direction)
     return dict(get_backend("dio", dio_id).configure(direction, initial=initial))
 
 
@@ -41,6 +45,7 @@ def configure_pin(*, dio_id: int, line: int, output: bool) -> None:
     :raises IoConfigError: Line out of range or invalid for this backend.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Configuring DIO %s line %s as %s", dio_id, line, "output" if output else "input")
     get_backend("dio", dio_id).configure_pin(line, output)
 
 
@@ -55,6 +60,7 @@ def set_pull(*, dio_id: int, line: int, pull: PullMode) -> None:
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting pull on DIO %s line %s to %s", dio_id, line, pull)
     get_backend("dio", dio_id).set_pull(line, pull)
 
 
@@ -70,6 +76,7 @@ def write_port(*, dio_id: int, value: int) -> None:
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Value has illegal bits for the current direction.
     """
+    _logger.info("Writing %s to DIO %s port", value, dio_id)
     get_backend("dio", dio_id).write_port(value)
 
 
@@ -84,6 +91,7 @@ def read_port(*, dio_id: int, key: str) -> int:
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
+    _logger.info("Reading DIO %s port", dio_id)
     _ = key
     return int(get_backend("dio", dio_id).read_port())
 
@@ -106,6 +114,12 @@ def write_pin(
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Line is not an output or is out of range.
     """
+    _logger.info(
+        "Writing %s to DIO %s line %s",
+        "high" if value else "low",
+        dio_id,
+        name if name is not None else line,
+    )
     resolved = resolve_pin_line(get_config("dio", dio_id), line=line, name=name)
     get_backend("dio", dio_id).write_pin(resolved, value)
 
@@ -129,6 +143,7 @@ def read_pin(
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
+    _logger.info("Reading DIO %s line %s", dio_id, name if name is not None else line)
     _ = key
     resolved = resolve_pin_line(get_config("dio", dio_id), line=line, name=name)
     return bool(get_backend("dio", dio_id).read_pin(resolved))

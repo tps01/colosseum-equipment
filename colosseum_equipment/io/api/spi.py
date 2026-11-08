@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.io.connections import get_backend
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -30,6 +33,13 @@ def configure(
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Invalid clock/mode/CS for the configured model.
     """
+    _logger.info(
+        "Configuring SPI %s clock %s Hz mode %s chip select %s",
+        spi_id,
+        clock_hz,
+        mode,
+        chip_select,
+    )
     return dict(
         get_backend("spi", spi_id).configure(
             clock_hz=clock_hz,
@@ -55,5 +65,6 @@ def transfer(*, spi_id: int, data: bytes, key: str) -> bytes:
     :raises IoConnectionError: Transport failure or incomplete transfer.
     :raises IoConfigError: Payload rejected by the configured model limits.
     """
+    _logger.info("Transferring %s bytes on SPI %s", len(data), spi_id)
     _ = key
     return bytes(get_backend("spi", spi_id).transfer(bytes(data)))
