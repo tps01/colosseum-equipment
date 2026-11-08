@@ -12,10 +12,13 @@ from colosseum.config.loader import (
     default_test_name,
 )
 from colosseum.context import apply_no_artifacts, get_context, init_context
+from colosseum.logging import get_logger
 from colosseum.logging.setup import setup_logging
 
 from colosseum_equipment.autoconfig.discovery import discover_equipment_config
 from colosseum_equipment.autoconfig.toml_write import TomlWriteError, write_config_toml
+
+_logger = get_logger("colosseum.equipment")
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -83,6 +86,7 @@ def autoconfig(
     :raises ConfigError: When PyVISA is unavailable, no resources are found, or none classify.
     :raises RuntimeError: When ``no_artifacts`` is set after runtime bootstrap.
     """
+    _logger.info("Scanning VISA and serial ports for equipment")
     try:
         ctx = get_context()
     except RuntimeError:

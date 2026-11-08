@@ -5,10 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 def _inst(freqcounter_id: EquipmentId) -> Any:
@@ -30,6 +33,7 @@ def set_gate_time(*, freqcounter_id: EquipmentId, seconds: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Setting gate time on frequency counter %s to %s s", freqcounter_id, seconds)
     _inst(freqcounter_id).set_gate_time(seconds)
 
 
@@ -50,6 +54,12 @@ def set_coupling(*, freqcounter_id: EquipmentId, coupling: str, channel: int = 1
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting coupling on frequency counter %s channel %s to %s",
+        freqcounter_id,
+        channel,
+        coupling,
+    )
     _inst(freqcounter_id).set_coupling(coupling, channel=channel)
 
 
@@ -70,6 +80,12 @@ def set_impedance(*, freqcounter_id: EquipmentId, ohms: float, channel: int = 1)
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting impedance on frequency counter %s channel %s to %s ohms",
+        freqcounter_id,
+        channel,
+        ohms,
+    )
     _inst(freqcounter_id).set_impedance(ohms, channel=channel)
 
 
@@ -90,6 +106,12 @@ def set_attenuation(*, freqcounter_id: EquipmentId, attenuation_db: float, chann
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting attenuation on frequency counter %s channel %s to %s dB",
+        freqcounter_id,
+        channel,
+        attenuation_db,
+    )
     _inst(freqcounter_id).set_attenuation(attenuation_db, channel=channel)
 
 
@@ -110,6 +132,12 @@ def set_trigger_level_v(*, freqcounter_id: EquipmentId, level_v: float, channel:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting trigger level on frequency counter %s channel %s to %s V",
+        freqcounter_id,
+        channel,
+        level_v,
+    )
     _inst(freqcounter_id).set_trigger_level_v(level_v, channel=channel)
 
 
@@ -126,6 +154,7 @@ def preset(*, freqcounter_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Presetting frequency counter %s", freqcounter_id)
     _inst(freqcounter_id).preset()
 
 
@@ -147,6 +176,7 @@ def measure_frequency(*, freqcounter_id: int, channel: int = 1, key: str) -> flo
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading frequency from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
     return float(_inst(freqcounter_id).measure_frequency(channel=channel))
 
@@ -177,6 +207,7 @@ def measure_period(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading period from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
     return float(_inst(freqcounter_id).measure_period(channel=channel))
 
@@ -198,6 +229,11 @@ def measure_time_interval_s(*, freqcounter_id: int, channel: int = 1, key: str) 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Reading time interval from frequency counter %s channel %s",
+        freqcounter_id,
+        channel,
+    )
     _ = key
     return float(_inst(freqcounter_id).measure_time_interval_s(channel=channel))
 
@@ -219,6 +255,7 @@ def measure_rise_time_s(*, freqcounter_id: int, channel: int = 1, key: str) -> f
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading rise time from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
     return float(_inst(freqcounter_id).measure_rise_time_s(channel=channel))
 
@@ -240,6 +277,7 @@ def measure_duty_cycle_pct(*, freqcounter_id: int, channel: int = 1, key: str) -
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading duty cycle from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
     return float(_inst(freqcounter_id).measure_duty_cycle_pct(channel=channel))
 
@@ -261,6 +299,11 @@ def measure_totalize(*, freqcounter_id: int, channel: int = 1, key: str) -> floa
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Reading totalize count from frequency counter %s channel %s",
+        freqcounter_id,
+        channel,
+    )
     _ = key
     return float(_inst(freqcounter_id).measure_totalize(channel=channel))
 
@@ -282,6 +325,11 @@ def measure_frequency_mean_hz(*, freqcounter_id: int, channel: int = 1, key: str
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Reading mean frequency from frequency counter %s channel %s",
+        freqcounter_id,
+        channel,
+    )
     _ = key
     return float(_inst(freqcounter_id).measure_frequency_mean_hz(channel=channel))
 
@@ -303,5 +351,10 @@ def measure_frequency_stdev_hz(*, freqcounter_id: int, channel: int = 1, key: st
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Reading frequency stdev from frequency counter %s channel %s",
+        freqcounter_id,
+        channel,
+    )
     _ = key
     return float(_inst(freqcounter_id).measure_frequency_stdev_hz(channel=channel))

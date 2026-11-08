@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from colosseum.logging import get_logger
+
 from colosseum_equipment.tools.mask_editor import MaskEditorCancelled, run_mask_editor
 from colosseum_equipment.tools.mask_schema import (
     list_mask_templates as _list_mask_templates,
 )
 from colosseum_equipment.tools.mask_schema import load_mask as _load_mask
 from colosseum_equipment.tools.mask_schema import save_mask as _save_mask
+
+_logger = get_logger("colosseum.equipment")
 
 __all__ = [
     "MaskEditorCancelled",
@@ -45,6 +49,7 @@ def create_mask(
     :returns: Absolute path of the saved mask file.
     :raises RuntimeError: If the user cancels (message ``mask editor cancelled``).
     """
+    _logger.info("Opening mask editor for %s masks", domain)
     saved = run_mask_editor(
         domain=domain,
         path=path,
@@ -62,6 +67,7 @@ def load_mask(*, path: str) -> dict[str, Any]:
 
     :returns: Validated, normalized mask dictionary. This helper does not record evidence.
     """
+    _logger.info("Loading mask from %s", path)
     return _load_mask(path)
 
 
@@ -76,9 +82,11 @@ def save_mask(*, path: str, mask: dict[str, Any]) -> str:
     :returns: Saved path as a string, preserving relative or absolute form. This helper does not
         record evidence.
     """
+    _logger.info("Saving mask to %s", path)
     return str(_save_mask(path, mask))
 
 
 def list_mask_templates() -> list[str]:
     """Return built-in mask template ids."""
+    _logger.info("Listing built-in mask templates")
     return _list_mask_templates()

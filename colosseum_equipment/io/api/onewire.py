@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.io.connections import get_backend
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -17,6 +20,7 @@ def configure(*, onewire_id: int, speed: str | None = None) -> dict[str, Any]:
     :param speed: Optional bus speed (``standard`` or ``overdrive``).
     :returns: Applied settings snapshot (port, baudrate, speed, driver).
     """
+    _logger.info("Configuring 1-Wire %s speed %s", onewire_id, speed)
     return dict(get_backend("onewire", onewire_id).configure(speed=speed))
 
 
@@ -28,6 +32,7 @@ def reset(*, onewire_id: int, required: bool = False) -> bool:
     :param required: When ``True``, raise if no slave presence is detected.
     :returns: ``True`` when a presence pulse was detected.
     """
+    _logger.info("Resetting 1-Wire %s", onewire_id)
     return bool(get_backend("onewire", onewire_id).reset(required=required))
 
 
@@ -39,6 +44,7 @@ def search(*, onewire_id: int, key: str) -> list[str]:
     :param key: Unique measurement key within domain ``equipment``.
     :returns: List of 8-byte ROM ids as uppercase hex.
     """
+    _logger.info("Searching 1-Wire %s for devices", onewire_id)
     _ = key
     return list(get_backend("onewire", onewire_id).search())
 
@@ -50,6 +56,7 @@ def select(*, onewire_id: int, rom: str | None = None) -> None:
     :param onewire_id: Configured ``io.onewire`` id from config TOML.
     :param rom: Optional ROM hex string; omit for SKIP ROM on a single-drop bus.
     """
+    _logger.info("Selecting 1-Wire %s ROM %s", onewire_id, rom)
     get_backend("onewire", onewire_id).select(rom)
 
 
@@ -60,6 +67,7 @@ def write(*, onewire_id: int, data: bytes) -> None:
     :param onewire_id: Configured ``io.onewire`` id from config TOML.
     :param data: Bytes to write on the bus.
     """
+    _logger.info("Writing %s bytes to 1-Wire %s", len(data), onewire_id)
     get_backend("onewire", onewire_id).write(bytes(data))
 
 
@@ -72,6 +80,7 @@ def read(*, onewire_id: int, nbytes: int, key: str) -> bytes:
     :param key: Unique measurement key within domain ``equipment``.
     :returns: Bytes read from the bus.
     """
+    _logger.info("Reading %s bytes from 1-Wire %s", nbytes, onewire_id)
     _ = key
     return bytes(get_backend("onewire", onewire_id).read(nbytes))
 
@@ -86,6 +95,12 @@ def write_read(*, onewire_id: int, write_data: bytes, read_nbytes: int, key: str
     :param key: Unique measurement key within domain ``equipment``.
     :returns: Bytes read from the bus.
     """
+    _logger.info(
+        "Writing %s bytes and reading %s bytes on 1-Wire %s",
+        len(write_data),
+        read_nbytes,
+        onewire_id,
+    )
     _ = key
     return bytes(
         get_backend("onewire", onewire_id).write_read(bytes(write_data), read_nbytes),
