@@ -37,3 +37,28 @@ jobs:
         run: |
           ruff check colosseum_equipment
           mypy
+
+  # Confirm the API pages build. Publishing stays on the develop pages workflow.
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Checkout core dependency
+        uses: actions/checkout@v7
+        with:
+          repository: tps01/colosseum-core
+          ref: develop
+          path: .deps/colosseum-core
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+          python -m pip install -U pip setuptools wheel
+          python -m pip install "sphinx>=7.0,<9"
+          python -m pip install -e .deps/colosseum-core
+          python -m pip install -r requirements.txt
+      - name: Build documentation
+        run: python scripts/build_pages.py
