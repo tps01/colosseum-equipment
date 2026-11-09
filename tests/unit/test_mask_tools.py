@@ -506,3 +506,14 @@ def test_template_json_files_are_valid() -> None:
     for path in sorted(root.glob("*.json")):
         raw = json.loads(path.read_text(encoding="utf-8"))
         validate_mask(raw)
+
+
+@pytest.mark.parametrize("version", [None, [], {}, "bad", float("inf")])
+def test_validate_mask_invalid_version_has_schema_error(version):
+    with pytest.raises(MaskSchemaError):
+        validate_mask(_freq_mask(version=version))
+
+
+def test_validate_mask_oversized_numeric_field_has_schema_error():
+    with pytest.raises(MaskSchemaError):
+        validate_mask(_freq_mask(setup={"span_hz": 10 ** 400}))

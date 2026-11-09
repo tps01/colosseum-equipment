@@ -1,0 +1,17 @@
+services:
+  scpi-fuzz: &fuzz
+    image: colosseum-equipment-fuzz:local
+    platform: linux/amd64
+    build:
+      context: ../../../..
+      dockerfile: colosseum-equipment/tests/fixtures/fuzz/Dockerfile
+    volumes:
+      - ../../../.fuzz-work:/work
+  ubx-fuzz:
+    <<: *fuzz
+    environment:
+      FUZZ_TARGET: ubx_stream
+  mask-fuzz:
+    <<: *fuzz
+    environment:
+      FUZZ_TARGET: mask_validation

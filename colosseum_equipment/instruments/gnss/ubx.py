@@ -423,8 +423,11 @@ class UbxStreamParser:
             if not self._buf:
                 break
             if self._buf[0] == 0xB5:
+                before = len(self._buf)
                 frame = self._take_ubx()
                 if frame is None:
+                    if len(self._buf) < before:
+                        continue
                     break
                 events.append(("ubx", frame))
                 continue

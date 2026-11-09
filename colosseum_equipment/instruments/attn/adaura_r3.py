@@ -5,15 +5,24 @@ Manual: AdauraTech Attenuator Manual R3 — ``SET [Ch] [Atten]``, ``STATUS``.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments._settle import wait_settle_s
-from colosseum_equipment.instruments._text_protocol import parse_adaura_status_channel
 from colosseum_equipment.instruments.registry import instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
+
+
+def parse_adaura_status_channel(response: str, channel: int) -> float:
+    """Parse ``STATUS`` output line ``Channel N: <dB>``."""
+    pattern = re.compile(rf"Channel\s+{channel}\s*:\s*([0-9.+-]+)", re.IGNORECASE)
+    match = pattern.search(response)
+    if not match:
+        raise ValueError(f"channel {channel} not found in STATUS response: {response!r}")
+    return float(match.group(1))
 
 
 @instrument_model(
