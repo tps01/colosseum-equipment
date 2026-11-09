@@ -570,3 +570,18 @@ def test_save_plots_via_instrument(unit_runtime_context) -> None:
     assert track.is_file()
     assert sky.is_file()
     assert quality.is_file()
+
+
+def test_ubx_recovers_after_corrupt_frame_in_same_chunk():
+    from colosseum_equipment.instruments.gnss.ubx import UbxStreamParser, build_ubx
+
+    frame = build_ubx(1, 7, b"abc")
+    corrupt = frame[:-1] + bytes([frame[-1] ^ 1])
+    assert UbxStreamParser().feed(corrupt + frame) == [("ubx", (1, 7, b"abc"))]
+
+
+def test_ubx_recovers_after_invalid_sync_in_same_chunk():
+    from colosseum_equipment.instruments.gnss.ubx import UbxStreamParser, build_ubx
+
+    frame = build_ubx(1, 7, b"abc")
+    assert UbxStreamParser().feed(b"\xb5x" + frame) == [("ubx", (1, 7, b"abc"))]

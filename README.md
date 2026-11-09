@@ -94,3 +94,6 @@ mypy
 ```
 
 Historical feature notes: [documentation history](https://tps01.github.io/colosseum-equipment/guides/documentation-history.html).
+
+For bounded SCPI parser fuzzing in Linux CI or Docker Desktop on Windows, see
+[the fuzz fixture instructions](tests/fixtures/fuzz/README.md).

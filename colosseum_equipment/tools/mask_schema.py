@@ -22,7 +22,7 @@ class MaskSchemaError(ValueError):
 def _as_float(value: object, field: str) -> float:
     try:
         return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise MaskSchemaError(f"{field} must be a number") from exc
 
 
@@ -31,7 +31,11 @@ def validate_mask(mask: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(mask, dict):
         raise MaskSchemaError("mask must be a JSON object")
     version = mask.get("version", 1)
-    if int(version) != 1:
+    try:
+        version_number = int(version)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise MaskSchemaError(f"invalid mask version {version!r}") from exc
+    if version_number != 1:
         raise MaskSchemaError(f"unsupported mask version {version!r} (expected 1)")
     domain = str(mask.get("domain", "")).strip().lower()
     if domain not in DOMAINS:

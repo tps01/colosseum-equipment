@@ -13,10 +13,6 @@ if TYPE_CHECKING:
 _logger = get_logger("colosseum.equipment")
 
 
-def strip_response(text: str) -> str:
-    return text.strip()
-
-
 def parse_float(text: str) -> float:
     match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", text)
     if not match:
@@ -60,7 +56,7 @@ class SCPIHelper:
 
     def query(self, command: str) -> str:
         _logger.debug("SCPI query: %s", command)
-        response = strip_response(self._transport.query(command))
+        response = self._transport.query(command).strip()
         _logger.debug("SCPI response: %s", response[:200] + ("..." if len(response) > 200 else ""))
         return response
 
@@ -167,11 +163,3 @@ def wait_opc(scpi: SCPIHelper) -> None:
 
 def prepare_fast_sweep(scpi: SCPIHelper) -> None:
     scpi.write("DISP:UPD OFF")
-
-
-def write_transport(transport: Transport, command: str) -> None:
-    transport.write(command)
-
-
-def query_transport(transport: Transport, command: str) -> str:
-    return strip_response(transport.query(command))
