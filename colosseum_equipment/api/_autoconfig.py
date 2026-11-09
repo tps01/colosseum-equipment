@@ -49,6 +49,7 @@ def autoconfig(
     no_artifacts: bool = False,
     qm: bool = False,
     gnss: bool = False,
+    gpib_scan: bool = False,
 ) -> ConfigStore:
     """Scan VISA ``?*INSTR`` and serial COM ports; build equipment config.
 
@@ -56,8 +57,10 @@ def autoconfig(
     needed, then ``*IDN?`` across common bauds. VISA ASRL sessions enable CR
     termination. Hard ASRL open errors abort further baud tries on that port.
     Fluke handheld ``QM`` and GNSS vendor probes are off by default; pass
-    ``qm=True`` / ``gnss=True`` to enable them after IDN fails. FTDI adapters are
-    not discovered.
+    ``qm=True`` / ``gnss=True`` to enable them after IDN fails. Pass
+    ``gpib_scan=True`` to probe ``GPIB0`` primary addresses ``0``–``30`` when
+    ``list_resources`` returned no GPIB names but a linux-gpib board appears
+    present. FTDI adapters are not discovered.
 
     When a config is already loaded, discovered ``equipment`` replaces that table
     only. Other top-level tables (for example messaging, ``io``,
@@ -79,6 +82,9 @@ def autoconfig(
     :type qm: bool, optional
     :param gnss: When ``True``, run GNSS vendor probes after IDN (and QM if enabled) miss.
     :type gnss: bool, optional
+    :param gpib_scan: When ``True``, sweep ``GPIB0::<pad>::INSTR`` for pads ``0``–``30``
+        if enumeration listed no GPIB resources but board ``0`` looks present.
+    :type gpib_scan: bool, optional
 
     :returns: Normalized configuration store for discovered equipment.
     :rtype: ConfigStore
@@ -108,6 +114,7 @@ def autoconfig(
         logger=ctx.logger,
         qm=qm,
         gnss=gnss,
+        gpib_scan=gpib_scan,
     )
     raw = _raw_with_discovered_equipment(ctx, result.raw)
     store = apply_raw_config(ctx, raw, source_label="(autoconfig)")

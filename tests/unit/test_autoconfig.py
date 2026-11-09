@@ -247,6 +247,20 @@ def _discover(rm: _FakeResourceManager, **kwargs: object) -> object:
     return discover_equipment_config(resource_manager=rm, timeout=1.0, **kwargs)  # type: ignore[arg-type]
 
 
+class _FakeUsbtmcTransport:
+    def __init__(self, path: str, *, timeout: float = 5.0) -> None:
+        self.path = path
+        self.timeout = timeout
+        self.closed = False
+
+    def query(self, command: str) -> str:
+        _ = command
+        return "BK PRECISION,9115,1,1"
+
+    def close(self) -> None:
+        self.closed = True
+
+
 def test_discover_assigns_ids_by_connection_order() -> None:
     rm = _FakeResourceManager(
         {
@@ -715,3 +729,77 @@ def test_autoconfig_export_writes_toml(
     assert row["model"] == "keysight-edu34450a"
     metadata = {row.key: row.value for row in ctx.db.fetch_run_metadata()}
     assert metadata["config_export_path"] == str(export_path.resolve())
+
+
+def test_discover_probes_usbtmc_without_visa_open(monkeypatch) -> None:
+    opened: list[_FakeUsbtmcTransport] = []
+
+    def _open(path: str, *, timeout: float = 5.0) -> _FakeUsbtmcTransport:
+        transport = _FakeUsbtmcTransport(path, timeout=timeout)
+        opened.append(transport)
+        return transport
+
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.discovery.list_usbtmc_devices",
+        lambda: ["/dev/usbtmc0"],
+    )
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.discovery.UsbtmcTransport",
+        _open,
+    )
+    rm = _FakeResourceManager({})
+    result = _discover(rm)
+    assert result.raw["equipment"]["psu"][0]["resource"] == "/dev/usbtmc0"
+    assert result.raw["equipment"]["psu"][0]["model"] == "bk-9115"
+    assert rm.opened == []
+    assert opened and opened[0].closed
+
+
+class _HiddenGpibResourceManager(_FakeResourceManager):
+    """Board present but ``list_resources`` omits GPIB listeners."""
+
+    def list_resources(self, query: str) -> tuple[str, ...]:
+        _ = query
+        return ()
+
+
+def test_gpib_scan_finds_hidden_primary_address() -> None:
+    rm = _HiddenGpibResourceManager(
+        {"GPIB0::4::INSTR": "TDK-Lambda,GENESYS-28-80,1,1"},
+    )
+    result = _discover(rm, gpib_scan=True, gpib_board_present=lambda: True)
+    assert result.raw["equipment"]["psu"][0]["resource"] == "GPIB0::4::INSTR"
+    assert result.raw["equipment"]["psu"][0]["model"] == "tdk-genesys"
+
+
+def test_gpib_scan_off_does_not_sweep_addresses() -> None:
+    rm = _HiddenGpibResourceManager(
+        {"GPIB0::4::INSTR": "TDK-Lambda,GENESYS-28-80,1,1"},
+    )
+    with pytest.raises(ConfigError, match="no classifiable instruments"):
+        _discover(rm, gpib_scan=False, gpib_board_present=lambda: True)
+
+
+def test_gpib_scan_skips_quietly_without_board() -> None:
+    rm = _HiddenGpibResourceManager(
+        {"GPIB0::4::INSTR": "TDK-Lambda,GENESYS-28-80,1,1"},
+    )
+    with pytest.raises(ConfigError, match="no classifiable instruments"):
+        _discover(rm, gpib_scan=True, gpib_board_present=lambda: False)
+
+
+def test_gpib_scan_skipped_when_list_resources_already_has_gpib() -> None:
+    rm = _FakeResourceManager(
+        {"GPIB0::1::INSTR": "Keysight Technologies,EDU34450A,1,1"},
+    )
+    probes: list[str] = []
+    original_open = rm.open_resource
+
+    def _tracking_open(resource: str, **kwargs: object) -> object:
+        probes.append(resource)
+        return original_open(resource, **kwargs)
+
+    rm.open_resource = _tracking_open  # type: ignore[method-assign]
+    result = _discover(rm, gpib_scan=True, gpib_board_present=lambda: True)
+    assert result.raw["equipment"]["dmm"][0]["resource"] == "GPIB0::1::INSTR"
+    assert probes == ["GPIB0::1::INSTR"]

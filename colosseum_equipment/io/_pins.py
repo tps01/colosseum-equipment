@@ -7,6 +7,14 @@ from typing import Any
 from colosseum_equipment.io.exceptions import IoConfigError
 
 
+def _require_integral_line(value: object, *, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise IoConfigError(f"{field} must be an integral line number")
+    if isinstance(value, float) and not value.is_integer():
+        raise IoConfigError(f"{field} must be an integral line number")
+    return int(value)
+
+
 def resolve_pin_line(
     config: dict[str, Any],
     *,
@@ -21,7 +29,7 @@ def resolve_pin_line(
             raise IoConfigError("named pins require a `pins` map in io.dio config")
         if name not in pins:
             raise IoConfigError(f"unknown pin name {name!r}")
-        return int(pins[name])
+        return _require_integral_line(pins[name], field=f"pins[{name!r}]")
     if line is None:
         raise IoConfigError("line or name is required")
-    return int(line)
+    return _require_integral_line(line, field="line")
