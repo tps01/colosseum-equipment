@@ -84,7 +84,7 @@ class FlukeHandheld(GenericDMM):
         if int(config.get("channels") or config.get("channel_count") or 1) != 1:
             raise EquipmentCapabilityError("Fluke handheld exposes one primary display")
         if not callable(getattr(transport, "write_bytes", None)) or not callable(
-            getattr(transport, "read_until", None)
+            getattr(transport, "read_until", None),
         ):
             raise EquipmentCapabilityError("Fluke QM requires a raw serial transport")
         super().__init__(transport, config)

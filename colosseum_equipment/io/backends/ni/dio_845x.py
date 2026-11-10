@@ -146,7 +146,7 @@ class Ni845xDioBackend:
     def set_pull(self, line: int, pull: str) -> None:
         _ = line, pull
         raise EquipmentCapabilityError(
-            "set_pull is not supported on ni-845x DIO; " "use col.io.i2c.set_pullup for I2C bus pull-ups",
+            "set_pull is not supported on ni-845x DIO; use col.io.i2c.set_pullup for I2C bus pull-ups",
         )
 
     def write_port(self, value: int) -> None:

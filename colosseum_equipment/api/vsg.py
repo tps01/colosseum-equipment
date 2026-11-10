@@ -533,7 +533,7 @@ def step_power(
         step_db,
     )
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).step_power(
-        start_dbm, stop_dbm, step_db, interval_s
+        start_dbm, stop_dbm, step_db, interval_s,
     )
 
 
@@ -611,7 +611,7 @@ def amplitude_sweep(
         points,
     )
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).amplitude_sweep(
-        start_dbm, stop_dbm, points, dwell_s
+        start_dbm, stop_dbm, points, dwell_s,
     )
 
 

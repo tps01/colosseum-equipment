@@ -271,7 +271,7 @@ class UbloxGnss(_BinaryGnss):
         """Read transport for a short window and collect matching UBX messages."""
         if self._logging_active():
             raise RuntimeError(
-                "gnss save_config/load_config should not run while logging; " "call stop_logging first",
+                "gnss save_config/load_config should not run while logging; call stop_logging first",
             )
         deadline = time.monotonic() + timeout_s
         found: list[tuple[int, int, bytes]] = []
@@ -411,10 +411,7 @@ class UbloxGnss(_BinaryGnss):
         out_path = resolve_artifact_path(path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         mon_line = self._save_config_mon_ver()
-        if self._is_m8_family():
-            entries = self._save_config_poll_legacy()
-        else:
-            entries = self._save_config_poll_valget()
+        entries = self._save_config_poll_legacy() if self._is_m8_family() else self._save_config_poll_valget()
         return self._save_config_write(out_path, mon_line=mon_line, entries=entries)
 
     def set_message_rate(self, message: str, rate_hz: float) -> None:

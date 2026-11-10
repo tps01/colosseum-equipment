@@ -54,14 +54,14 @@ def resolve_connection(kind: str, config: dict[str, Any]) -> tuple[str, str]:
         driver = "serial"
         if resource:
             _logger.warning(
-                "equipment.%s has port and resource with no driver; using serial port " "and ignoring resource",
+                "equipment.%s has port and resource with no driver; using serial port and ignoring resource",
                 kind,
             )
     else:
         driver = "visa"
         if port and resource:
             _logger.warning(
-                "equipment.%s has port and resource with no driver; using VISA resource " "and ignoring port",
+                "equipment.%s has port and resource with no driver; using VISA resource and ignoring port",
                 kind,
             )
     address = port or resource if driver == "serial" else resource or port

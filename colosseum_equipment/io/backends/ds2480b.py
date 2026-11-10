@@ -167,7 +167,7 @@ class Ds2480bOneWireBackend:
             reply = self._read(1)
         except IoConnectionError as exc:
             raise IoConnectionError(
-                f"DS2480B detect failed on {self._port!r}; check Prolific COM driver " "and DS9481R connection",
+                f"DS2480B detect failed on {self._port!r}; check Prolific COM driver and DS9481R connection",
             ) from exc
         # Presence coding: bit 0/1 of reply encode presence; accept any reply byte.
         _ = reply

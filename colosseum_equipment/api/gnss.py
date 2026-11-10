@@ -357,7 +357,7 @@ def get_constellations_present(*, gnss_id: int, max_age_s: float = 5.0) -> list[
     _logger.info("Reading constellations from GNSS %s", gnss_id)
     return list(
         get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_constellations_present(
-            max_age_s=max_age_s
+            max_age_s=max_age_s,
         ),
     )
 
@@ -382,7 +382,7 @@ def measure_latitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float
     _logger.info("Reading latitude from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_latitude(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_latitude(max_age_s=max_age_s),
     )
 
 
@@ -406,7 +406,7 @@ def measure_longitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> floa
     _logger.info("Reading longitude from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longitude(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longitude(max_age_s=max_age_s),
     )
 
 
@@ -430,7 +430,7 @@ def measure_altitude_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     _logger.info("Reading altitude from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_altitude_m(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_altitude_m(max_age_s=max_age_s),
     )
 
 
@@ -455,7 +455,7 @@ def measure_fix_quality(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> fl
     _logger.info("Reading fix quality from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_quality(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_quality(max_age_s=max_age_s),
     )
 
 
@@ -479,7 +479,7 @@ def measure_satellites(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     _logger.info("Reading satellites used from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites(max_age_s=max_age_s),
     )
 
 
@@ -507,7 +507,7 @@ def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0
     _ = key
     return float(
         get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites_visible(
-            max_age_s=max_age_s
+            max_age_s=max_age_s,
         ),
     )
 
@@ -638,7 +638,7 @@ def measure_max_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> f
     _logger.info("Reading max C/N0 from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_max_cn0_dbhz(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_max_cn0_dbhz(max_age_s=max_age_s),
     )
 
 
@@ -669,7 +669,7 @@ def measure_mean_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> 
     _logger.info("Reading mean C/N0 from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_mean_cn0_dbhz(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_mean_cn0_dbhz(max_age_s=max_age_s),
     )
 
 
@@ -738,7 +738,7 @@ def measure_speed_m_s(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> floa
     _logger.info("Reading speed from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_speed_m_s(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_speed_m_s(max_age_s=max_age_s),
     )
 
 
@@ -762,7 +762,7 @@ def measure_course_deg(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     _logger.info("Reading course from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_course_deg(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_course_deg(max_age_s=max_age_s),
     )
 
 
@@ -786,7 +786,7 @@ def measure_h_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     _logger.info("Reading horizontal accuracy from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_h_acc_m(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_h_acc_m(max_age_s=max_age_s),
     )
 
 
@@ -813,7 +813,7 @@ def measure_v_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     _logger.info("Reading vertical accuracy from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_v_acc_m(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_v_acc_m(max_age_s=max_age_s),
     )
 
 
@@ -841,7 +841,7 @@ def measure_geoid_separation_m(*, gnss_id: int, key: str, max_age_s: float = 5.0
     _ = key
     return float(
         get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_geoid_separation_m(
-            max_age_s=max_age_s
+            max_age_s=max_age_s,
         ),
     )
 
@@ -886,7 +886,7 @@ def measure_utc_time(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> str:
     _logger.info("Reading UTC time from GNSS %s", gnss_id)
     _ = key
     return str(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_utc_time(max_age_s=max_age_s)
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_utc_time(max_age_s=max_age_s),
     )
 
 

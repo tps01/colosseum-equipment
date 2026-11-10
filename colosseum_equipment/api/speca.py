@@ -300,7 +300,7 @@ def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> flo
     _logger.info("Reading marker frequency from SpecA %s marker %s", speca_id, marker)
     _ = key
     return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_frequency(marker)
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_frequency(marker),
     )
 
 
@@ -952,7 +952,7 @@ def set_marker_delta_reference(*, speca_id: EquipmentId, marker: int, reference_
         reference_marker,
     )
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_delta_reference(
-        marker, reference_marker
+        marker, reference_marker,
     )
 
 
@@ -973,7 +973,7 @@ def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) 
     _logger.info("Reading delta frequency from SpecA %s marker %s", speca_id, marker)
     _ = key
     return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_frequency(marker)
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_frequency(marker),
     )
 
 
@@ -994,7 +994,7 @@ def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> f
     _logger.info("Reading delta power from SpecA %s marker %s", speca_id, marker)
     _ = key
     return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_power(marker)
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_power(marker),
     )
 
 

@@ -27,7 +27,7 @@ def read_trace_csv(path: Path) -> tuple[list[float], list[float]]:
                 freq_text = (row.get("frequency_hz") or "").strip()
                 if not freq_text or not amp_text:
                     raise ValueError(
-                        f"trace CSV {path} row {row_number} must include both " "frequency_hz and amplitude",
+                        f"trace CSV {path} row {row_number} must include both frequency_hz and amplitude",
                     )
                 frequencies.append(float(freq_text))
                 amplitudes.append(float(amp_text))

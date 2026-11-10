@@ -156,7 +156,7 @@ def _best_effort(method: FunctionType, owner: type) -> Callable[..., object]:
                         "equipment",
                     )
                     _logger.warning(
-                        "%s model `%s` %s is using generic SCPI; confirm the command " "matches this instrument",
+                        "%s model `%s` %s is using generic SCPI; confirm the command matches this instrument",
                         kind_name,
                         model_name,
                         method.__name__,

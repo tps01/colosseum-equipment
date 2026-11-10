@@ -79,10 +79,7 @@ class MiniCircuitsAttn:
         settle_s: float | None = None,
     ) -> None:
         ch = self._channel(channel)
-        if ch is None:
-            cmd = f":SETATT={attenuation_db:.3f}"
-        else:
-            cmd = f":CHAN:{ch}:SETATT:{attenuation_db:.3f}"
+        cmd = f":SETATT={attenuation_db:.3f}" if ch is None else f":CHAN:{ch}:SETATT:{attenuation_db:.3f}"
         self._expect_set_status(self._transport.query(cmd), cmd)
         wait_settle_s(self._config, settle_s=settle_s)
 
@@ -95,7 +92,7 @@ class MiniCircuitsAttn:
         if ch is None:
             if len(parts) != 1:
                 raise EquipmentCapabilityError(
-                    f"{self._model} ATT? returned {len(parts)} channels; " "pass channel= for multi-channel models",
+                    f"{self._model} ATT? returned {len(parts)} channels; pass channel= for multi-channel models",
                 )
             return float(parts[0])
         if ch < 1 or ch > len(parts):

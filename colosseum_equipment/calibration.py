@@ -295,7 +295,7 @@ def _pick_field(fields: dict[str, str], candidates: tuple[str, ...]) -> str:
         if name in fields:
             return fields[name]
     raise CalibrationError(
-        "calibration table needs a frequency column and a loss/value column " f"(have {sorted(fields)})",
+        f"calibration table needs a frequency column and a loss/value column (have {sorted(fields)})",
     )
 
 

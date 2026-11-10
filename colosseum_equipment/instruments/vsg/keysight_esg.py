@@ -130,7 +130,7 @@ class KeysightESGVSG(GenericVSG):
                     self._model,
                     "set_modulation",
                     detail=(
-                        f"modulation type {modulation_type!r} is not programmed; " "vector path only toggles DM:STAT"
+                        f"modulation type {modulation_type!r} is not programmed; vector path only toggles DM:STAT"
                     ),
                 )
             self._scpi.write(f"DM:STAT {1 if enabled else 0}")

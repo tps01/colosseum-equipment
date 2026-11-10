@@ -166,7 +166,7 @@ class TekNativeRtsa(GenericRtsa):
         else:
             write_iq_bin(artifact, payload)
         record_artifact(
-            domain="equipment", command="save_IQ_data", key=key or f"rtsa_iq_{record_id}", path=artifact, value=metadata
+            domain="equipment", command="save_IQ_data", key=key or f"rtsa_iq_{record_id}", path=artifact, value=metadata,
         )
         return artifact
 

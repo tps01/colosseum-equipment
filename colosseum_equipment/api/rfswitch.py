@@ -30,7 +30,7 @@ def set_path(*, rfswitch_id: EquipmentId, path: str, wait_settle_s: float | None
     """
     _logger.info("Setting path on RF switch %s to %s", rfswitch_id, path)
     get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).set_path(
-        path, wait_settle_s=wait_settle_s
+        path, wait_settle_s=wait_settle_s,
     )
 
 

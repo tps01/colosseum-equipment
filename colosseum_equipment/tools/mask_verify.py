@@ -128,7 +128,7 @@ def _evaluate_region(
 
 def _violation_message(first_violation: MaskViolation, reported: int) -> str:
     if reported == 0:
-        return f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed " f"(violations suppressed)"
+        return f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed (violations suppressed)"
     extra = f" (+{reported - 1} more)" if reported > 1 else ""
     return (
         f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed at "
@@ -195,7 +195,7 @@ def evaluate_mask_file(trace_csv: Path, mask: dict[str, Any]) -> MaskEvalResult:
     mask_domain = str(mask.get("domain", "")).strip().lower()
     if mask_domain and domain_hint != mask_domain:
         raise ValueError(
-            f"mask domain {mask_domain!r} does not match trace domain {domain_hint!r} " f"in {trace_csv}",
+            f"mask domain {mask_domain!r} does not match trace domain {domain_hint!r} in {trace_csv}",
         )
     return evaluate_mask(xs, ys, mask)
 

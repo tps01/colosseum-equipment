@@ -51,7 +51,7 @@ class Keysight33250A(GenericASG):
     def set_waveform(self, waveform: str, *, channel: int = 1) -> None:
         self._require_channel(channel)
         token = {"sine": "SIN", "square": "SQU", "ramp": "RAMP", "pulse": "PULS", "noise": "NOIS", "dc": "DC"}.get(
-            waveform.lower()
+            waveform.lower(),
         )
         if token is None:
             raise EquipmentCapabilityError(f"unsupported standard waveform {waveform!r}")

@@ -23,7 +23,7 @@ def preset(*, phasenoiseanalyzer_id: EquipmentId) -> None:
     """
     _logger.info("Presetting phase noise analyzer %s", phasenoiseanalyzer_id)
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).preset()
 
 
@@ -45,7 +45,7 @@ def set_carrier_frequency_hz(*, phasenoiseanalyzer_id: EquipmentId, frequency_hz
         frequency_hz,
     )
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).set_carrier_frequency_hz(
         frequency_hz,
     )
@@ -69,7 +69,7 @@ def set_offset_start_hz(*, phasenoiseanalyzer_id: EquipmentId, offset_hz: float)
         offset_hz,
     )
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).set_offset_start_hz(
         offset_hz,
     )
@@ -93,7 +93,7 @@ def set_offset_stop_hz(*, phasenoiseanalyzer_id: EquipmentId, offset_hz: float) 
         offset_hz,
     )
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).set_offset_stop_hz(
         offset_hz,
     )
@@ -111,7 +111,7 @@ def initiate(*, phasenoiseanalyzer_id: EquipmentId) -> None:
     """
     _logger.info("Initiating measurement on phase noise analyzer %s", phasenoiseanalyzer_id)
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).initiate()
 
 
@@ -128,7 +128,7 @@ def wait_complete(*, phasenoiseanalyzer_id: int, timeout_s: float = 120.0) -> No
     """
     _logger.info("Waiting for phase noise analyzer %s to complete", phasenoiseanalyzer_id)
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).wait_complete(
         timeout_s=timeout_s,
     )
@@ -146,7 +146,7 @@ def abort(*, phasenoiseanalyzer_id: EquipmentId) -> None:
     """
     _logger.info("Aborting phase noise analyzer %s", phasenoiseanalyzer_id)
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).abort()
 
 
@@ -168,7 +168,7 @@ def set_averaging_count(*, phasenoiseanalyzer_id: EquipmentId, count: int) -> No
         count,
     )
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).set_averaging_count(
         count,
     )
@@ -192,7 +192,7 @@ def set_xcorr_count(*, phasenoiseanalyzer_id: EquipmentId, count: int) -> None:
         count,
     )
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).set_xcorr_count(count)
 
 
@@ -215,7 +215,7 @@ def save_trace_data(*, phasenoiseanalyzer_id: int, path: str, trace: int = 1) ->
         path,
     )
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).save_trace_data(
         path,
         trace=trace,
@@ -233,7 +233,7 @@ def wait_opc(*, phasenoiseanalyzer_id: int) -> None:
     """
     _logger.info("Waiting for operation complete on phase noise analyzer %s", phasenoiseanalyzer_id)
     get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).wait_opc()
 
 
@@ -263,7 +263,7 @@ def measure_spot_noise_dbc_hz(
     )
     _ = key
     instrument = get_cached_instrument(
-        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+        "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     )
     return float(instrument.measure_spot_noise_dbc_hz(offset_hz))
 
@@ -294,7 +294,7 @@ def measure_integrated_jitter_s(
     _ = key
     return float(
         get_cached_instrument(
-            "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")
+            "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
         ).measure_integrated_jitter_s(
             start_hz=start_hz,
             stop_hz=stop_hz,

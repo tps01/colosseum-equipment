@@ -36,7 +36,7 @@ def read_trace_power_at_frequency(path: Path, target_hz: float) -> tuple[float, 
             amp_text = (row.get("amplitude_dbm") or "").strip()
             if not freq_text or not amp_text:
                 raise ValueError(
-                    f"trace CSV {path} row {row_number} must include both " "frequency_hz and amplitude_dbm",
+                    f"trace CSV {path} row {row_number} must include both frequency_hz and amplitude_dbm",
                 )
             frequencies.append(float(freq_text))
             amplitudes.append(float(amp_text))

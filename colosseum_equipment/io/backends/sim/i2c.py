@@ -58,10 +58,7 @@ class SimI2cBackend:
         key = _state_key(i2c_id)
         nack = bool(config.get("nack", False))
         read_raw = config.get("read_data", b"")
-        if isinstance(read_raw, str):
-            read_data = bytes.fromhex(read_raw.replace(" ", ""))
-        else:
-            read_data = bytes(read_raw or b"")
+        read_data = bytes.fromhex(read_raw.replace(" ", "")) if isinstance(read_raw, str) else bytes(read_raw or b"")
         if key not in state:
             backend = cls(
                 i2c_id=i2c_id,
