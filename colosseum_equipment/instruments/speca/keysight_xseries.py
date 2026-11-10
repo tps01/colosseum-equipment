@@ -3,6 +3,7 @@
 Manual: Keysight X-Series Spectrum Analyzer Measurement Application SCPI
 reference (N9060); E4440A PSA programming reference. No licensed apps assumed.
 """
+
 from __future__ import annotations
 
 import math
@@ -19,16 +20,42 @@ if TYPE_CHECKING:
 
 
 @instrument_model(
-    "speca", "keysight-n9000a", "keysight-n9010a", "keysight-n9010b", "keysight-n9020a",
-    "keysight-n9020b", "keysight-n9030a", "keysight-e4440a",
+    "speca",
+    "keysight-n9000a",
+    "keysight-n9010a",
+    "keysight-n9010b",
+    "keysight-n9020a",
+    "keysight-n9020b",
+    "keysight-n9030a",
+    "keysight-e4440a",
 )
 @supported_commands(
-    "set_center_frequency", "set_start_frequency", "set_stop_frequency", "set_span", "set_rbw",
-    "set_vbw", "set_sweep_time", "set_sweep_points", "set_detector", "set_attenuation_db",
-    "set_auto_attenuation", "set_reference_level", "toggle_marker", "peak_search",
-    "set_marker_frequency", "measure_marker_frequency", "measure_marker_power", "preset",
-    "set_continuous_sweep", "arm_sweep", "wait_complete", "abort", "single_sweep",
-    "save_trace_data", "measure_bw", "measure_trace_power_at_frequency",
+    "set_center_frequency",
+    "set_start_frequency",
+    "set_stop_frequency",
+    "set_span",
+    "set_rbw",
+    "set_vbw",
+    "set_sweep_time",
+    "set_sweep_points",
+    "set_detector",
+    "set_attenuation_db",
+    "set_auto_attenuation",
+    "set_reference_level",
+    "toggle_marker",
+    "peak_search",
+    "set_marker_frequency",
+    "measure_marker_frequency",
+    "measure_marker_power",
+    "preset",
+    "set_continuous_sweep",
+    "arm_sweep",
+    "wait_complete",
+    "abort",
+    "single_sweep",
+    "save_trace_data",
+    "measure_bw",
+    "measure_trace_power_at_frequency",
 )
 class KeysightSpectrumAnalyzer(GenericSpecA):
     """Spectrum mode only; scalar markers and linear-frequency trace CSV."""
@@ -57,7 +84,10 @@ class KeysightSpectrumAnalyzer(GenericSpecA):
         self.wait_complete(timeout_s=float(self._config.get("timeout", 60.0)))
 
     def _fetch_trace(
-        self, trace: int, *, include_frequency: bool = True,
+        self,
+        trace: int,
+        *,
+        include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
         maximum = 3 if self._model == "keysight-e4440a" else 6
         if not 1 <= trace <= maximum:
@@ -79,7 +109,9 @@ class KeysightSpectrumAnalyzer(GenericSpecA):
             raise EquipmentResponseError("invalid spectrum frequency axis")
         if span <= 0 and include_frequency:
             raise EquipmentResponseError("zero-span trace has a time axis; frequency CSV unavailable")
-        axis = frequency_axis(center, span, len(values)) if include_frequency else [float(index) for index in range(count)]
+        axis = (
+            frequency_axis(center, span, len(values)) if include_frequency else [float(index) for index in range(count)]
+        )
         return axis, values
 
     def close(self) -> None:

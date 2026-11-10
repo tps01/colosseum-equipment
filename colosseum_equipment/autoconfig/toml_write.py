@@ -8,10 +8,49 @@ from typing import Any
 
 _DEFAULT_HEADER = "# Generated configuration — review before reuse."
 _BARE_WORD = re.compile(r"^[\w.:-]+$")
+# Match core ``coerce_config_bool`` / TOML number spellings that would change type.
+_BOOLISH_STRINGS = frozenset(
+    {
+        "true",
+        "t",
+        "yes",
+        "y",
+        "1",
+        "false",
+        "f",
+        "no",
+        "n",
+        "0",
+        "on",
+        "off",
+    },
+)
 
 
 class TomlWriteError(OSError):
     """Raised when a config TOML file cannot be written."""
+
+
+def _string_needs_quotes(text: str) -> bool:
+    """Return True when a bare write would not round-trip as this string."""
+    if text.lower() in _BOOLISH_STRINGS:
+        return True
+    if text.startswith(("0x", "0o", "0b")):
+        try:
+            int(text, 0)
+            return True
+        except ValueError:
+            return False
+    if text[:1] in "+-" or text[:1].isdigit():
+        try:
+            if any(ch in text for ch in (".", "e", "E")):
+                float(text)
+                return True
+            int(text)
+            return True
+        except ValueError:
+            return False
+    return False
 
 
 def _format_toml_value(value: object) -> str:
@@ -22,10 +61,10 @@ def _format_toml_value(value: object) -> str:
     if isinstance(value, float):
         return repr(value)
     text = str(value)
-    if _BARE_WORD.match(text) and text.lower() not in ("true", "false"):
-        return text
-    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
+    if _string_needs_quotes(text) or not _BARE_WORD.match(text):
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return text
 
 
 def _format_row(row: dict[str, Any]) -> list[str]:

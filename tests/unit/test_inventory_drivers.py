@@ -1,4 +1,5 @@
 """Inventory drivers must preserve command dialect, acquisition and capability boundaries."""
+
 from __future__ import annotations
 
 import pytest
@@ -34,9 +35,14 @@ def instrument(kind, model, responses=None, **config):
 
 
 def test_dmm_range_follows_actual_function_and_fetch_does_not_rearm():
-    dmm, io = instrument("dmm", "keysight-34411a", {
-        "CONF?": '"CURR:DC +1.0E-1,+1.0E-7"', "FETC?": "0.025",
-    })
+    dmm, io = instrument(
+        "dmm",
+        "keysight-34411a",
+        {
+            "CONF?": '"CURR:DC +1.0E-1,+1.0E-7"',
+            "FETC?": "0.025",
+        },
+    )
     dmm.set_range(0.1)
     assert io.events == ["CONF?", "SENS:CURR:DC:RANG 0.1"]
     io.events.clear()
@@ -115,10 +121,18 @@ def test_53150a_selects_input_in_measurement_not_sticky_routing():
 
 
 def test_xseries_selects_application_before_initial_configuration_and_validates_trace():
-    analyzer, io = instrument("speca", "keysight-n9020a", {
-        "*OPC?": "1", "FREQ:CENT?": "1e9", "FREQ:SPAN?": "2e6",
-        "TRAC:DATA? TRACE1": "-70,-10,-70", "SWE:POIN?": "3",
-    }, center_freq=1e9)
+    analyzer, io = instrument(
+        "speca",
+        "keysight-n9020a",
+        {
+            "*OPC?": "1",
+            "FREQ:CENT?": "1e9",
+            "FREQ:SPAN?": "2e6",
+            "TRAC:DATA? TRACE1": "-70,-10,-70",
+            "SWE:POIN?": "3",
+        },
+        center_freq=1e9,
+    )
     assert io.events[:2] == ["INST:SEL SA", "FREQ:CENT 1000000000.000000"]
     axis, values = analyzer._fetch_trace(1)
     assert axis == [999e6, 1e9, 1001e6]
@@ -131,12 +145,21 @@ def test_xseries_selects_application_before_initial_configuration_and_validates_
 
 def test_vna_averages_selected_measurement_channel_and_keeps_actual_axis(tmp_path, monkeypatch):
     from pathlib import Path
+
     monkeypatch.setattr("colosseum_equipment.instruments.vna.inventory.resolve_artifact_path", Path)
     monkeypatch.setattr("colosseum_equipment.instruments.vna.inventory.record_artifact", lambda **kw: None)
-    vna, io = instrument("vna", "keysight-n5245b", {
-        "SENS2:AVER?": "1", "SENS2:AVER:COUN?": "2", "*OPC?": "1",
-        "CALC2:DATA? FDATA": "-10,-20,-30", "SENS2:X?": "1e6,2e6,10e6",
-    }, channel=2)
+    vna, io = instrument(
+        "vna",
+        "keysight-n5245b",
+        {
+            "SENS2:AVER?": "1",
+            "SENS2:AVER:COUN?": "2",
+            "*OPC?": "1",
+            "CALC2:DATA? FDATA": "-10,-20,-30",
+            "SENS2:X?": "1e6,2e6,10e6",
+        },
+        channel=2,
+    )
     path = vna.save_trace_data(str(tmp_path / "trace.csv"), parameter="S21")
     assert io.events.count("SENS2:SWE:MODE SING") == 2
     assert "INIT2:CONT OFF" not in io.events
@@ -146,10 +169,16 @@ def test_vna_averages_selected_measurement_channel_and_keeps_actual_axis(tmp_pat
 
 
 def test_vna_rejects_mismatched_axis_and_fake_touchstone(tmp_path):
-    vna, io = instrument("vna", "keysight-e5071b", {
-        "SENS1:AVER?": "0", "*OPC?": "1",
-        "CALC1:DATA:FDAT?": "-10,0,-20,0", "SENS1:FREQ:DATA?": "1,2,3",
-    })
+    vna, io = instrument(
+        "vna",
+        "keysight-e5071b",
+        {
+            "SENS1:AVER?": "0",
+            "*OPC?": "1",
+            "CALC1:DATA:FDAT?": "-10,0,-20,0",
+            "SENS1:FREQ:DATA?": "1,2,3",
+        },
+    )
     with pytest.raises(EquipmentCapabilityError):
         vna.save_trace_data(str(tmp_path / "trace.s2p"))
     assert io.events == []
@@ -185,20 +214,37 @@ def test_chroma_selects_logical_channel_and_converts_slew_units():
     load.set_mode("CC", channel=5)
     load.set_current(1.5, channel=5)
     load.set_slew_rate(2e6, channel=5)
-    assert io.events == ["CHAN 5", "MODE CCH", "CHAN 5", "CURR:STAT:L1 1.5",
-                         "CHAN 5", "CURR:STAT:RISE 2.0", "CURR:STAT:FALL 2.0"]
+    assert io.events == [
+        "CHAN 5",
+        "MODE CCH",
+        "CHAN 5",
+        "CURR:STAT:L1 1.5",
+        "CHAN 5",
+        "CURR:STAT:RISE 2.0",
+        "CURR:STAT:FALL 2.0",
+    ]
     with pytest.raises(EquipmentCapabilityError):
         load.toggle_transient(True)
     assert "INP ON" not in io.events
 
 
 def test_tds_waveform_decodes_signed_bytes_and_trigger_offset():
-    scope, io = instrument("oscope", "tektronix-tds3032b", {
-        "ACQuire:STATE?": "0", "WFMPRE:NR_PT?": "3", "WFMPRE:XINCR?": "0.1",
-        "WFMPRE:XZERO?": "1", "WFMPRE:PT_OFF?": "2", "WFMPRE:YMULT?": "0.5",
-        "WFMPRE:YOFF?": "1", "WFMPRE:YZERO?": "-1", "WFMPRE:XUNIT?": '"s"',
-        "WFMPRE:YUNIT?": '"Volts"',
-    })
+    scope, io = instrument(
+        "oscope",
+        "tektronix-tds3032b",
+        {
+            "ACQuire:STATE?": "0",
+            "WFMPRE:NR_PT?": "3",
+            "WFMPRE:XINCR?": "0.1",
+            "WFMPRE:XZERO?": "1",
+            "WFMPRE:PT_OFF?": "2",
+            "WFMPRE:YMULT?": "0.5",
+            "WFMPRE:YOFF?": "1",
+            "WFMPRE:YZERO?": "-1",
+            "WFMPRE:XUNIT?": '"s"',
+            "WFMPRE:YUNIT?": '"Volts"',
+        },
+    )
     io.read_raw = lambda: b"#13\x80\x00\x7f\n"
     volts, meta = scope._read_waveform_points(1)
     assert volts == [-65.5, -1.5, 62]
@@ -208,7 +254,9 @@ def test_tds_waveform_decodes_signed_bytes_and_trigger_offset():
 
 
 def test_infiniium_clears_stale_ader_then_latches_new_completion():
-    scope, io = instrument("oscope", "keysight-dsa71254", {"ADER?": ["1", "0", "1"], "CHAN1:UNIT?": "VOLT", "MEAS:VPP? CHAN1": "2"})
+    scope, io = instrument(
+        "oscope", "keysight-dsa71254", {"ADER?": ["1", "0", "1"], "CHAN1:UNIT?": "VOLT", "MEAS:VPP? CHAN1": "2"}
+    )
     scope.arm_single()
     assert io.events == ["STOP", "ADER?", "SING"]
     assert scope.get_acquire_state() == "RUN"
@@ -227,9 +275,15 @@ def test_rohde_interrupted_acquisition_is_not_success():
 
 
 def test_fieldfox_uses_na_mode_and_sweep_averages_without_ena_pair_decoding():
-    vna, io = instrument("vna", "keysight-n9917b", {
-        "*OPC?": "1", "SENS:AVER:COUN?": "2", "CALC:DATA:FDAT?": "-10,-20,-30",
-    })
+    vna, io = instrument(
+        "vna",
+        "keysight-n9917b",
+        {
+            "*OPC?": "1",
+            "SENS:AVER:COUN?": "2",
+            "CALC:DATA:FDAT?": "-10,-20,-30",
+        },
+    )
     assert io.events == ['INST:SEL "NA"', "*OPC?"]
     vna.single_sweep()
     assert io.events.count("INIT:IMM") == 2
@@ -282,9 +336,14 @@ def test_handheld_keeps_mode_descriptor_and_does_not_configure_or_rearm():
 
 
 def test_phase_noise_uses_actual_grid_and_log_offset_interpolation():
-    pn, io = instrument("phasenoiseanalyzer", "keysight-e5052b", {
-        "CALC:PN1:DATA:XDAT?": "10,1000", "CALC:PN1:TRAC1:DATA:PDAT?": "-80,-120",
-    })
+    pn, io = instrument(
+        "phasenoiseanalyzer",
+        "keysight-e5052b",
+        {
+            "CALC:PN1:DATA:XDAT?": "10,1000",
+            "CALC:PN1:TRAC1:DATA:PDAT?": "-80,-120",
+        },
+    )
     assert pn.measure_spot_noise_dbc_hz(100) == pytest.approx(-100)
     assert "INIT:PN1:IMM" not in io.events
     with pytest.raises(EquipmentCapabilityError):
@@ -302,17 +361,24 @@ def test_spike_iq_exports_interleaved_samples_with_consistent_scaling(tmp_path, 
     from pathlib import Path
 
     from scipy.io import loadmat
+
     monkeypatch.setattr("colosseum_equipment.instruments.rtsa.signalhound.resolve_artifact_path", Path)
     monkeypatch.setattr("colosseum_equipment.instruments.rtsa.signalhound.record_artifact", lambda **kw: None)
-    rtsa, io = instrument("rtsa", "signalhound-bb60c-spike", {
-        "FETC:ZS? 2": "2", "FETC:ZS? 1": "1,2,-3,-4",
-        "SENS:ZS:CAP:SRAT?": "1000", "SENS:ZS:CAP:CENT?": "1e9",
-    })
+    rtsa, io = instrument(
+        "rtsa",
+        "signalhound-bb60c-spike",
+        {
+            "FETC:ZS? 2": "2",
+            "FETC:ZS? 1": "1,2,-3,-4",
+            "SENS:ZS:CAP:SRAT?": "1000",
+            "SENS:ZS:CAP:CENT?": "1e9",
+        },
+    )
     path = rtsa.save_IQ_data(str(tmp_path / f"nested/capture.{file_format}"), file_format=file_format)
     if file_format == "bin":
         assert struct.unpack("<4d", path.read_bytes()) == (1, 2, -3, -4)
     elif file_format == "mat":
-        assert loadmat(path)["iq"].ravel().tolist() == [1+2j, -3-4j]
+        assert loadmat(path)["iq"].ravel().tolist() == [1 + 2j, -3 - 4j]
     else:
         with tarfile.open(path) as archive:
             assert struct.unpack("<4d", archive.extractfile("iq.bin").read()) == (1, 2, -3, -4)
@@ -324,26 +390,42 @@ def test_spike_iq_exports_interleaved_samples_with_consistent_scaling(tmp_path, 
 
 
 def test_spike_rejects_incomplete_iq_before_creating_artifact(tmp_path):
-    rtsa, _ = instrument("rtsa", "signalhound-sm200c-spike", {
-        "FETC:ZS? 2": "2", "FETC:ZS? 1": "1,2,3",
-    })
+    rtsa, _ = instrument(
+        "rtsa",
+        "signalhound-sm200c-spike",
+        {
+            "FETC:ZS? 2": "2",
+            "FETC:ZS? 1": "1,2,3",
+        },
+    )
     with pytest.raises(EquipmentResponseError):
         rtsa.save_IQ_data(str(tmp_path / "bad.bin"))
     assert not (tmp_path / "bad.bin").exists()
 
 
-@pytest.mark.parametrize("block", [b"#", b"#0abc", b"#Aabc", b"#21", b"#2xxabc", b"#15abc", b"#15helloJUNK", b"#131,2,3"])
+@pytest.mark.parametrize(
+    "block", [b"#", b"#0abc", b"#Aabc", b"#21", b"#2xxabc", b"#15abc", b"#15helloJUNK", b"#131,2,3"]
+)
 def test_binary_block_rejects_malformed_or_truncated_records(block):
     from colosseum_equipment.protocols.scpi import parse_definite_length_block
+
     with pytest.raises(EquipmentResponseError):
         parse_definite_length_block(block)
 
 
 def test_spike_spectrum_uses_reported_axis_and_single_detector_values():
-    analyzer, io = instrument("speca", "signalhound-bb60c-spike", {
-        "SENS:POW:RF:RLEV:UNIT?": "DBM", "*OPC?": "1", "TRAC:POIN?": "3",
-        "TRAC:DATA?": "-80,-40,-70", "TRAC:XSTAR?": "100", "TRAC:XINC?": "2.5",
-    })
+    analyzer, io = instrument(
+        "speca",
+        "signalhound-bb60c-spike",
+        {
+            "SENS:POW:RF:RLEV:UNIT?": "DBM",
+            "*OPC?": "1",
+            "TRAC:POIN?": "3",
+            "TRAC:DATA?": "-80,-40,-70",
+            "TRAC:XSTAR?": "100",
+            "TRAC:XINC?": "2.5",
+        },
+    )
     assert analyzer._fetch_trace(1) == ([100, 102.5, 105], [-80, -40, -70])
     assert "SENS:SWE:DET:FUNC MAX" in io.events
     io.responses["SENS:POW:RF:RLEV:UNIT?"] = "MV"
@@ -352,10 +434,18 @@ def test_spike_spectrum_uses_reported_axis_and_single_detector_values():
 
 
 def test_rohde_waveform_keeps_native_scaled_voltage_and_rejects_current_probe():
-    scope, io = instrument("oscope", "rohde-rtb2004", {
-        "ACQ:STAT?": "COMP", "PROB1:SET:ATT:UNIT?": "V", "CHAN1:DATA:HEAD?": "-1,1,3,1",
-        "CHAN1:DATA:XINC?": "0.5", "CHAN1:DATA:XOR?": "-1", "CHAN1:DATA?": "1,2,3",
-    })
+    scope, io = instrument(
+        "oscope",
+        "rohde-rtb2004",
+        {
+            "ACQ:STAT?": "COMP",
+            "PROB1:SET:ATT:UNIT?": "V",
+            "CHAN1:DATA:HEAD?": "-1,1,3,1",
+            "CHAN1:DATA:XINC?": "0.5",
+            "CHAN1:DATA:XOR?": "-1",
+            "CHAN1:DATA?": "1,2,3",
+        },
+    )
     values, meta = scope._read_waveform_points(1)
     assert values == [1, 2, 3]
     assert meta["xorigin_s"] == -1
@@ -367,10 +457,19 @@ def test_rohde_waveform_keeps_native_scaled_voltage_and_rejects_current_probe():
 
 
 def test_infiniium_word_waveform_uses_signed_little_endian_and_actual_origin():
-    scope, io = instrument("oscope", "keysight-dsaz204a", {
-        "ADER?": ["0", "1"], "CHAN1:UNIT?": "VOLT", "WAV:POIN?": "3",
-        "WAV:XINC?": "0.25", "WAV:XOR?": "-1", "WAV:YINC?": "0.5", "WAV:YOR?": "1",
-    })
+    scope, io = instrument(
+        "oscope",
+        "keysight-dsaz204a",
+        {
+            "ADER?": ["0", "1"],
+            "CHAN1:UNIT?": "VOLT",
+            "WAV:POIN?": "3",
+            "WAV:XINC?": "0.25",
+            "WAV:XOR?": "-1",
+            "WAV:YINC?": "0.5",
+            "WAV:YOR?": "1",
+        },
+    )
     io.read_raw = lambda: b"#16\x00\x80\x00\x00\xff\x7f\n"
     scope.arm_single()
     values, meta = scope._read_waveform_points(1)
@@ -395,11 +494,17 @@ def test_chroma_voltage_and_power_require_static_subsystem():
     assert io.events == ["CHAN 1", "VOLT:STAT:L1 5", "CHAN 1", "POW:STAT:L1 10"]
 
 
-@pytest.mark.parametrize("model,commands", [
-    ("tektronix-tsg4106a", ["FREQ 1000000000.000000", "AMPR -10.000000 DBM", "ENBR 0"]),
-    ("anritsu-mg3692c", ["FREQ:MODE FIX", "FREQ 1000000000.000000HZ", "POW:MODE FIX", "POW -10.000000DBM", "OUTP OFF"]),
-    ("keysight-8648c", ["FREQ:CW 1000000000.000000", "POW -10.000000DBM", "OUTP OFF"]),
-])
+@pytest.mark.parametrize(
+    "model,commands",
+    [
+        ("tektronix-tsg4106a", ["FREQ 1000000000.000000", "AMPR -10.000000 DBM", "ENBR 0"]),
+        (
+            "anritsu-mg3692c",
+            ["FREQ:MODE FIX", "FREQ 1000000000.000000HZ", "POW:MODE FIX", "POW -10.000000DBM", "OUTP OFF"],
+        ),
+        ("keysight-8648c", ["FREQ:CW 1000000000.000000", "POW -10.000000DBM", "OUTP OFF"]),
+    ],
+)
 def test_native_rf_dialects_do_not_enable_output_or_inherit_vector_commands(model, commands):
     source, io = instrument("vsg", model)
     source.set_frequency(1e9)
@@ -464,7 +569,7 @@ def test_ml2495a_rejects_other_channels_arrays_and_invalid_readings(raw):
 def test_nrx_owns_sensor_mapping_and_fresh_bus_trigger_but_fetch_does_not_rearm():
     meter, io = instrument("pwrmeter", "rohde-nrx", {"*OPC?": "1", "FETC2?": "-15"}, channels=2)
     assert 'CALC2:MATH:EXPR "(SENS2)"' in io.events
-    assert 'CALC2:TYPE CONTAV' in io.events
+    assert "CALC2:TYPE CONTAV" in io.events
     assert 'CALC2:FEED1 "POW:AVER"' in io.events
     assert "CALC2:SENS:IND 2" in io.events
     io.events.clear()
@@ -477,12 +582,24 @@ def test_nrx_owns_sensor_mapping_and_fresh_bus_trigger_but_fetch_does_not_rearm(
 
 def test_modern_tek_word_waveform_checks_preamble_and_scales_big_endian():
     import struct
-    scope, io = instrument("oscope", "tektronix-mso58", {
-        "ACQuire:STATE?": "0", "WFMO:NR_PT?": "3", "WFMO:PT_FMT?": "YT",
-        "WFMO:XUNIT?": '"s"', "WFMO:YUNIT?": '"V"', "WFMO:XINCR?": "0.25",
-        "WFMO:XZERO?": "-1", "WFMO:PT_OFF?": "2", "WFMO:YMULT?": "0.5",
-        "WFMO:YOFF?": "1", "WFMO:YZERO?": "2",
-    })
+
+    scope, io = instrument(
+        "oscope",
+        "tektronix-mso58",
+        {
+            "ACQuire:STATE?": "0",
+            "WFMO:NR_PT?": "3",
+            "WFMO:PT_FMT?": "YT",
+            "WFMO:XUNIT?": '"s"',
+            "WFMO:YUNIT?": '"V"',
+            "WFMO:XINCR?": "0.25",
+            "WFMO:XZERO?": "-1",
+            "WFMO:PT_OFF?": "2",
+            "WFMO:YMULT?": "0.5",
+            "WFMO:YOFF?": "1",
+            "WFMO:YZERO?": "2",
+        },
+    )
     io.read_raw = lambda: b"#16" + struct.pack(">3h", -32768, 0, 32767)
     values, meta = scope._read_waveform_points(8)
     assert values == [-16382.5, 1.5, 16385]
@@ -501,9 +618,17 @@ def test_modern_tek_word_waveform_checks_preamble_and_scales_big_endian():
 
 def test_anritsu_binary_trace_uses_operation_bit8_and_little_endian():
     import struct
-    analyzer, io = instrument("speca", "anritsu-ms2721b", {
-        "INST:SEL?": "SPA", "STAT:OPER?": ["0", "256"], "FREQ:STAR?": "100", "FREQ:STOP?": "200",
-    })
+
+    analyzer, io = instrument(
+        "speca",
+        "anritsu-ms2721b",
+        {
+            "INST:SEL?": "SPA",
+            "STAT:OPER?": ["0", "256"],
+            "FREQ:STAR?": "100",
+            "FREQ:STOP?": "200",
+        },
+    )
     io.read_raw = lambda: b"#212" + struct.pack("<3f", -80, -20, -60)
     assert analyzer._fetch_trace(1) == ([100, 150, 200], [-80, -20, -60])
     assert "*OPC?" not in io.events
@@ -514,9 +639,16 @@ def test_anritsu_binary_trace_uses_operation_bit8_and_little_endian():
 
 
 def test_fpc_spectrum_uses_actual_trace_length_instead_of_vna_point_query():
-    analyzer, io = instrument("speca", "rohde-fpc1500", {
-        "*OPC?": "1", "TRAC:DATA? TRACE2": "-80,-20,-70", "FREQ:STAR?": "1", "FREQ:STOP?": "5",
-    })
+    analyzer, io = instrument(
+        "speca",
+        "rohde-fpc1500",
+        {
+            "*OPC?": "1",
+            "TRAC:DATA? TRACE2": "-80,-20,-70",
+            "FREQ:STAR?": "1",
+            "FREQ:STOP?": "5",
+        },
+    )
     assert io.events == ["INST:SEL SPEC"]
     assert analyzer._fetch_trace(2) == ([1, 3, 5], [-80, -20, -70])
     assert "DISP:TRAC2:MODE WRIT" in io.events
@@ -524,9 +656,15 @@ def test_fpc_spectrum_uses_actual_trace_length_instead_of_vna_point_query():
 
 
 def test_hp_legacy_trace_restores_clear_write_before_every_sweep():
-    analyzer, io = instrument("speca", "keysight-8563ec", {
-        "TRA?;": ",".join(["-40"] * 601), "FA?;": "100", "FB?;": "700",
-    })
+    analyzer, io = instrument(
+        "speca",
+        "keysight-8563ec",
+        {
+            "TRA?;": ",".join(["-40"] * 601),
+            "FA?;": "100",
+            "FB?;": "700",
+        },
+    )
     axis, values = analyzer._fetch_trace(1)
     assert axis == list(range(100, 701))
     assert len(values) == 601
@@ -555,18 +693,23 @@ def test_native_rsa_iq_uses_last_record_header_and_float32_not_digital_scale(tmp
     from pathlib import Path
 
     from scipy.io import loadmat
+
     monkeypatch.setattr("colosseum_equipment.instruments.rtsa.tektronix_native.resolve_artifact_path", Path)
     monkeypatch.setattr("colosseum_equipment.instruments.rtsa.tektronix_native.record_artifact", lambda **kw: None)
-    analyzer, io = instrument("rtsa", "tektronix-rsa5126b", {
-        "FETC:RFIN:REC:IDS?": "10,12",
-        "FETC:RFIN:IQ:HEAD? 12": '1000,2000,2,1e9,800,-10,0.001,"2026-10-20T12:00:00",-1',
-    })
+    analyzer, io = instrument(
+        "rtsa",
+        "tektronix-rsa5126b",
+        {
+            "FETC:RFIN:REC:IDS?": "10,12",
+            "FETC:RFIN:IQ:HEAD? 12": '1000,2000,2,1e9,800,-10,0.001,"2026-10-20T12:00:00",-1',
+        },
+    )
     io.read_raw = lambda: b"#216" + struct.pack("<4f", 1, 2, -3, -4)
     path = analyzer.save_IQ_data(str(tmp_path / f"nested/native.{file_format}"), file_format=file_format)
     if file_format == "bin":
         assert struct.unpack("<4d", path.read_bytes()) == (1, 2, -3, -4)
     elif file_format == "mat":
-        assert loadmat(path)["iq"].ravel().tolist() == [1+2j, -3-4j]
+        assert loadmat(path)["iq"].ravel().tolist() == [1 + 2j, -3 - 4j]
     else:
         with tarfile.open(path) as archive:
             assert struct.unpack("<4d", archive.extractfile("iq.bin").read()) == (1, 2, -3, -4)
@@ -585,12 +728,19 @@ def test_native_rsa_iq_uses_last_record_header_and_float32_not_digital_scale(tmp
 def test_native_rsa_spectrum_uses_rf_sense_commands_and_rejects_log_axis(tmp_path, monkeypatch):
     import struct
     from pathlib import Path
+
     monkeypatch.setattr("colosseum_equipment.instruments.rtsa.tektronix_native.resolve_artifact_path", Path)
     monkeypatch.setattr("colosseum_equipment.instruments.rtsa.tektronix_native.record_artifact", lambda **kw: None)
-    analyzer, io = instrument("rtsa", "tektronix-rsa6114a", {
-        "SENS:POW:UNIT?": "DBM", "DISP:SPEC:SCAL:LOG:STAT?": "0",
-        "SENS:SPEC:FREQ:STAR?": "100", "SENS:SPEC:FREQ:STOP?": "200",
-    })
+    analyzer, io = instrument(
+        "rtsa",
+        "tektronix-rsa6114a",
+        {
+            "SENS:POW:UNIT?": "DBM",
+            "DISP:SPEC:SCAL:LOG:STAT?": "0",
+            "SENS:SPEC:FREQ:STAR?": "100",
+            "SENS:SPEC:FREQ:STOP?": "200",
+        },
+    )
     io.read_raw = lambda: b"#18" + struct.pack("<2f", -40, -60)
     analyzer.set_center_freq(150)
     assert io.events[-1] == "SENS:SPEC:FREQ:CENT 150.000000"
@@ -604,21 +754,32 @@ def test_native_rsa_spectrum_uses_rf_sense_commands_and_rejects_log_axis(tmp_pat
         analyzer.save_IQ_data(str(tmp_path / "unsupported.bin"))
     with pytest.raises(EquipmentCapabilityError):
         analyzer.capture_iq(
-            center_hz=1e9, span_hz=1e6, bandwidth_hz=1e6, seconds=0.01,
+            center_hz=1e9,
+            span_hz=1e6,
+            bandwidth_hz=1e6,
+            seconds=0.01,
             path=str(tmp_path / "unsupported.mat"),
         )
 
 
-@pytest.mark.parametrize("header,payload,error", [
-    ('1000,2000,2,1e9,800,-10,0,"time",-1', b"#18abcdefgh", EquipmentResponseError),
-    ('1000,0,2,1e9,800,-10,0,"time",-1', b"", EquipmentResponseError),
-    ('1000,2000,2.5,1e9,800,-10,0,"time",-1', b"", EquipmentResponseError),
-    ('1000,2000,2,1e9,800,-10,0,"time",0', b"", EquipmentCapabilityError),
-])
+@pytest.mark.parametrize(
+    "header,payload,error",
+    [
+        ('1000,2000,2,1e9,800,-10,0,"time",-1', b"#18abcdefgh", EquipmentResponseError),
+        ('1000,0,2,1e9,800,-10,0,"time",-1', b"", EquipmentResponseError),
+        ('1000,2000,2.5,1e9,800,-10,0,"time",-1', b"", EquipmentResponseError),
+        ('1000,2000,2,1e9,800,-10,0,"time",0', b"", EquipmentCapabilityError),
+    ],
+)
 def test_native_rsa_rejects_incomplete_or_invalid_iq_before_export(tmp_path, header, payload, error):
-    analyzer, io = instrument("rtsa", "tektronix-rsa5115b", {
-        "FETC:RFIN:REC:IDS?": "10,12", "FETC:RFIN:IQ:HEAD? 12": header,
-    })
+    analyzer, io = instrument(
+        "rtsa",
+        "tektronix-rsa5115b",
+        {
+            "FETC:RFIN:REC:IDS?": "10,12",
+            "FETC:RFIN:IQ:HEAD? 12": header,
+        },
+    )
     io.read_raw = lambda: payload
     with pytest.raises(error):
         analyzer.save_IQ_data(str(tmp_path / "bad.bin"))
@@ -640,19 +801,29 @@ class FlukeSerialTransport(RecordingTransport):
 
 def fluke(model, frames):
     io = FlukeSerialTransport(frames)
-    driver = build_instrument("dmm", 1, {
-        "model": model, "driver": "serial", "baudrate": 9600 if model == "fluke-189" else 115200,
-    }, io)
+    driver = build_instrument(
+        "dmm",
+        1,
+        {
+            "model": model,
+            "driver": "serial",
+            "baudrate": 9600 if model == "fluke-189" else 115200,
+        },
+        io,
+    )
     return driver, io
 
 
-@pytest.mark.parametrize("model,reply,expected,unit", [
-    ("fluke-289", "-0.023E-3,VDC,NORMAL,NONE\r", -0.000023, "VDC"),
-    ("fluke-189", "QM,+47.66 KOhms\r", 47660, "OHM"),
-    ("fluke-189", "QM,-121.43 mV DC\r", -0.12143, "VDC"),
-    ("fluke-189", "QM,+0.95 uFarads\r", 0.95e-6, "F"),
-    ("fluke-189", "QM,+10.00 MOhms\r", 1e7, "OHM"),
-])
+@pytest.mark.parametrize(
+    "model,reply,expected,unit",
+    [
+        ("fluke-289", "-0.023E-3,VDC,NORMAL,NONE\r", -0.000023, "VDC"),
+        ("fluke-189", "QM,+47.66 KOhms\r", 47660, "OHM"),
+        ("fluke-189", "QM,-121.43 mV DC\r", -0.12143, "VDC"),
+        ("fluke-189", "QM,+0.95 uFarads\r", 0.95e-6, "F"),
+        ("fluke-189", "QM,+10.00 MOhms\r", 1e7, "OHM"),
+    ],
+)
 def test_fluke_qm_ack_data_framing_and_legacy_display_prefixes(model, reply, expected, unit):
     meter, io = fluke(model, ["0\r", reply, "0\r", reply])
     assert io.events == []
@@ -666,17 +837,20 @@ def test_fluke_qm_ack_data_framing_and_legacy_display_prefixes(model, reply, exp
     assert io.events == [b"QM\r", b"QM\r"]
 
 
-@pytest.mark.parametrize("model,frames", [
-    ("fluke-289", ["5\r"]),
-    ("fluke-289", ["2\r"]),
-    ("fluke-289", ["0"]),
-    ("fluke-289", ["0\r", "1,VDC,NORMAL,NONE"]),
-    ("fluke-289", ["0\r", "9.99999999e37,VDC,OL,NONE\r"]),
-    ("fluke-289", ["0\r", "nan,VDC,NORMAL,NONE\r"]),
-    ("fluke-289", ["0\r", "1,VDC,BLANK,NONE\r"]),
-    ("fluke-189", ["0\r", "QM,Out of Range mVDC\r"]),
-    ("fluke-189", ["0\r", "1,VDC,NORMAL,NONE\r"]),
-])
+@pytest.mark.parametrize(
+    "model,frames",
+    [
+        ("fluke-289", ["5\r"]),
+        ("fluke-289", ["2\r"]),
+        ("fluke-289", ["0"]),
+        ("fluke-289", ["0\r", "1,VDC,NORMAL,NONE"]),
+        ("fluke-289", ["0\r", "9.99999999e37,VDC,OL,NONE\r"]),
+        ("fluke-289", ["0\r", "nan,VDC,NORMAL,NONE\r"]),
+        ("fluke-289", ["0\r", "1,VDC,BLANK,NONE\r"]),
+        ("fluke-189", ["0\r", "QM,Out of Range mVDC\r"]),
+        ("fluke-189", ["0\r", "1,VDC,NORMAL,NONE\r"]),
+    ],
+)
 def test_fluke_rejects_ack_errors_incomplete_frames_and_unavailable_values(model, frames):
     meter, io = fluke(model, frames)
     with pytest.raises(EquipmentResponseError):
@@ -694,12 +868,21 @@ def test_fluke_requires_native_serial_configuration_and_refuses_other_channels_b
 
 
 def rte(responses=None, model="rohde-rte1204"):
-    return instrument("oscope", model, {
-        "ACQ:SEGM:STAT?": "0", "*ESR?": ["1", "0", "1"], "ACQ:CURR?": "1",
-        "CHAN2:WAV1:HIST:STAT?": "0", "PROB2:SET:ATT:MODE?": "MAN", "PROB2:SET:ATT:UNIT?": "V",
-        "CHAN2:WAV1:DATA:HEAD?": "-0.5,0.5,3,1", "CHAN2:WAV1:DATA?": "-1,0,2",
-        **(responses or {}),
-    })
+    return instrument(
+        "oscope",
+        model,
+        {
+            "ACQ:SEGM:STAT?": "0",
+            "*ESR?": ["1", "0", "1"],
+            "ACQ:CURR?": "1",
+            "CHAN2:WAV1:HIST:STAT?": "0",
+            "PROB2:SET:ATT:MODE?": "MAN",
+            "PROB2:SET:ATT:UNIT?": "V",
+            "CHAN2:WAV1:DATA:HEAD?": "-0.5,0.5,3,1",
+            "CHAN2:WAV1:DATA?": "-1,0,2",
+            **(responses or {}),
+        },
+    )
 
 
 @pytest.mark.parametrize("model", ["rohde-rte1204", "rohde-rtp164"])
@@ -716,27 +899,37 @@ def test_rte_rtp_clear_stale_opc_then_wait_for_new_acquisition_and_native_wavefo
     assert values == [-1, 0, 2]
     assert (meta["xorigin_s"], meta["xinc_s"]) == (-0.5, 0.5)
     assert io.events[before_fetch:] == [
-        "CHAN2:WAV1:HIST:STAT?", "PROB2:SET:ATT:MODE?", "PROB2:SET:ATT:UNIT?", "EXP:WAV:MULT OFF",
-        "EXP:WAV:INCX OFF", "EXP:WAV:RAW OFF", "EXP:WAV:SCOP WFM", "FORM ASC",
-        "CHAN2:WAV1:DATA:HEAD?", "CHAN2:WAV1:DATA?",
+        "CHAN2:WAV1:HIST:STAT?",
+        "PROB2:SET:ATT:MODE?",
+        "PROB2:SET:ATT:UNIT?",
+        "EXP:WAV:MULT OFF",
+        "EXP:WAV:INCX OFF",
+        "EXP:WAV:RAW OFF",
+        "EXP:WAV:SCOP WFM",
+        "FORM ASC",
+        "CHAN2:WAV1:DATA:HEAD?",
+        "CHAN2:WAV1:DATA?",
     ]
     scope.stop()
     with pytest.raises(EquipmentCapabilityError):
         scope._read_waveform_points(2)
 
 
-@pytest.mark.parametrize("responses,error", [
-    ({"CHAN2:WAV1:HIST:STAT?": "1"}, EquipmentCapabilityError),
-    ({"PROB2:SET:ATT:UNIT?": "A"}, EquipmentCapabilityError),
-    ({"PROB2:SET:ATT:MODE?": "AUTO"}, EquipmentCapabilityError),
-    ({"CHAN2:WAV1:DATA:HEAD?": "-1,1,3,2"}, EquipmentCapabilityError),
-    ({"CHAN2:WAV1:DATA:HEAD?": "-1,1,3.5,1"}, EquipmentResponseError),
-    ({"CHAN2:WAV1:DATA:HEAD?": "-1,nan,3,1"}, EquipmentResponseError),
-    ({"CHAN2:WAV1:DATA:HEAD?": "-1,1,3"}, EquipmentResponseError),
-    ({"CHAN2:WAV1:DATA?": "1,2"}, EquipmentResponseError),
-    ({"CHAN2:WAV1:DATA?": "1,2,3,4"}, EquipmentResponseError),
-    ({"CHAN2:WAV1:DATA?": "1,nan,3"}, EquipmentResponseError),
-])
+@pytest.mark.parametrize(
+    "responses,error",
+    [
+        ({"CHAN2:WAV1:HIST:STAT?": "1"}, EquipmentCapabilityError),
+        ({"PROB2:SET:ATT:UNIT?": "A"}, EquipmentCapabilityError),
+        ({"PROB2:SET:ATT:MODE?": "AUTO"}, EquipmentCapabilityError),
+        ({"CHAN2:WAV1:DATA:HEAD?": "-1,1,3,2"}, EquipmentCapabilityError),
+        ({"CHAN2:WAV1:DATA:HEAD?": "-1,1,3.5,1"}, EquipmentResponseError),
+        ({"CHAN2:WAV1:DATA:HEAD?": "-1,nan,3,1"}, EquipmentResponseError),
+        ({"CHAN2:WAV1:DATA:HEAD?": "-1,1,3"}, EquipmentResponseError),
+        ({"CHAN2:WAV1:DATA?": "1,2"}, EquipmentResponseError),
+        ({"CHAN2:WAV1:DATA?": "1,2,3,4"}, EquipmentResponseError),
+        ({"CHAN2:WAV1:DATA?": "1,nan,3"}, EquipmentResponseError),
+    ],
+)
 def test_rte_rtp_rejects_ambiguous_axes_units_and_non_scalar_or_incomplete_data(responses, error):
     scope, _ = rte(responses)
     scope.acquire(timeout_s=1)
@@ -760,6 +953,7 @@ def test_rte_rtp_cannot_promote_interrupted_or_errored_acquisition_to_complete()
 
 def test_rte_rtp_absent_trigger_times_out_without_exporting_old_data():
     from colosseum_equipment.exceptions import EquipmentTimeoutError
+
     scope, io = rte({"*ESR?": "0"})
     scope.arm_single()
     with pytest.raises(EquipmentTimeoutError):
@@ -772,10 +966,17 @@ def test_rte_rtp_absent_trigger_times_out_without_exporting_old_data():
 
 @pytest.mark.parametrize("model,trace", [("keysight-n9020a", 6), ("keysight-e4440a", 3)])
 def test_keysight_spectrum_fetch_unfreezes_requested_trace_before_immediate_sweep(model, trace):
-    analyzer, io = instrument("speca", model, {
-        "*OPC?": "1", "FREQ:CENT?": "100", "FREQ:SPAN?": "10",
-        f"TRAC:DATA? TRACE{trace}": "-30,-10,-40", "SWE:POIN?": "3",
-    })
+    analyzer, io = instrument(
+        "speca",
+        model,
+        {
+            "*OPC?": "1",
+            "FREQ:CENT?": "100",
+            "FREQ:SPAN?": "10",
+            f"TRAC:DATA? TRACE{trace}": "-30,-10,-40",
+            "SWE:POIN?": "3",
+        },
+    )
     analyzer._fetch_trace(trace)
     unfreeze = io.events.index(f"TRAC{trace}:MODE WRIT")
     trigger = io.events.index("TRIG:SOUR IMM")
@@ -791,10 +992,16 @@ def test_keysight_spectrum_fetch_unfreezes_requested_trace_before_immediate_swee
         assert io.events == []
 
 
-@pytest.mark.parametrize("model,channel", [
-    ("keysight-e4417a", 2), ("keysight-n1912a", 2),
-    ("keysight-u8487a", 1), ("keysight-u8488a", 1), ("rohde-nrp18s", 1),
-])
+@pytest.mark.parametrize(
+    "model,channel",
+    [
+        ("keysight-e4417a", 2),
+        ("keysight-n1912a", 2),
+        ("keysight-u8487a", 1),
+        ("keysight-u8488a", 1),
+        ("rohde-nrp18s", 1),
+    ],
+)
 def test_average_power_acquisition_cannot_inherit_external_or_bus_trigger(model, channel):
     meter, io = instrument("pwrmeter", model, {"*OPC?": "1"})
     io.events.clear()
@@ -824,12 +1031,14 @@ def test_native_genesys_rejects_unterminated_ack_or_measurement(frames):
 @pytest.mark.parametrize("raw", ["#2131.0,2.0,3.0", "#x11.0,2.0,3.0", "#211.0,2.0,3.0", "#151,2,3,4,5"])
 def test_ascii_waveform_parser_checks_declared_block_length_even_when_sample_count_matches(raw):
     from colosseum_equipment.instruments.oscope.generic import _parse_ascii_waveform
+
     with pytest.raises(EquipmentResponseError):
         _parse_ascii_waveform(raw, points_expected=3)
 
 
 def test_ascii_waveform_block_preserves_payload_whitespace_and_legacy_indefinite_format():
     from colosseum_equipment.instruments.oscope.generic import _parse_ascii_waveform
+
     # Eight payload bytes: leading/trailing blanks are included in the length.
     assert _parse_ascii_waveform("#18 1,2,3  \n", points_expected=3) == [1, 2, 3]
     assert _parse_ascii_waveform("#01,2,3\n", points_expected=3) == [1, 2, 3]
@@ -839,10 +1048,17 @@ def test_ascii_waveform_block_preserves_payload_whitespace_and_legacy_indefinite
 def test_genesys_address_is_never_truncated_to_a_different_device(address):
     io = FlukeSerialTransport(["OK\r"])
     with pytest.raises(ValueError, match="address"):
-        build_instrument("psu", 1, {
-            "model": "tdk-genesys-serial", "driver": "serial", "baudrate": 9600,
-            "device_address": address,
-        }, io)
+        build_instrument(
+            "psu",
+            1,
+            {
+                "model": "tdk-genesys-serial",
+                "driver": "serial",
+                "baudrate": 9600,
+                "device_address": address,
+            },
+            io,
+        )
     assert io.events == []
 
 

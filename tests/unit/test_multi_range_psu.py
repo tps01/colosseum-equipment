@@ -16,16 +16,19 @@ def _supply(model: str, responses: dict[str, str] | None = None, **config: objec
 
 
 def test_bk_9115_uses_documented_source_ovp_and_power_commands() -> None:
-    supply, transport = _supply("bk-9115", {
-        "VOLT?": "12.5",
-        "CURR?": "1.25",
-        "OUTP?": "1",
-        "MEAS:VOLT?": "12.4",
-        "MEAS:CURR?": "0.5",
-        "MEAS:POW?": "6.2",
-        "VOLT:PROT?": "15",
-        "VOLT:PROT:STAT?": "0",
-    })
+    supply, transport = _supply(
+        "bk-9115",
+        {
+            "VOLT?": "12.5",
+            "CURR?": "1.25",
+            "OUTP?": "1",
+            "MEAS:VOLT?": "12.4",
+            "MEAS:CURR?": "0.5",
+            "MEAS:POW?": "6.2",
+            "VOLT:PROT?": "15",
+            "VOLT:PROT:STAT?": "0",
+        },
+    )
     supply.set_voltage(12.5)
     supply.set_current_limit(1.25)
     supply.set_output(True)
@@ -61,13 +64,16 @@ def test_bk_9115_rejects_ocp_textual_output_and_extra_channels() -> None:
 
 
 def test_keithley_2260b_accepts_textual_state_and_current_protection() -> None:
-    supply, transport = _supply("keithley-2260b", {
-        "OUTP?": "ON",
-        "MEAS:POW?": "6.2",
-        "VOLT:PROT?": "40",
-        "CURR:PROT?": "2.5",
-        "CURR:PROT:STAT?": "OFF",
-    })
+    supply, transport = _supply(
+        "keithley-2260b",
+        {
+            "OUTP?": "ON",
+            "MEAS:POW?": "6.2",
+            "VOLT:PROT?": "40",
+            "CURR:PROT?": "2.5",
+            "CURR:PROT:STAT?": "OFF",
+        },
+    )
     supply.set_voltage(28)
     supply.set_current_limit(1.5)
     supply.set_output(False)

@@ -151,11 +151,7 @@ def _upload_via_scpi(
     payload: bytes,
 ) -> None:
     prefix = f'MMEM:DATA "{remote_name}"'
-    message_len = (
-        len(f"{prefix} ".encode("ascii"))
-        + len(format_definite_length_block(payload))
-        + 1
-    )
+    message_len = len(f"{prefix} ".encode("ascii")) + len(format_definite_length_block(payload)) + 1
     _logger.info(
         "VSG TCPIP waveform upload starting: %d bytes -> %s",
         len(payload),
@@ -187,7 +183,10 @@ def _remote_basename(remote_name: str, local_path: Path) -> str:
 
 
 def _upload_via_ftp(
-    config: dict[str, Any], local_path: Path, remote_name: str, payload: bytes,
+    config: dict[str, Any],
+    local_path: Path,
+    remote_name: str,
+    payload: bytes,
 ) -> None:
     host = _resolve_ftp_host(config)
     user = str(config.get("ftp_user", "anonymous"))

@@ -49,9 +49,15 @@ def test_io_onewire_sim_search_select_read(
     roms = col.io.onewire.search(onewire_id=1, key="roms")
     assert roms == ["28001122334455CE"]
     col.io.onewire.select(onewire_id=1, rom=roms[0])
-    assert col.io.onewire.write_read(
-        onewire_id=1, write_data=b"\xBE", read_nbytes=2, key="scratch",
-    ) == b"\xaa\xbb"
+    assert (
+        col.io.onewire.write_read(
+            onewire_id=1,
+            write_data=b"\xbe",
+            read_nbytes=2,
+            key="scratch",
+        )
+        == b"\xaa\xbb"
+    )
 
 
 def test_io_onewire_sim_required_presence_raises(
@@ -71,6 +77,27 @@ def test_io_onewire_sim_required_presence_raises(
     assert col.io.onewire.reset(onewire_id=1) is False
     with pytest.raises(IoConnectionError, match="presence"):
         col.io.onewire.reset(onewire_id=1, required=True)
+
+
+def test_io_onewire_sim_selects_lowercase_search_rom(
+    io_runtime_context: RuntimeContext,
+    io_bench,
+) -> None:
+    _ = io_runtime_context
+    load_config(
+        io_bench(
+            """
+            [io.onewire]
+            onewire_id = 1
+            driver = sim
+            presence = true
+            roms = ["28aabbccddeeff00"]
+            """,
+        ),
+    )
+    roms = col.io.onewire.search(onewire_id=1, key="roms")
+    assert roms == ["28AABBCCDDEEFF00"]
+    col.io.onewire.select(onewire_id=1, rom=roms[0])
 
 
 def test_ds2480b_requires_port() -> None:

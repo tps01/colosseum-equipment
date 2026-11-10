@@ -3,6 +3,7 @@
 Manuals: R&S RTB2000 1333.1611.02 and RTM3000 1335.5070.02,
 remote-control Waveform Setup and Documenting Results chapters.
 """
+
 from __future__ import annotations
 
 import math
@@ -14,17 +15,35 @@ from colosseum_equipment.instruments._capabilities import supported_commands
 from colosseum_equipment.instruments.oscope.generic import GenericOscope, _parse_ascii_waveform
 from colosseum_equipment.instruments.registry import instrument_model
 
-
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
+
 @instrument_model("oscope", "rohde-rtb2004", "rohde-rtm3004")
 @supported_commands(
-    "set_channel_display", "get_channel_display", "set_channel_scale_v", "get_channel_scale_v",
-    "set_channel_offset_v", "get_channel_offset_v", "set_timebase_scale", "set_timebase_position_s",
-    "set_trigger_source", "set_trigger_level_v", "set_trigger_slope", "set_trigger_mode",
-    "set_record_length", "get_record_length", "run", "stop", "abort", "arm_single", "single_acquire",
-    "get_acquire_state", "wait_complete", "acquire", "save_waveform",
+    "set_channel_display",
+    "get_channel_display",
+    "set_channel_scale_v",
+    "get_channel_scale_v",
+    "set_channel_offset_v",
+    "get_channel_offset_v",
+    "set_timebase_scale",
+    "set_timebase_position_s",
+    "set_trigger_source",
+    "set_trigger_level_v",
+    "set_trigger_slope",
+    "set_trigger_mode",
+    "set_record_length",
+    "get_record_length",
+    "run",
+    "stop",
+    "abort",
+    "arm_single",
+    "single_acquire",
+    "get_acquire_state",
+    "wait_complete",
+    "acquire",
+    "save_waveform",
 )
 class RohdeRtbRtm(GenericOscope):
     """Single normal waveform per channel; envelope/history/segmented export excluded."""
@@ -135,15 +154,35 @@ class RohdeRtbRtm(GenericOscope):
         if not math.isfinite(xinc) or xinc <= 0 or not math.isfinite(xorigin):
             raise EquipmentResponseError("invalid waveform time axis")
         # ASCII channel data is already scaled; never apply ADC scaling again.
-        return values, {"channel": ch, "points": count, "xinc_s": xinc, "xorigin_s": xorigin,
-                        "capture_id": self._capture_id, "vertical_units": "V", "encoding": "ASCII"}
+        return values, {
+            "channel": ch,
+            "points": count,
+            "xinc_s": xinc,
+            "xorigin_s": xorigin,
+            "capture_id": self._capture_id,
+            "vertical_units": "V",
+            "encoding": "ASCII",
+        }
 
 
 @instrument_model("oscope", "rohde-rte1204", "rohde-rtp164")
 @supported_commands(
-    "set_channel_display", "get_channel_display", "set_channel_scale_v", "get_channel_scale_v",
-    "set_channel_offset_v", "get_channel_offset_v", "set_timebase_scale", "set_trigger_mode",
-    "run", "stop", "abort", "arm_single", "single_acquire", "wait_complete", "acquire", "save_waveform",
+    "set_channel_display",
+    "get_channel_display",
+    "set_channel_scale_v",
+    "get_channel_scale_v",
+    "set_channel_offset_v",
+    "get_channel_offset_v",
+    "set_timebase_scale",
+    "set_trigger_mode",
+    "run",
+    "stop",
+    "abort",
+    "arm_single",
+    "single_acquire",
+    "wait_complete",
+    "acquire",
+    "save_waveform",
 )
 class RohdeRteRtp(GenericOscope):
     """RTE/RTP analog waveform 1, native RUNSingle and CHANn:WAV1:DATA.
@@ -229,7 +268,7 @@ class RohdeRteRtp(GenericOscope):
             time.sleep(0.05)
         raise EquipmentTimeoutError("RTE/RTP single acquisition did not complete")
 
-    def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
+    def _waveform_export_preflight(self, channel: int) -> tuple[int, str]:
         ch = self._require_channel(channel)
         if not self._single_complete:
             raise EquipmentCapabilityError("complete a driver-armed single acquisition before export")
@@ -244,6 +283,9 @@ class RohdeRteRtp(GenericOscope):
         # These export switches also affect DATA? replies, not just saved files.
         for command in ("EXP:WAV:MULT OFF", "EXP:WAV:INCX OFF", "EXP:WAV:RAW OFF", "EXP:WAV:SCOP WFM", "FORM ASC"):
             self._scpi.write(command)
+        return ch, prefix
+
+    def _parse_waveform_header(self, prefix: str) -> tuple[float, float, int]:
         fields = self._scpi.query(f"{prefix}:DATA:HEAD?").split(",")
         try:
             start, stop, size, values_per_sample = (float(v) for v in fields)
@@ -255,11 +297,21 @@ class RohdeRteRtp(GenericOscope):
             raise EquipmentResponseError("expected valid four-field waveform header") from exc
         if values_per_sample != 1:
             raise EquipmentCapabilityError("peak/envelope sample pairs are not scalar waveform data")
-        count = int(size)
+        return start, stop, int(size)
+
+    def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
+        ch, prefix = self._waveform_export_preflight(channel)
+        start, stop, count = self._parse_waveform_header(prefix)
         values = _parse_ascii_waveform(self._scpi.query(f"{prefix}:DATA?"), points_expected=count)
         if len(values) != count or not all(math.isfinite(v) for v in values):
             raise EquipmentResponseError("invalid waveform values or count")
         # The native header defines Stop as the time of the LAST sample.
-        return values, {"channel": ch, "points": count, "xorigin_s": start,
-                        "xinc_s": (stop - start) / (count - 1), "capture_id": self._capture_id,
-                        "vertical_units": "V", "encoding": "scaled ASCII"}
+        return values, {
+            "channel": ch,
+            "points": count,
+            "xorigin_s": start,
+            "xinc_s": (stop - start) / (count - 1),
+            "capture_id": self._capture_id,
+            "vertical_units": "V",
+            "encoding": "scaled ASCII",
+        }

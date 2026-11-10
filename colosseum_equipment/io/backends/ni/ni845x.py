@@ -103,72 +103,55 @@ def set_ni845x_library(lib: Any) -> None:  # noqa: ANN401
     _lib_path = "__injected__"
 
 
-def _bind(lib: Any) -> None:  # noqa: ANN401
+def _bind_device(lib: Any) -> None:  # noqa: ANN401
     lib.ni845xOpen.argtypes = [c_char_p, POINTER(NiHandle)]
     lib.ni845xOpen.restype = c_int32
-
     lib.ni845xClose.argtypes = [NiHandle]
     lib.ni845xClose.restype = c_int32
-
     lib.ni845xDeviceLock.argtypes = [NiHandle]
     lib.ni845xDeviceLock.restype = c_int32
-
     lib.ni845xDeviceUnlock.argtypes = [NiHandle]
     lib.ni845xDeviceUnlock.restype = c_int32
-
     lib.ni845xSetIoVoltageLevel.argtypes = [NiHandle, c_uint8]
     lib.ni845xSetIoVoltageLevel.restype = c_int32
-
     lib.ni845xSetTimeout.argtypes = [NiHandle, c_uint32]
     lib.ni845xSetTimeout.restype = c_int32
-
     lib.ni845xStatusToString.argtypes = [c_int32, c_uint32, c_char_p]
     lib.ni845xStatusToString.restype = None
 
-    # DIO
+
+def _bind_dio(lib: Any) -> None:  # noqa: ANN401
     lib.ni845xDioSetPortLineDirectionMap.argtypes = [NiHandle, c_uint8, c_uint8]
     lib.ni845xDioSetPortLineDirectionMap.restype = c_int32
-
     lib.ni845xDioSetDriverType.argtypes = [NiHandle, c_uint8, c_uint8]
     lib.ni845xDioSetDriverType.restype = c_int32
-
     lib.ni845xDioWritePort.argtypes = [NiHandle, c_uint8, c_uint8]
     lib.ni845xDioWritePort.restype = c_int32
-
     lib.ni845xDioReadPort.argtypes = [NiHandle, c_uint8, POINTER(c_uint8)]
     lib.ni845xDioReadPort.restype = c_int32
-
     lib.ni845xDioWriteLine.argtypes = [NiHandle, c_uint8, c_uint8, c_int32]
     lib.ni845xDioWriteLine.restype = c_int32
-
     lib.ni845xDioReadLine.argtypes = [NiHandle, c_uint8, c_uint8, POINTER(c_int32)]
     lib.ni845xDioReadLine.restype = c_int32
 
-    # I2C configuration
+
+def _bind_i2c(lib: Any) -> None:  # noqa: ANN401
     lib.ni845xI2cConfigurationOpen.argtypes = [POINTER(NiHandle)]
     lib.ni845xI2cConfigurationOpen.restype = c_int32
-
     lib.ni845xI2cConfigurationClose.argtypes = [NiHandle]
     lib.ni845xI2cConfigurationClose.restype = c_int32
-
     lib.ni845xI2cConfigurationSetAddress.argtypes = [NiHandle, c_uint16]
     lib.ni845xI2cConfigurationSetAddress.restype = c_int32
-
     lib.ni845xI2cConfigurationSetAddressSize.argtypes = [NiHandle, c_int32]
     lib.ni845xI2cConfigurationSetAddressSize.restype = c_int32
-
     lib.ni845xI2cConfigurationSetClockRate.argtypes = [NiHandle, c_uint16]
     lib.ni845xI2cConfigurationSetClockRate.restype = c_int32
-
     lib.ni845xI2cSetPullupEnable.argtypes = [NiHandle, c_uint8]
     lib.ni845xI2cSetPullupEnable.restype = c_int32
-
     lib.ni845xI2cWrite.argtypes = [NiHandle, NiHandle, c_uint32, c_char_p]
     lib.ni845xI2cWrite.restype = c_int32
-
     lib.ni845xI2cRead.argtypes = [NiHandle, NiHandle, c_uint32, c_char_p]
     lib.ni845xI2cRead.restype = c_int32
-
     lib.ni845xI2cWriteRead.argtypes = [
         NiHandle,
         NiHandle,
@@ -179,28 +162,22 @@ def _bind(lib: Any) -> None:  # noqa: ANN401
     ]
     lib.ni845xI2cWriteRead.restype = c_int32
 
-    # SPI configuration
+
+def _bind_spi(lib: Any) -> None:  # noqa: ANN401
     lib.ni845xSpiConfigurationOpen.argtypes = [POINTER(NiHandle)]
     lib.ni845xSpiConfigurationOpen.restype = c_int32
-
     lib.ni845xSpiConfigurationClose.argtypes = [NiHandle]
     lib.ni845xSpiConfigurationClose.restype = c_int32
-
     lib.ni845xSpiConfigurationSetChipSelect.argtypes = [NiHandle, c_uint32]
     lib.ni845xSpiConfigurationSetChipSelect.restype = c_int32
-
     lib.ni845xSpiConfigurationSetClockRate.argtypes = [NiHandle, c_uint16]
     lib.ni845xSpiConfigurationSetClockRate.restype = c_int32
-
     lib.ni845xSpiConfigurationSetClockPolarity.argtypes = [NiHandle, c_int32]
     lib.ni845xSpiConfigurationSetClockPolarity.restype = c_int32
-
     lib.ni845xSpiConfigurationSetClockPhase.argtypes = [NiHandle, c_int32]
     lib.ni845xSpiConfigurationSetClockPhase.restype = c_int32
-
     lib.ni845xSpiConfigurationSetNumBitsPerSample.argtypes = [NiHandle, c_uint16]
     lib.ni845xSpiConfigurationSetNumBitsPerSample.restype = c_int32
-
     lib.ni845xSpiWriteRead.argtypes = [
         NiHandle,
         NiHandle,
@@ -210,6 +187,13 @@ def _bind(lib: Any) -> None:  # noqa: ANN401
         c_char_p,
     ]
     lib.ni845xSpiWriteRead.restype = c_int32
+
+
+def _bind(lib: Any) -> None:  # noqa: ANN401
+    _bind_device(lib)
+    _bind_dio(lib)
+    _bind_i2c(lib)
+    _bind_spi(lib)
 
 
 def check_status(lib: Any, status: int, *, action: str) -> None:  # noqa: ANN401
@@ -233,8 +217,7 @@ def voltage_level(voltage: float) -> int:
         if abs(voltage - expected) < 0.05:
             return level
     raise IoConnectionError(
-        f"unsupported NI-845x voltage {voltage}; "
-        f"use one of {sorted(VOLTAGE_TO_LEVEL)}",
+        f"unsupported NI-845x voltage {voltage}; use one of {sorted(VOLTAGE_TO_LEVEL)}",
     )
 
 

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -34,7 +37,13 @@ def set_attenuation_db(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).set_attenuation_db(
+    _logger.info(
+        "Setting attenuation on attenuator %s channel %s to %s dB",
+        attn_id,
+        channel,
+        attenuation_db,
+    )
+    get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).set_attenuation_db(
         attenuation_db,
         channel=channel,
         settle_s=settle_s,
@@ -55,7 +64,8 @@ def wait_settle(*, attn_id: int, settle_s: float | None = None) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).wait_settle(settle_s=settle_s)
+    _logger.info("Waiting for attenuator %s to settle", attn_id)
+    get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).wait_settle(settle_s=settle_s)
 
 
 @command
@@ -71,7 +81,8 @@ def preset(*, attn_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).preset()
+    _logger.info("Presetting attenuator %s", attn_id)
+    get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).preset()
 
 
 @measurement
@@ -92,14 +103,17 @@ def measure_attenuation_db(*, attn_id: int, key: str, channel: int | None = None
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading attenuation from attenuator %s channel %s", attn_id, channel)
     _ = key
     return float(
-        get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_attenuation_db(channel=channel),
+        get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_attenuation_db(channel=channel),
     )
 
 
 verify_attenuation_db = tolerance_verifier(
-    "measure_attenuation_db", name="verify_attenuation_db", unit="dB",
+    "measure_attenuation_db",
+    name="verify_attenuation_db",
+    unit="dB",
 )
 
 
@@ -118,8 +132,9 @@ def measure_min_attenuation_db(*, attn_id: int, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading minimum attenuation from attenuator %s", attn_id)
     _ = key
-    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_min_attenuation_db())
+    return float(get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_min_attenuation_db())
 
 
 @measurement
@@ -137,8 +152,9 @@ def measure_max_attenuation_db(*, attn_id: int, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading maximum attenuation from attenuator %s", attn_id)
     _ = key
-    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_max_attenuation_db())
+    return float(get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_max_attenuation_db())
 
 
 @measurement
@@ -156,5 +172,6 @@ def measure_step_db(*, attn_id: int, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading attenuation step from attenuator %s", attn_id)
     _ = key
-    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_step_db())
+    return float(get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_step_db())

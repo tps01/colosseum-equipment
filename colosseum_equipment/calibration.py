@@ -254,11 +254,7 @@ def _read_calibration(key: str) -> tuple[list[float], list[float]]:
 
 
 def _parse_tabular(text: str) -> tuple[list[float], list[float]]:
-    lines = [
-        line.strip()
-        for line in text.splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
+    lines = [line.strip() for line in text.splitlines() if line.strip() and not line.strip().startswith("#")]
     if not lines:
         raise CalibrationError("calibration table is empty")
 
@@ -299,8 +295,7 @@ def _pick_field(fields: dict[str, str], candidates: tuple[str, ...]) -> str:
         if name in fields:
             return fields[name]
     raise CalibrationError(
-        "calibration table needs a frequency column and a loss/value column "
-        f"(have {sorted(fields)})",
+        f"calibration table needs a frequency column and a loss/value column (have {sorted(fields)})",
     )
 
 
@@ -363,9 +358,7 @@ def _parse_touchstone_option(line: str) -> tuple[float, str]:
 def _pair_to_db(first: float, second: float, option: str) -> float:
     if option == "DB":
         return float(first)
-    magnitude = (
-        abs(float(first)) if option == "MA" else abs(complex(float(first), float(second)))
-    )
+    magnitude = abs(float(first)) if option == "MA" else abs(complex(float(first), float(second)))
     if magnitude <= 0.0:
         return -200.0
     return 20.0 * math.log10(magnitude)

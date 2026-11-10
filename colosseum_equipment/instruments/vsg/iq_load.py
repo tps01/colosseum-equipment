@@ -76,7 +76,7 @@ def _iq_tar_format(metadata: dict[str, Any]) -> str:
     return "i16"
 
 
-def _load_iq_tar(path: Path) -> bytes:
+def _read_iq_tar_payload(path: Path) -> tuple[bytes, dict[str, Any]]:
     with tarfile.open(path, mode="r:*") as archive:
         member = archive.getmember("iq.bin")
         handle = archive.extractfile(member)
@@ -92,27 +92,50 @@ def _load_iq_tar(path: Path) -> bytes:
             meta_handle = archive.extractfile(meta_member)
             if meta_handle is not None:
                 metadata = json.loads(meta_handle.read().decode("utf-8"))
-    fmt = _iq_tar_format(metadata)
-    if fmt == "i16":
-        if len(payload) >= 4 and len(payload) % 4 == 0:
-            return payload
-        raise EquipmentResponseError(
-            f"iq.bin in `{path}` must contain whole 16-bit I/Q sample pairs",
-        )
-    if fmt == "f64":
-        as_f64 = np.frombuffer(payload, dtype="<f8")
-        if as_f64.size < 2 or as_f64.size % 2:
-            raise EquipmentResponseError(f"iq.bin in `{path}` must contain float64 I/Q pairs")
-        return _float_to_i16_interleaved(as_f64[0::2], as_f64[1::2])
-    if fmt == "f32":
-        as_f32 = np.frombuffer(payload, dtype="<f4")
-        if as_f32.size < 2 or as_f32.size % 2:
-            raise EquipmentResponseError(f"iq.bin in `{path}` must contain float32 I/Q pairs")
-        return _float_to_i16_interleaved(as_f32[0::2], as_f32[1::2])
+    return payload, metadata
+
+
+def _iq_tar_i16(payload: bytes, path: Path) -> bytes:
+    if len(payload) >= 4 and len(payload) % 4 == 0:
+        return payload
+    raise EquipmentResponseError(
+        f"iq.bin in `{path}` must contain whole 16-bit I/Q sample pairs",
+    )
+
+
+def _iq_tar_f64(payload: bytes, path: Path) -> bytes:
+    as_f64 = np.frombuffer(payload, dtype="<f8")
+    if as_f64.size < 2 or as_f64.size % 2:
+        raise EquipmentResponseError(f"iq.bin in `{path}` must contain float64 I/Q pairs")
+    return _float_to_i16_interleaved(as_f64[0::2], as_f64[1::2])
+
+
+def _iq_tar_f32(payload: bytes, path: Path) -> bytes:
+    as_f32 = np.frombuffer(payload, dtype="<f4")
+    if as_f32.size < 2 or as_f32.size % 2:
+        raise EquipmentResponseError(f"iq.bin in `{path}` must contain float32 I/Q pairs")
+    return _float_to_i16_interleaved(as_f32[0::2], as_f32[1::2])
+
+
+def _iq_tar_c64(payload: bytes, path: Path) -> bytes:
     as_c64 = np.frombuffer(payload, dtype="<c8")
     if as_c64.size < 1:
         raise EquipmentResponseError(f"iq.bin in `{path}` must contain complex64 samples")
     return _float_to_i16_interleaved(as_c64.real, as_c64.imag)
+
+
+_IQ_TAR_CONVERTERS = {
+    "i16": _iq_tar_i16,
+    "f64": _iq_tar_f64,
+    "f32": _iq_tar_f32,
+    "c64": _iq_tar_c64,
+}
+
+
+def _load_iq_tar(path: Path) -> bytes:
+    payload, metadata = _read_iq_tar_payload(path)
+    fmt = _iq_tar_format(metadata)
+    return _IQ_TAR_CONVERTERS[fmt](payload, path)
 
 
 def load_iq_interleaved_i16(local_path: str | Path) -> bytes:

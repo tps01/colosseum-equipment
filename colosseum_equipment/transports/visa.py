@@ -27,9 +27,7 @@ def _find_checkout_root() -> Path | None:
         return package_root
     current = Path.cwd().resolve()
     for directory in (current, *current.parents):
-        if (directory / "pyproject.toml").is_file() and (
-            directory / "colosseum_equipment"
-        ).is_dir():
+        if (directory / "pyproject.toml").is_file() and (directory / "colosseum_equipment").is_dir():
             return directory
     return None
 
@@ -74,14 +72,31 @@ def _context_cache() -> dict[str, object] | None:
         return None
 
 
-def _new_resource_manager(visa_library: str | None, sim_path: str | None) -> Any:  # noqa: ANN401
+def open_resource_manager(
+    visa_library: str | None = None,
+    *,
+    sim_path: str | None = None,
+) -> Any:  # noqa: ANN401
+    """Return a PyVISA ``ResourceManager``.
+
+    An explicit ``visa_library`` or sim definition is passed through. With neither,
+    try the host default (NI/IVI when present) and fall back to ``@py`` only when
+    no VISA implementation is installed.
+    """
     import pyvisa
 
     if sim_path is not None:
         return pyvisa.ResourceManager(f"{sim_path}@sim")
     if visa_library:
         return pyvisa.ResourceManager(visa_library)
-    return pyvisa.ResourceManager()
+    try:
+        return pyvisa.ResourceManager()
+    except ValueError:
+        return pyvisa.ResourceManager("@py")
+
+
+def _new_resource_manager(visa_library: str | None, sim_path: str | None) -> Any:  # noqa: ANN401
+    return open_resource_manager(visa_library, sim_path=sim_path)
 
 
 def _enable_tcp_nodelay(session: Any) -> tuple[object | None, object | None]:  # noqa: ANN401
@@ -118,10 +133,7 @@ def _acquire_resource_manager(
     cache = _context_cache()
     if cache is None:
         return _new_resource_manager(visa_library, sim_path), False
-    if sim_path is not None:
-        key = f"visa:manager:sim:{sim_path}"
-    else:
-        key = f"visa:manager:lib:{visa_library or ''}"
+    key = f"visa:manager:sim:{sim_path}" if sim_path is not None else f"visa:manager:lib:{visa_library or ''}"
 
     def _open() -> Any:  # noqa: ANN401
         return _new_resource_manager(visa_library, sim_path)

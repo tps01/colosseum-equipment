@@ -209,9 +209,7 @@ def parse_rmc(sentence: str) -> tuple[str | None, NmeaVelocity | None, bool]:
         month = ddmmyy[2:4]
         year = int(ddmmyy[4:6])
         year += 2000 if year < 80 else 1900
-        utc_iso = (
-            f"{year:04d}-{month}-{day}T{hhmmss[0:2]}:{hhmmss[2:4]}:{hhmmss[4:6]}Z"
-        )
+        utc_iso = f"{year:04d}-{month}-{day}T{hhmmss[0:2]}:{hhmmss[2:4]}:{hhmmss[4:6]}Z"
     velocity: NmeaVelocity | None = None
     try:
         if fields[7]:
@@ -231,10 +229,7 @@ def parse_rmc_utc_date(sentence: str) -> str | None:
 
 def parse_gsv(sentence: str) -> list[tuple[int, float, float, float]]:
     """Parse one GSV sentence into ``(prn, elevation_deg, azimuth_deg, snr)`` rows."""
-    return [
-        (sat.prn, sat.elevation_deg, sat.azimuth_deg, sat.snr)
-        for sat in parse_gsv_sats(sentence)
-    ]
+    return [(sat.prn, sat.elevation_deg, sat.azimuth_deg, sat.snr) for sat in parse_gsv_sats(sentence)]
 
 
 def parse_gsv_sats(sentence: str) -> list[NmeaSat]:

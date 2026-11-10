@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -14,8 +15,7 @@ from colosseum.logging import get_logger
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
-from colosseum_equipment.exceptions import EquipmentTimeoutError
-from colosseum_equipment.instruments.gnss.generic import GenericGnss
+from colosseum_equipment.instruments.gnss.generic import _BinaryGnss
 from colosseum_equipment.instruments.gnss.messages import (
     LOGICAL_CLOCK,
     LOGICAL_DOP,
@@ -61,6 +61,17 @@ _logger = get_logger("colosseum.equipment")
 _CMD_TERMINATOR = b"\r\n"
 _ACK_WAIT_S = 0.25
 
+# Record-only OEM7 arms: msg-id → (parse, logical_id, vendor_name).
+_OEM7_RECORD_ARMS: dict[int, tuple[Callable[[bytes], dict[str, Any] | None], str, str]] = {
+    MSG_BESTXYZ: (parse_bestxyz, LOGICAL_POSECEF, "BESTXYZB"),
+    MSG_TIME: (parse_time, LOGICAL_TIME, "TIMEB"),
+    MSG_CLOCKMODEL: (parse_clockmodel, LOGICAL_CLOCK, "CLOCKMODELB"),
+    MSG_RXSTATUS: (parse_rxstatus, LOGICAL_STATUS, "RXSTATUSB"),
+    MSG_SATVIS2: (parse_satvis2, LOGICAL_SAT, "SATVIS2B"),
+    MSG_TRACKSTAT: (parse_trackstat, LOGICAL_SAT, "TRACKSTATB"),
+    MSG_RANGE: (parse_range, LOGICAL_RAWX, "RANGEB"),
+}
+
 
 def _period_s(rate_hz: float) -> float:
     """Convert rate_hz to an OEM7 ONTIME period (allows fractional seconds)."""
@@ -79,7 +90,7 @@ def _period_s(rate_hz: float) -> float:
     "novatel-pwrpak7",
     "novatel-smart7",
 )
-class NovatelGnss(GenericGnss):
+class NovatelGnss(_BinaryGnss):
     """Shared NovAtel OEM7 driver; ASCII LOG + BESTPOSB + evidence epochs."""
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
@@ -92,17 +103,6 @@ class NovatelGnss(GenericGnss):
 
     def _wire_suffix(self) -> str:
         return ".gps"
-
-    def _write_bytes(self, payload: bytes) -> None:
-        write_bytes = getattr(self._transport, "write_bytes", None)
-        if callable(write_bytes):
-            write_bytes(payload)
-            return
-        write_raw = getattr(self._transport, "write_raw", None)
-        if callable(write_raw):
-            write_raw(payload)
-            return
-        self._transport.write(payload.decode("latin-1"))
 
     def _send_command(self, command: str, *, wait_ack: bool = True) -> None:
         text = command.strip()
@@ -186,12 +186,7 @@ class NovatelGnss(GenericGnss):
             self._apply_events(self._parser.feed(chunk))
 
     def load_config(self, path: str) -> None:
-        resolved = Path(path)
-        if not resolved.is_file():
-            alt = resolve_artifact_path(path)
-            resolved = alt if alt.is_file() else resolved
-        if not resolved.is_file():
-            raise FileNotFoundError(f"GNSS config not found: {path}")
+        resolved = self._resolve_config_path(path)
         for raw_line in resolved.read_text(encoding="utf-8").splitlines():
             line = raw_line.split("#", 1)[0].strip()
             if not line:
@@ -256,149 +251,84 @@ class NovatelGnss(GenericGnss):
                 self._log_raw_line(f"#OEM7 {msg_id} {body.hex()}")
                 self._handle_oem7(msg_id, body)
 
+    def _handle_oem7_bestpos(self, body: bytes) -> None:
+        best = parse_bestpos(body)
+        if best is None:
+            return
+        self._best = best
+        hdop = self._fix.hdop if self._fix is not None else 0.0
+        fix = NmeaFix(
+            latitude=best.latitude,
+            longitude=best.longitude,
+            altitude_m=best.altitude_m,
+            fix_quality=best.fix_quality,
+            satellites=best.satellites,
+            hdop=hdop,
+            utc_time=self._utc_iso,
+        )
+        now = time.monotonic()
+        with self._state_lock:
+            if best.fix_quality > 0:
+                self._fix = fix
+                self._fix_recv_mono = now
+            if best.lat_stdev_m is not None and best.lon_stdev_m is not None:
+                self._h_acc_m = math.sqrt(best.lat_stdev_m**2 + best.lon_stdev_m**2)
+            if best.hgt_stdev_m is not None:
+                self._v_acc_m = float(best.hgt_stdev_m)
+        if best.fix_quality > 0:
+            self._note_first_fix()
+        self._record_message_epoch(
+            logical_id=LOGICAL_PVT,
+            vendor_message="BESTPOSB",
+            fields=bestpos_fields(best),
+        )
+
+    def _handle_oem7_psrdop(self, body: bytes) -> None:
+        fields = parse_psrdop(body)
+        if fields is None:
+            return
+        now = time.monotonic()
+        with self._state_lock:
+            self._dop = NmeaDop(
+                fix_type="3d" if float(fields.get("pdop", 0)) > 0 else "none",
+                pdop=float(fields.get("pdop", 0)),
+                hdop=float(fields.get("hdop", 0)),
+                vdop=float(fields.get("vdop", 0)),
+                prns=(),
+            )
+            self._dop_recv_mono = now
+            self._gdop = float(fields.get("gdop", 0))
+        self._record_message_epoch(
+            logical_id=LOGICAL_DOP,
+            vendor_message="PSRDOPB",
+            fields=fields,
+        )
+
     def _handle_oem7(self, msg_id: int, body: bytes) -> None:
         if msg_id == MSG_BESTPOS:
-            best = parse_bestpos(body)
-            if best is None:
-                return
-            self._best = best
-            hdop = self._fix.hdop if self._fix is not None else 0.0
-            fix = NmeaFix(
-                latitude=best.latitude,
-                longitude=best.longitude,
-                altitude_m=best.altitude_m,
-                fix_quality=best.fix_quality,
-                satellites=best.satellites,
-                hdop=hdop,
-                utc_time=self._utc_iso,
-            )
-            now = time.monotonic()
-            with self._state_lock:
-                if best.fix_quality > 0:
-                    self._fix = fix
-                    self._fix_recv_mono = now
-                if best.lat_stdev_m is not None and best.lon_stdev_m is not None:
-                    self._h_acc_m = math.sqrt(best.lat_stdev_m**2 + best.lon_stdev_m**2)
-                if best.hgt_stdev_m is not None:
-                    self._v_acc_m = float(best.hgt_stdev_m)
-            if best.fix_quality > 0:
-                self._note_first_fix()
-            self._record_message_epoch(
-                logical_id=LOGICAL_PVT,
-                vendor_message="BESTPOSB",
-                fields=bestpos_fields(best),
-            )
+            self._handle_oem7_bestpos(body)
             return
         if msg_id == MSG_PSRDOP:
-            fields = parse_psrdop(body)
-            if fields is None:
-                return
-            now = time.monotonic()
-            with self._state_lock:
-                self._dop = NmeaDop(
-                    fix_type="3d" if float(fields.get("pdop", 0)) > 0 else "none",
-                    pdop=float(fields.get("pdop", 0)),
-                    hdop=float(fields.get("hdop", 0)),
-                    vdop=float(fields.get("vdop", 0)),
-                    prns=(),
-                )
-                self._dop_recv_mono = now
-                self._gdop = float(fields.get("gdop", 0))
+            self._handle_oem7_psrdop(body)
+            return
+        arm = _OEM7_RECORD_ARMS.get(msg_id)
+        if arm is None:
+            return
+        parse, logical_id, vendor_name = arm
+        fields = parse(body)
+        if fields is not None:
             self._record_message_epoch(
-                logical_id=LOGICAL_DOP,
-                vendor_message="PSRDOPB",
+                logical_id=logical_id,
+                vendor_message=vendor_name,
                 fields=fields,
             )
-            return
-        if msg_id == MSG_BESTXYZ:
-            fields = parse_bestxyz(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_POSECEF,
-                    vendor_message="BESTXYZB",
-                    fields=fields,
-                )
-            return
-        if msg_id == MSG_TIME:
-            fields = parse_time(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_TIME,
-                    vendor_message="TIMEB",
-                    fields=fields,
-                )
-            return
-        if msg_id == MSG_CLOCKMODEL:
-            fields = parse_clockmodel(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_CLOCK,
-                    vendor_message="CLOCKMODELB",
-                    fields=fields,
-                )
-            return
-        if msg_id == MSG_RXSTATUS:
-            fields = parse_rxstatus(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_STATUS,
-                    vendor_message="RXSTATUSB",
-                    fields=fields,
-                )
-            return
-        if msg_id == MSG_SATVIS2:
-            fields = parse_satvis2(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_SAT,
-                    vendor_message="SATVIS2B",
-                    fields=fields,
-                )
-            return
-        if msg_id == MSG_TRACKSTAT:
-            fields = parse_trackstat(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_SAT,
-                    vendor_message="TRACKSTATB",
-                    fields=fields,
-                )
-            return
-        if msg_id == MSG_RANGE:
-            fields = parse_range(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_RAWX,
-                    vendor_message="RANGEB",
-                    fields=fields,
-                )
-
-    def _on_listener_chunk(self, data: bytes) -> None:
-        if data:
-            self._write_wire(data)
-            self._note_bytes()
-        self._apply_events(self._parser.feed(data))
 
     def _has_fix(self) -> bool:
         if self._best is not None and getattr(self._best, "fix_quality", 0) > 0:
             return True
         return self._fix is not None and self._fix.fix_quality > 0
 
-    def _poll_transport(self, timeout_s: float) -> NmeaFix:
-        deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            chunk = self._read_bytes(512)
-            if chunk:
-                self._note_bytes()
-                self._apply_events(self._parser.feed(chunk))
-            if self._has_fix() and self._fix is not None:
-                return self._fix
-        raise EquipmentTimeoutError(
-            f"gnss model `{self._model}` did not report a fix within {timeout_s}s",
-        )
-
     def cold_start(self) -> None:
         self._send_command("FRESET COLDSTART")
         self._best = None
         self._clear_nav_state()
-

@@ -52,8 +52,7 @@ class GenericASG(ScpiInstrumentMixin):
         ch = int(channel)
         if ch < 1 or ch > self._channel_count:
             raise EquipmentCapabilityError(
-                f"asg model `{self._model}` does not support channel {ch} "
-                f"(valid 1..{self._channel_count})",
+                f"asg model `{self._model}` does not support channel {ch} (valid 1..{self._channel_count})",
             )
         return ch
 

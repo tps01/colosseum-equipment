@@ -4,7 +4,9 @@ Serial ASRL/COM ports are probed with bare ``IDN?`` then ``*IDN?`` across a shor
 baud list. VISA ASRL sessions enable CR termination (matching bench tools). Fluke
 handheld ``QM`` and GNSS vendor probes are opt-in (``qm=True`` / ``gnss=True``)
 and run only after IDN fails. Hard serial open errors abort further baud tries.
-FTDI / digital IO adapters are not discovered here.
+Optional ``gpib_scan`` sweeps ``GPIB0`` primary addresses when list_resources is
+empty for GPIB. Linux ``/dev/usbtmcN`` nodes are probed without VISA. FTDI /
+digital IO adapters are not discovered here.
 """
 
 from __future__ import annotations
@@ -13,7 +15,8 @@ import contextlib
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from colosseum.config.loader import ConfigError
 
@@ -37,15 +40,17 @@ from colosseum_equipment.autoconfig.network_filter import (
     resolve_blacklist,
 )
 from colosseum_equipment.autoconfig.qm_probe import query_qm_model
-from colosseum_equipment.autoconfig.sort import sort_resources
+from colosseum_equipment.autoconfig.sort import interface_name, sort_resources
 from colosseum_equipment.instruments.identify import probe_identity
-from colosseum_equipment.transports.visa import normalize_visa_resource
+from colosseum_equipment.transports.usbtmc import UsbtmcTransport, list_usbtmc_devices
+from colosseum_equipment.transports.visa import normalize_visa_resource, open_resource_manager
 
 if TYPE_CHECKING:
     from colosseum_equipment.network import IPv4NetworkBinding
 
 _IDN_BAUDS = (9600, 115200, 19200)
 _QM_BAUDS = (9600, 115200)
+_GPIB_PRIMARY_ADDRESSES = range(31)
 _ASRL_NUM = re.compile(r"^ASRL(\d+)", re.IGNORECASE)
 _COM_NUM = re.compile(r"^COM(\d+)$", re.IGNORECASE)
 _HARD_OPEN_MARKERS = (
@@ -107,9 +112,12 @@ def _is_hard_serial_open_error(exc: BaseException) -> bool:
     text = f"{type(exc).__name__}: {exc}".upper()
     if "TMO" in text or "TIMEOUT" in text:
         return False
-    return any(marker in text for marker in _HARD_OPEN_MARKERS) or (
-        "PARITY" in text and "ASRL" in text
-    ) or ("FRAMING" in text and "ASRL" in text) or ("OVERRUN" in text and "ASRL" in text)
+    return (
+        any(marker in text for marker in _HARD_OPEN_MARKERS)
+        or ("PARITY" in text and "ASRL" in text)
+        or ("FRAMING" in text and "ASRL" in text)
+        or ("OVERRUN" in text and "ASRL" in text)
+    )
 
 
 def _configure_asrl_cr_termchar(inst: object) -> None:
@@ -128,6 +136,17 @@ def _configure_asrl_cr_termchar(inst: object) -> None:
         set_attr(visa_constants.VI_ATTR_TERMCHAR_EN, visa_constants.VI_TRUE)
     except Exception:
         return
+
+
+class _VisaResource(Protocol):
+    """Minimal pyVISA instrument surface used by discovery open/probe helpers."""
+
+    timeout: float
+    baud_rate: int
+
+    def close(self) -> None: ...
+
+    def query(self, command: str) -> object: ...
 
 
 class _VisaProbeAdapter:
@@ -326,12 +345,554 @@ def _serial_row_fields(
 
 
 OpenSerial = Callable[[str, int, float], object]
+SerialProbeFn = Callable[[object, int, list[str]], "_SerialHit | None"]
+
+_HARD_ABORT = object()
+
+
+@dataclass
+class _DiscoveryState:
+    """Mutable discovery scratch shared across probe helpers."""
+
+    assignments: list[AutoconfigAssignment] = field(default_factory=list)
+    skipped: list[AutoconfigSkip] = field(default_factory=list)
+    seen_resources: set[str] = field(default_factory=set)
+    covered_ports: set[str] = field(default_factory=set)
+    next_id: dict[str, int] = field(default_factory=dict)
+    logger: AutoconfigProgress | None = None
+
+
+@dataclass(frozen=True)
+class _SerialHit:
+    """Successful serial-phase probe ready to assign."""
+
+    kind: str
+    model: str
+    idn: str
+    device_address: int | None = None
 
 
 def _default_open_serial(port: str, baudrate: int, timeout: float) -> object:
     import serial
 
     return serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+
+
+def _default_gpib_board_present() -> bool:
+    """Return whether linux-gpib board 0 looks usable on this host."""
+    try:
+        import gpib  # noqa: F401
+    except ImportError:
+        return False
+    node = Path("/dev/gpib0")
+    try:
+        return node.exists()
+    except OSError:
+        return False
+
+
+def _listed_gpib_resources(resources: Sequence[str]) -> bool:
+    return any(interface_name(resource) == "GPIB" for resource in resources)
+
+
+def _record_assignment(
+    state: _DiscoveryState,
+    *,
+    kind: str,
+    model: str,
+    idn: str,
+    resource: str,
+    port: str | None,
+    baudrate: int | None,
+    device_address: int | None = None,
+) -> None:
+    section, _id_field = KIND_SECTIONS[kind]
+    item_id = state.next_id.get(kind, 0) + 1
+    state.next_id[kind] = item_id
+    port_out, driver, baud_out = _serial_row_fields(
+        model=model,
+        resource=resource,
+        port=port,
+        baudrate=baudrate,
+    )
+    if kind == "gnss":
+        port_out = port_out or _port_from_asrl(resource)
+        driver = "serial"
+        if baud_out is None:
+            baud_out = 9600
+    if port_out:
+        state.covered_ports.add(port_out.upper())
+    if resource:
+        state.seen_resources.add(resource)
+        asrl_port = _port_from_asrl(resource)
+        if asrl_port:
+            state.covered_ports.add(asrl_port.upper())
+    assignment = AutoconfigAssignment(
+        section=section,
+        item_id=item_id,
+        kind=kind,
+        resource=resource,
+        model=model,
+        idn=idn,
+        port=port_out,
+        driver=driver,
+        baudrate=baud_out,
+        device_address=device_address,
+    )
+    state.assignments.append(assignment)
+    log_assignment(state.logger, assignment)
+
+
+def _record_skip(
+    state: _DiscoveryState,
+    resource: str,
+    reason: str,
+    idn: str | None = None,
+) -> None:
+    skip = AutoconfigSkip(resource=resource, reason=reason, idn=idn)
+    state.skipped.append(skip)
+    log_skip(state.logger, skip)
+
+
+def _assign_classified_idn(
+    state: _DiscoveryState,
+    *,
+    idn: str,
+    bare: bool,
+    resource: str,
+    port: str | None = None,
+    baudrate: int | None = None,
+    device_address: int | None = None,
+) -> bool:
+    """Classify ``idn`` and assign, or skip with ``no_kind_match``. Return True if assigned."""
+    hit = _classify_idn_hit(idn, bare=bare)
+    if hit is None or hit[0] not in KIND_SECTIONS:
+        _record_skip(state, resource, "no_kind_match", idn=idn)
+        return False
+    kind, model, idn_label = hit
+    _record_assignment(
+        state,
+        kind=kind,
+        model=model,
+        idn=idn_label,
+        resource=resource,
+        port=port,
+        baudrate=baudrate,
+        device_address=device_address,
+    )
+    return True
+
+
+def _close_probe(probe: object) -> None:
+    close = getattr(probe, "close", None)
+    if callable(close):
+        with contextlib.suppress(Exception):
+            close()
+
+
+def _open_visa_resource(manager: object, resource: str, timeout: float) -> _VisaResource:
+    """Open a VISA resource, preferring ``open_timeout`` when the backend supports it."""
+    open_timeout_ms = max(1, int(timeout * 1000))
+    try:
+        return cast(
+            "_VisaResource",
+            manager.open_resource(  # type: ignore[attr-defined]
+                resource,
+                open_timeout=open_timeout_ms,
+            ),
+        )
+    except TypeError:
+        return cast(
+            "_VisaResource",
+            manager.open_resource(resource),  # type: ignore[attr-defined]
+        )
+
+
+def _open_visa_asrl_probe(
+    manager: object,
+    resource: str,
+    baud: int,
+    seconds: float,
+) -> _VisaProbeAdapter:
+    open_timeout_ms = max(1, int(seconds * 1000))
+    inst = _open_visa_resource(manager, resource, seconds)
+    inst.timeout = open_timeout_ms
+    with contextlib.suppress(Exception):
+        inst.baud_rate = int(baud)
+    _configure_asrl_cr_termchar(inst)
+    adapter = _VisaProbeAdapter(inst, cr_termchar=True)
+
+    def _close() -> None:
+        with contextlib.suppress(Exception):
+            inst.close()
+
+    adapter.close = _close  # type: ignore[attr-defined]
+    return adapter
+
+
+def _open_com_probe(
+    open_serial_fn: OpenSerial,
+    com_port: str,
+    baud: int,
+    timeout: float,
+) -> _PyserialProbeAdapter:
+    ser = open_serial_fn(com_port, baud, timeout)
+    adapter = _PyserialProbeAdapter(ser)
+
+    def _close() -> None:
+        close = getattr(ser, "close", None)
+        if callable(close):
+            with contextlib.suppress(Exception):
+                close()
+
+    adapter.close = _close  # type: ignore[attr-defined]
+    return adapter
+
+
+def _open_serial_baud(
+    *,
+    baud: int,
+    phase: str,
+    open_probe: Callable[[int], Any],
+    last_errors: list[str],
+    state: _DiscoveryState,
+    label: str,
+) -> object | None:
+    """Open at ``baud``. Return probe, ``None`` to try next baud, or ``_HARD_ABORT``."""
+    try:
+        return cast("object", open_probe(baud))
+    except Exception as exc:
+        last_errors.append(f"baud={baud} {phase}:{exc}")
+        if _is_hard_serial_open_error(exc):
+            detail = "; ".join(last_errors)
+            _record_skip(state, label, f"probe_failed: hard_open:{exc}; {detail}")
+            return _HARD_ABORT
+        return None
+
+
+def _probe_idn_on_serial(
+    probe: object,
+    baud: int,
+    last_errors: list[str],
+) -> _SerialHit | None:
+    try:
+        idn, bare, device_address = probe_identity(
+            probe,
+            asrl=True,
+            log_kind="autoconfig",
+        )
+    except Exception as exc:
+        last_errors.append(f"baud={baud} idn:{exc}")
+        return None
+    if idn is None:
+        return None
+    hit = _classify_idn_hit(idn, bare=bare)
+    if hit is None:
+        last_errors.append(f"baud={baud} no_kind_match idn={idn!r}")
+        return None
+    kind, model, idn_label = hit
+    if kind not in KIND_SECTIONS:
+        return None
+    return _SerialHit(
+        kind=kind,
+        model=model,
+        idn=idn_label,
+        device_address=device_address,
+    )
+
+
+def _probe_qm_on_serial(
+    probe: object,
+    baud: int,
+    last_errors: list[str],
+) -> _SerialHit | None:
+    try:
+        qm_model = query_qm_model(probe)
+    except Exception as exc:
+        last_errors.append(f"baud={baud} qm:{exc}")
+        return None
+    if qm_model is None:
+        return None
+    return _SerialHit(kind="dmm", model=qm_model, idn=f"QM:{qm_model}")
+
+
+def _probe_gnss_on_serial(
+    probe: object,
+    baud: int,
+    last_errors: list[str],
+) -> _SerialHit | None:
+    from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
+
+    try:
+        gnss_model = probe_gnss_model(probe)
+    except Exception as exc:
+        last_errors.append(f"baud={baud} gnss:{exc}")
+        return None
+    if gnss_model is None:
+        return None
+    return _SerialHit(kind="gnss", model=gnss_model, idn=f"GNSS:{gnss_model}")
+
+
+def _sweep_serial_bauds(
+    *,
+    bauds: Sequence[int],
+    log_label: str,
+    open_phase: str,
+    open_probe: Callable[[int], Any],
+    last_errors: list[str],
+    probe_fn: SerialProbeFn,
+    state: _DiscoveryState,
+    label: str,
+    resource: str,
+    port: str | None,
+) -> bool | None:
+    """Run a baud sweep. True=assigned, False=hard abort, None=no hit."""
+    for baud in bauds:
+        log_probing(state.logger, log_label, baud=baud)
+        probe = _open_serial_baud(
+            baud=baud,
+            phase=open_phase,
+            open_probe=open_probe,
+            last_errors=last_errors,
+            state=state,
+            label=label,
+        )
+        if probe is _HARD_ABORT:
+            return False
+        if probe is None:
+            continue
+        try:
+            hit = probe_fn(probe, baud, last_errors)
+        finally:
+            _close_probe(probe)
+        if hit is None:
+            continue
+        _record_assignment(
+            state,
+            kind=hit.kind,
+            model=hit.model,
+            idn=hit.idn,
+            resource=resource,
+            port=port,
+            baudrate=baud,
+            device_address=hit.device_address,
+        )
+        return True
+    return None
+
+
+def _probe_serial_candidate(
+    state: _DiscoveryState,
+    *,
+    label: str,
+    resource: str,
+    port: str | None,
+    open_probe: Callable[[int], Any],
+    qm: bool,
+    gnss: bool,
+) -> None:
+    last_errors: list[str] = []
+    sweeps: list[tuple[Sequence[int], str, str, SerialProbeFn]] = [
+        (_IDN_BAUDS, label, "open", _probe_idn_on_serial),
+    ]
+    if qm:
+        sweeps.append((_QM_BAUDS, f"{label} QM", "qm_open", _probe_qm_on_serial))
+    if gnss:
+        sweeps.append((_IDN_BAUDS, f"{label} GNSS", "gnss_open", _probe_gnss_on_serial))
+
+    for bauds, log_label, open_phase, probe_fn in sweeps:
+        outcome = _sweep_serial_bauds(
+            bauds=bauds,
+            log_label=log_label,
+            open_phase=open_phase,
+            open_probe=open_probe,
+            last_errors=last_errors,
+            probe_fn=probe_fn,
+            state=state,
+            label=label,
+            resource=resource,
+            port=port,
+        )
+        if outcome is not None:
+            return
+
+    detail = "; ".join(last_errors) if last_errors else "no response"
+    _record_skip(state, label, f"probe_failed: {detail}")
+
+
+def _identify_visa_instr(
+    manager: object,
+    resource: str,
+    timeout: float,
+) -> tuple[str | None, bool] | str:
+    """Open → identify a non-ASRL VISA resource.
+
+    Returns ``(idn, bare)`` on success, or an error reason string for ``probe_failed``.
+    """
+    open_timeout_ms = max(1, int(timeout * 1000))
+    try:
+        inst = _open_visa_resource(manager, resource, timeout)
+    except Exception as exc:
+        return str(exc)
+    try:
+        inst.timeout = open_timeout_ms
+        adapter = _VisaProbeAdapter(inst)
+        idn, bare, _addr = probe_identity(adapter, asrl=False, log_kind="autoconfig")
+    except Exception as exc:
+        return str(exc)
+    finally:
+        with contextlib.suppress(Exception):
+            inst.close()
+    return idn, bare
+
+
+def _probe_visa_instr(
+    state: _DiscoveryState,
+    manager: object,
+    resource: str,
+    timeout: float,
+) -> None:
+    """Open → identify → classify/assign for non-ASRL VISA (GPIB, USBTMC, TCPIP, …)."""
+    log_probing(state.logger, resource)
+    identified = _identify_visa_instr(manager, resource, timeout)
+    if isinstance(identified, str):
+        _record_skip(state, resource, f"probe_failed: {identified}")
+        return
+    idn, bare = identified
+    if idn is None:
+        _record_skip(state, resource, "probe_failed: no identity")
+        return
+    _assign_classified_idn(state, idn=idn, bare=bare, resource=resource)
+
+
+def _probe_usbtmc_path(state: _DiscoveryState, path: str, timeout: float) -> None:
+    """Identify a Linux ``/dev/usbtmcN`` node without opening it through VISA."""
+    if path in state.seen_resources:
+        _record_skip(state, path, "duplicate_resource")
+        return
+    log_probing(state.logger, path)
+    try:
+        transport = UsbtmcTransport(path, timeout=timeout)
+    except Exception as exc:
+        _record_skip(state, path, f"probe_failed: {exc}")
+        return
+    try:
+        adapter = _VisaProbeAdapter(transport)
+        idn, bare, _addr = probe_identity(adapter, asrl=False, log_kind="autoconfig")
+    except Exception as exc:
+        _record_skip(state, path, f"probe_failed: {exc}")
+        return
+    finally:
+        with contextlib.suppress(Exception):
+            transport.close()
+    if idn is None:
+        _record_skip(state, path, "probe_failed: no identity")
+        return
+    _assign_classified_idn(state, idn=idn, bare=bare, resource=path)
+
+
+def _probe_visa_resource(
+    state: _DiscoveryState,
+    manager: object,
+    resource: str,
+    *,
+    timeout: float,
+    qm: bool,
+    gnss: bool,
+) -> None:
+    if resource in state.seen_resources:
+        _record_skip(state, resource, "duplicate_resource")
+        return
+    if _is_asrl_resource(resource):
+        _probe_serial_candidate(
+            state,
+            label=resource,
+            resource=resource,
+            port=_port_from_asrl(resource),
+            open_probe=lambda baud: _open_visa_asrl_probe(manager, resource, baud, timeout),
+            qm=qm,
+            gnss=gnss,
+        )
+        return
+    _probe_visa_instr(state, manager, resource, timeout)
+
+
+def _list_visa_instr(manager: object) -> list[str]:
+    try:
+        return list(manager.list_resources("?*INSTR"))  # type: ignore[attr-defined]
+    except Exception as exc:
+        raise ConfigError(f"VISA resource scan failed: {exc}") from exc
+
+
+def _list_com_ports(list_comports: Callable[[], Sequence[Any]] | None) -> Sequence[Any]:
+    if list_comports is not None:
+        return list_comports()
+    try:
+        from serial.tools import list_ports
+
+        return list(list_ports.comports())
+    except Exception:
+        return []
+
+
+def _probe_leftover_com_ports(
+    state: _DiscoveryState,
+    *,
+    timeout: float,
+    qm: bool,
+    gnss: bool,
+    open_serial_fn: OpenSerial,
+    list_comports: Callable[[], Sequence[Any]] | None,
+) -> None:
+    for info in _list_com_ports(list_comports):
+        port = str(getattr(info, "device", "") or "").strip()
+        if not port or port.upper() in state.covered_ports:
+            continue
+        asrl = _asrl_from_port(port)
+        if asrl and asrl in state.seen_resources:
+            continue
+
+        def _open_for_port(
+            baud: int,
+            *,
+            p: str = port,
+            opener: OpenSerial = open_serial_fn,
+        ) -> _PyserialProbeAdapter:
+            return _open_com_probe(opener, p, baud, timeout)
+
+        _probe_serial_candidate(
+            state,
+            label=port,
+            resource=asrl or "",
+            port=port,
+            open_probe=_open_for_port,
+            qm=qm,
+            gnss=gnss,
+        )
+
+
+def _finalize_discovery(
+    state: _DiscoveryState,
+    *,
+    scanned_count: int,
+    blacklisted: list[tuple[str, BlockedSubnet]],
+    blocked: list[BlockedSubnet],
+    unresolved: Sequence[str],
+) -> AutoconfigResult:
+    if not state.assignments:
+        summary = ", ".join(f"{skip.resource} ({skip.reason})" for skip in state.skipped) or "none"
+        raise ConfigError(f"no classifiable instruments found; skipped: {summary}")
+    result = AutoconfigResult(
+        raw=_build_raw_config(state.assignments),
+        scanned_count=scanned_count,
+        assignments=state.assignments,
+        blacklisted=blacklisted,
+        skipped=state.skipped,
+        blacklist_subnets=list(blocked),
+        unresolved_blacklist=list(unresolved),
+    )
+    log_summary(state.logger, result)
+    return result
 
 
 def discover_equipment_config(
@@ -346,355 +907,63 @@ def discover_equipment_config(
     open_serial: OpenSerial | None = None,
     qm: bool = False,
     gnss: bool = False,
+    gpib_scan: bool = False,
+    gpib_board_present: Callable[[], bool] | None = None,
 ) -> AutoconfigResult:
     """Scan VISA ``?*INSTR`` and local COM ports; build a raw equipment config dict.
 
     Serial ports use bare ``IDN?`` then ``*IDN?`` across bauds ``9600``, ``115200``,
     ``19200``. With ``qm=True``, Fluke ``QM`` runs after IDN fails (bauds ``9600``,
     ``115200``). With ``gnss=True``, GNSS vendor probes run after IDN (and QM when
-    enabled) miss. FTDI adapters are not discovered.
+    enabled) miss. With ``gpib_scan=True``, primary addresses ``0``–``30`` on
+    ``GPIB0`` are probed when ``list_resources`` returned no GPIB names but a
+    board appears present. Linux ``/dev/usbtmcN`` nodes are probed without VISA.
+    FTDI adapters are not discovered.
     """
-    import pyvisa
-
-    blacklist_resolution = resolve_blacklist(blacklist, bindings=network_bindings)
-    blocked = list(blacklist_resolution.blocked)
+    resolution = resolve_blacklist(blacklist, bindings=network_bindings)
+    blocked = list(resolution.blocked)
     log_scan_start(logger)
-
     if resource_manager is None:
-        rm: object = (
-            pyvisa.ResourceManager(visa_library) if visa_library else pyvisa.ResourceManager()
-        )
+        rm: object = open_resource_manager(visa_library)
     else:
         rm = resource_manager
-
-    try:
-        resources = list(rm.list_resources("?*INSTR"))  # type: ignore[attr-defined]
-    except Exception as exc:
-        raise ConfigError(f"VISA resource scan failed: {exc}") from exc
-
-    scanned_count = len(resources)
+    resources = _list_visa_instr(rm)
     allowed, blacklisted = filter_resources(resources, blocked)
     for resource, subnet in blacklisted:
         log_blacklist(logger, resource, subnet)
 
+    state = _DiscoveryState(logger=logger)
     sorted_resources = sort_resources(allowed)
-    assignments: list[AutoconfigAssignment] = []
-    skipped: list[AutoconfigSkip] = []
-    seen_resources: set[str] = set()
-    covered_ports: set[str] = set()
-    next_id: dict[str, int] = {}
-    open_serial_fn = open_serial or _default_open_serial
-
-    def _assign(
-        *,
-        kind: str,
-        model: str,
-        idn: str,
-        resource: str,
-        port: str | None,
-        baudrate: int | None,
-        device_address: int | None = None,
-    ) -> None:
-        section, _id_field = KIND_SECTIONS[kind]
-        item_id = next_id.get(kind, 0) + 1
-        next_id[kind] = item_id
-        port_out, driver, baud_out = _serial_row_fields(
-            model=model, resource=resource, port=port, baudrate=baudrate,
-        )
-        if kind == "gnss":
-            port_out = port_out or _port_from_asrl(resource)
-            driver = "serial"
-            if baud_out is None:
-                baud_out = 9600
-        if port_out:
-            covered_ports.add(port_out.upper())
-        if resource:
-            seen_resources.add(resource)
-            asrl_port = _port_from_asrl(resource)
-            if asrl_port:
-                covered_ports.add(asrl_port.upper())
-        assignment = AutoconfigAssignment(
-            section=section,
-            item_id=item_id,
-            kind=kind,
-            resource=resource,
-            model=model,
-            idn=idn,
-            port=port_out,
-            driver=driver,
-            baudrate=baud_out,
-            device_address=device_address,
-        )
-        assignments.append(assignment)
-        log_assignment(logger, assignment)
-
-    def _skip(resource: str, reason: str, idn: str | None = None) -> None:
-        skip = AutoconfigSkip(resource=resource, reason=reason, idn=idn)
-        skipped.append(skip)
-        log_skip(logger, skip)
-
-    def _probe_visa(resource: str) -> None:
-        if resource in seen_resources:
-            _skip(resource, "duplicate_resource")
-            return
-        asrl = _is_asrl_resource(resource)
-        if asrl:
-            _probe_serial_candidate(
-                label=resource,
-                resource=resource,
-                port=_port_from_asrl(resource),
-                open_probe=lambda baud: _open_visa_probe(rm, resource, baud, timeout),
-            )
-            return
-        log_probing(logger, resource)
-        open_timeout_ms = max(1, int(timeout * 1000))
-        try:
-            inst = rm.open_resource(  # type: ignore[attr-defined]
-                resource,
-                open_timeout=open_timeout_ms,
-            )
-        except TypeError:
-            try:
-                inst = rm.open_resource(resource)  # type: ignore[attr-defined]
-            except Exception as exc:
-                _skip(resource, f"probe_failed: {exc}")
-                return
-        except Exception as exc:
-            _skip(resource, f"probe_failed: {exc}")
-            return
-        try:
-            inst.timeout = open_timeout_ms
-            adapter = _VisaProbeAdapter(inst)
-            idn, bare, _addr = probe_identity(adapter, asrl=False, log_kind="autoconfig")
-        except Exception as exc:
-            _skip(resource, f"probe_failed: {exc}")
-            return
-        finally:
-            with contextlib.suppress(Exception):
-                inst.close()
-        if idn is None:
-            _skip(resource, "probe_failed: no identity")
-            return
-        hit = _classify_idn_hit(idn, bare=bare)
-        if hit is None:
-            _skip(resource, "no_kind_match", idn=idn)
-            return
-        kind, model, idn_label = hit
-        if kind not in KIND_SECTIONS:
-            _skip(resource, "no_kind_match", idn=idn)
-            return
-        _assign(kind=kind, model=model, idn=idn_label, resource=resource, port=None, baudrate=None)
-
-    def _probe_serial_candidate(
-        *,
-        label: str,
-        resource: str,
-        port: str | None,
-        open_probe: Callable[[int], Any],
-    ) -> None:
-        last_errors: list[str] = []
-        abort_bauds = object()
-
-        def _open_or_abort(baud: int, *, phase: str) -> object | None:
-            try:
-                return cast("object", open_probe(baud))
-            except Exception as exc:
-                last_errors.append(f"baud={baud} {phase}:{exc}")
-                if _is_hard_serial_open_error(exc):
-                    detail = "; ".join(last_errors)
-                    _skip(label, f"probe_failed: hard_open:{exc}; {detail}")
-                    return abort_bauds
-                return None
-
-        for baud in _IDN_BAUDS:
-            log_probing(logger, label, baud=baud)
-            probe = _open_or_abort(baud, phase="open")
-            if probe is abort_bauds:
-                return
-            if probe is None:
-                continue
-            device_address: int | None = None
-            try:
-                idn, bare, device_address = probe_identity(
-                    probe, asrl=True, log_kind="autoconfig",
-                )
-            except Exception as exc:
-                last_errors.append(f"baud={baud} idn:{exc}")
-                idn, bare, device_address = None, False, None
-            finally:
-                close = getattr(probe, "close", None)
-                if callable(close):
-                    with contextlib.suppress(Exception):
-                        close()
-            if idn is None:
-                continue
-            hit = _classify_idn_hit(idn, bare=bare)
-            if hit is None:
-                last_errors.append(f"baud={baud} no_kind_match idn={idn!r}")
-                continue
-            kind, model, idn_label = hit
-            if kind not in KIND_SECTIONS:
-                continue
-            _assign(
-                kind=kind,
-                model=model,
-                idn=idn_label,
-                resource=resource,
-                port=port,
-                baudrate=baud,
-                device_address=device_address,
-            )
-            return
-
-        if qm:
-            for baud in _QM_BAUDS:
-                log_probing(logger, f"{label} QM", baud=baud)
-                probe = _open_or_abort(baud, phase="qm_open")
-                if probe is abort_bauds:
-                    return
-                if probe is None:
-                    continue
-                try:
-                    qm_model = query_qm_model(probe)
-                except Exception as exc:
-                    last_errors.append(f"baud={baud} qm:{exc}")
-                    qm_model = None
-                finally:
-                    close = getattr(probe, "close", None)
-                    if callable(close):
-                        with contextlib.suppress(Exception):
-                            close()
-                if qm_model is None:
-                    continue
-                _assign(
-                    kind="dmm",
-                    model=qm_model,
-                    idn=f"QM:{qm_model}",
-                    resource=resource,
-                    port=port,
-                    baudrate=baud,
-                )
-                return
-
-        if gnss:
-            from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
-
-            for baud in _IDN_BAUDS:
-                log_probing(logger, f"{label} GNSS", baud=baud)
-                probe = _open_or_abort(baud, phase="gnss_open")
-                if probe is abort_bauds:
-                    return
-                if probe is None:
-                    continue
-                try:
-                    gnss_model = probe_gnss_model(probe)
-                except Exception as exc:
-                    last_errors.append(f"baud={baud} gnss:{exc}")
-                    gnss_model = None
-                finally:
-                    close = getattr(probe, "close", None)
-                    if callable(close):
-                        with contextlib.suppress(Exception):
-                            close()
-                if gnss_model is None:
-                    continue
-                _assign(
-                    kind="gnss",
-                    model=gnss_model,
-                    idn=f"GNSS:{gnss_model}",
-                    resource=resource,
-                    port=port,
-                    baudrate=baud,
-                )
-                return
-
-        detail = "; ".join(last_errors) if last_errors else "no response"
-        _skip(label, f"probe_failed: {detail}")
-
-    def _open_visa_probe(
-        manager: object, resource: str, baud: int, seconds: float,
-    ) -> _VisaProbeAdapter:
-        open_timeout_ms = max(1, int(seconds * 1000))
-        try:
-            inst = manager.open_resource(  # type: ignore[attr-defined]
-                resource,
-                open_timeout=open_timeout_ms,
-            )
-        except TypeError:
-            inst = manager.open_resource(resource)  # type: ignore[attr-defined]
-        inst.timeout = open_timeout_ms
-        with contextlib.suppress(Exception):
-            inst.baud_rate = int(baud)
-        _configure_asrl_cr_termchar(inst)
-        adapter = _VisaProbeAdapter(inst, cr_termchar=True)
-
-        def _close() -> None:
-            with contextlib.suppress(Exception):
-                inst.close()
-
-        adapter.close = _close  # type: ignore[attr-defined]
-        return adapter
-
-    def _open_com_probe(com_port: str, baud: int) -> _PyserialProbeAdapter:
-        ser = open_serial_fn(com_port, baud, timeout)
-        adapter = _PyserialProbeAdapter(ser)
-
-        def _close() -> None:
-            close = getattr(ser, "close", None)
-            if callable(close):
-                with contextlib.suppress(Exception):
-                    close()
-
-        adapter.close = _close  # type: ignore[attr-defined]
-        return adapter
-
     for resource in sorted_resources:
-        _probe_visa(resource)
+        _probe_visa_resource(state, rm, resource, timeout=timeout, qm=qm, gnss=gnss)
 
-    comport_list: Sequence[Any]
-    if list_comports is not None:
-        comport_list = list_comports()
-    else:
-        try:
-            from serial.tools import list_ports
+    board_present_fn = gpib_board_present or _default_gpib_board_present
+    if gpib_scan and not _listed_gpib_resources(sorted_resources) and board_present_fn():
+        for pad in _GPIB_PRIMARY_ADDRESSES:
+            _probe_visa_resource(
+                state,
+                rm,
+                f"GPIB0::{pad}::INSTR",
+                timeout=timeout,
+                qm=qm,
+                gnss=gnss,
+            )
 
-            comport_list = list(list_ports.comports())
-        except Exception:
-            comport_list = []
+    for path in list_usbtmc_devices():
+        _probe_usbtmc_path(state, path, timeout)
 
-    for info in comport_list:
-        port = str(getattr(info, "device", "") or "").strip()
-        if not port:
-            continue
-        if port.upper() in covered_ports:
-            continue
-        asrl = _asrl_from_port(port)
-        if asrl and asrl in seen_resources:
-            continue
-
-        def _open_for_port(baud: int, *, p: str = port) -> _PyserialProbeAdapter:
-            return _open_com_probe(p, baud)
-
-        _probe_serial_candidate(
-            label=port,
-            resource=asrl or "",
-            port=port,
-            open_probe=_open_for_port,
-        )
-
-    if not assignments:
-        summary = ", ".join(f"{skip.resource} ({skip.reason})" for skip in skipped) or "none"
-        raise ConfigError(f"no classifiable instruments found; skipped: {summary}")
-
-    raw = _build_raw_config(assignments)
-    result = AutoconfigResult(
-        raw=raw,
-        scanned_count=scanned_count,
-        assignments=assignments,
-        blacklisted=blacklisted,
-        skipped=skipped,
-        blacklist_subnets=list(blocked),
-        unresolved_blacklist=list(blacklist_resolution.unresolved_entries),
+    _probe_leftover_com_ports(
+        state,
+        timeout=timeout,
+        qm=qm,
+        gnss=gnss,
+        open_serial_fn=open_serial or _default_open_serial,
+        list_comports=list_comports,
     )
-    log_summary(logger, result)
-    return result
+    return _finalize_discovery(
+        state,
+        scanned_count=len(resources),
+        blacklisted=blacklisted,
+        blocked=blocked,
+        unresolved=resolution.unresolved_entries,
+    )

@@ -17,8 +17,7 @@ def resolve_channel_count(config: dict[str, Any], *, default: int = 1) -> int:
         right = int(channel_count)
         if left != right:
             raise ValueError(
-                f"channels ({left}) and channel_count ({right}) disagree; "
-                "prefer channels and omit channel_count",
+                f"channels ({left}) and channel_count ({right}) disagree; prefer channels and omit channel_count",
             )
         return left
     if channels is not None:

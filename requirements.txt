@@ -6,3 +6,7 @@ bandit[toml]>=1.7
 vulture>=2.11
 ruff>=0.8
 mypy>=1.11
+black>=24.10
+
+# Apache-2.0; dedicated Linux fuzz job/container only.
+atheris>=3.1.0; sys_platform == "linux" and platform_machine == "x86_64" and python_version == "3.12"

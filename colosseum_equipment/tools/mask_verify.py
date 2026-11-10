@@ -78,6 +78,65 @@ def _point_ok(kind: str, y: float, y0: float, y1: float) -> tuple[bool, str]:
     return False, "unknown kind"
 
 
+def _nonfinite_trace_result(xs: list[float], ys: list[float]) -> MaskEvalResult | None:
+    for index, (x, y) in enumerate(zip(xs, ys, strict=True)):
+        if not math.isfinite(x) or not math.isfinite(y):
+            return MaskEvalResult(
+                ok=False,
+                message=f"nonfinite trace sample at index {index}: x={x!r} y={y!r}",
+                violations=(),
+            )
+    return None
+
+
+def _evaluate_region(
+    xs: list[float],
+    ys: list[float],
+    region: dict[str, Any],
+    *,
+    max_violations: int,
+    violations: list[MaskViolation],
+) -> tuple[MaskViolation | None, bool]:
+    kind = str(region["kind"])
+    x0 = float(region["x0"])
+    x1 = float(region["x1"])
+    y0 = float(region["y0"])
+    y1 = float(region["y1"])
+    region_id = str(region.get("id", "region"))
+    samples_in_band = 0
+    first_violation: MaskViolation | None = None
+    for x, y in zip(xs, ys, strict=True):
+        if x < x0 or x > x1:
+            continue
+        samples_in_band += 1
+        ok, limit = _point_ok(kind, y, y0, y1)
+        if ok:
+            continue
+        violation = MaskViolation(
+            region_id=region_id,
+            kind=kind,
+            x=x,
+            y=y,
+            limit=limit,
+        )
+        if first_violation is None:
+            first_violation = violation
+        if len(violations) < max_violations:
+            violations.append(violation)
+    return first_violation, samples_in_band == 0
+
+
+def _violation_message(first_violation: MaskViolation, reported: int) -> str:
+    if reported == 0:
+        return f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed (violations suppressed)"
+    extra = f" (+{reported - 1} more)" if reported > 1 else ""
+    return (
+        f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed at "
+        f"x={first_violation.x:g} y={first_violation.y:g} "
+        f"(need {first_violation.limit}){extra}"
+    )
+
+
 def evaluate_mask(
     xs: list[float],
     ys: list[float],
@@ -95,47 +154,25 @@ def evaluate_mask(
     if not regions:
         return MaskEvalResult(ok=False, message="mask has no regions to evaluate", violations=())
 
-    for index, (x, y) in enumerate(zip(xs, ys, strict=True)):
-        if not math.isfinite(x) or not math.isfinite(y):
-            return MaskEvalResult(
-                ok=False,
-                message=f"nonfinite trace sample at index {index}: x={x!r} y={y!r}",
-                violations=(),
-            )
+    nonfinite = _nonfinite_trace_result(xs, ys)
+    if nonfinite is not None:
+        return nonfinite
 
     violations: list[MaskViolation] = []
-    had_violation = False
     first_violation: MaskViolation | None = None
     uncovered: list[str] = []
     for region in regions:
-        kind = str(region["kind"])
-        x0 = float(region["x0"])
-        x1 = float(region["x1"])
-        y0 = float(region["y0"])
-        y1 = float(region["y1"])
-        region_id = str(region.get("id", "region"))
-        samples_in_band = 0
-        for x, y in zip(xs, ys, strict=True):
-            if x < x0 or x > x1:
-                continue
-            samples_in_band += 1
-            ok, limit = _point_ok(kind, y, y0, y1)
-            if ok:
-                continue
-            had_violation = True
-            violation = MaskViolation(
-                region_id=region_id,
-                kind=kind,
-                x=x,
-                y=y,
-                limit=limit,
-            )
-            if first_violation is None:
-                first_violation = violation
-            if len(violations) < max_violations:
-                violations.append(violation)
-        if samples_in_band == 0:
-            uncovered.append(region_id)
+        region_first, missing = _evaluate_region(
+            xs,
+            ys,
+            region,
+            max_violations=max_violations,
+            violations=violations,
+        )
+        if first_violation is None and region_first is not None:
+            first_violation = region_first
+        if missing:
+            uncovered.append(str(region.get("id", "region")))
 
     if uncovered:
         ids = ", ".join(uncovered)
@@ -144,23 +181,13 @@ def evaluate_mask(
             message=f"mask region(s) have no overlapping samples: {ids}",
             violations=tuple(violations),
         )
-    if not had_violation:
+    if first_violation is None:
         return MaskEvalResult(ok=True, message="", violations=())
-    assert first_violation is not None
-    reported = len(violations)
-    if reported == 0:
-        message = (
-            f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed "
-            f"(violations suppressed)"
-        )
-    else:
-        extra = f" (+{reported - 1} more)" if reported > 1 else ""
-        message = (
-            f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed at "
-            f"x={first_violation.x:g} y={first_violation.y:g} "
-            f"(need {first_violation.limit}){extra}"
-        )
-    return MaskEvalResult(ok=False, message=message, violations=tuple(violations))
+    return MaskEvalResult(
+        ok=False,
+        message=_violation_message(first_violation, len(violations)),
+        violations=tuple(violations),
+    )
 
 
 def evaluate_mask_file(trace_csv: Path, mask: dict[str, Any]) -> MaskEvalResult:
@@ -168,8 +195,7 @@ def evaluate_mask_file(trace_csv: Path, mask: dict[str, Any]) -> MaskEvalResult:
     mask_domain = str(mask.get("domain", "")).strip().lower()
     if mask_domain and domain_hint != mask_domain:
         raise ValueError(
-            f"mask domain {mask_domain!r} does not match trace domain {domain_hint!r} "
-            f"in {trace_csv}",
+            f"mask domain {mask_domain!r} does not match trace domain {domain_hint!r} in {trace_csv}",
         )
     return evaluate_mask(xs, ys, mask)
 
@@ -216,21 +242,21 @@ def _resolve_csv(ctx: Any, stored: str) -> Path | None:
     return None
 
 
-def find_trace_csv(key: str, *, prefer_commands: tuple[str, ...]) -> Path | None:
-    """Locate a CSV artifact for ``key``, preferring the given command names."""
-    ctx = get_context()
-    if not ctx.db.is_initialized():
-        return None
-    drain = getattr(ctx.db, "drain", None)
-    if callable(drain):
-        with contextlib.suppress(Exception):
-            drain(timeout=5.0)
+def _preferred_trace_csv(
+    ctx: Any,
+    key: str,
+    prefer_commands: tuple[str, ...],
+) -> Path | None:
     for command in prefer_commands:
         row = ctx.db.get_measurement("equipment", command, key, row_index=0)
         if row is not None and row.artifact_path:
             path = _resolve_csv(ctx, str(row.artifact_path))
             if path is not None:
                 return path
+    return None
+
+
+def _latest_equipment_csv(ctx: Any, key: str) -> Path | None:
     matches: list[tuple[int, Path]] = []
     for record in ctx.db.fetch_all_measurements():
         if record.domain != "equipment" or record.key != key:
@@ -246,6 +272,21 @@ def find_trace_csv(key: str, *, prefer_commands: tuple[str, ...]) -> Path | None
         return None
     matches.sort(key=lambda item: item[0])
     return matches[-1][1]
+
+
+def find_trace_csv(key: str, *, prefer_commands: tuple[str, ...]) -> Path | None:
+    """Locate a CSV artifact for ``key``, preferring the given command names."""
+    ctx = get_context()
+    if not ctx.db.is_initialized():
+        return None
+    drain = getattr(ctx.db, "drain", None)
+    if callable(drain):
+        with contextlib.suppress(Exception):
+            drain(timeout=5.0)
+    preferred = _preferred_trace_csv(ctx, key, prefer_commands)
+    if preferred is not None:
+        return preferred
+    return _latest_equipment_csv(ctx, key)
 
 
 def verification_from_mask(

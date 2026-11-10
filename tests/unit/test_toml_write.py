@@ -67,3 +67,40 @@ def test_write_config_toml_rejects_directory(tmp_path: Path) -> None:
     target.mkdir()
     with pytest.raises(TomlWriteError, match="directory"):
         write_config_toml({"equipment": {}}, target)
+
+
+def test_render_quotes_numeric_and_boolean_like_strings() -> None:
+    raw = {
+        "equipment": {
+            "dmm": {
+                "dmm_id": 1,
+                "model": "generic",
+                "label": "00123",
+                "asset": "123",
+                "flag": "no",
+            },
+        },
+    }
+    text = render_config_toml(raw, header_comment=None)
+    assert 'label = "00123"' in text
+    assert 'asset = "123"' in text
+    assert 'flag = "no"' in text
+    assert "model = generic" in text
+
+
+def test_write_preserves_numeric_and_boolean_like_string_labels(tmp_path: Path) -> None:
+    raw = {
+        "equipment": {
+            "dmm": {
+                "dmm_id": 1,
+                "model": "generic",
+                "label": "00123",
+                "note": "no",
+            },
+        },
+    }
+    path = write_config_toml(raw, tmp_path / "config.generated.toml", header_comment=None)
+    loaded = read_relaxed_toml(path)
+    assert loaded["equipment"]["dmm"]["label"] == "00123"
+    assert loaded["equipment"]["dmm"]["note"] == "no"
+    assert loaded["equipment"]["dmm"]["model"] == "generic"

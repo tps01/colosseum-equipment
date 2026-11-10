@@ -9,10 +9,13 @@ written under the active run output directory. Unsupported operations on ``anrit
 from __future__ import annotations
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -28,7 +31,8 @@ def preset(*, vna_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).preset()
+    _logger.info("Presetting VNA %s", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).preset()
 
 
 @command
@@ -46,7 +50,8 @@ def set_start_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_start_frequency(frequency_hz)
+    _logger.info("Setting start frequency on VNA %s to %s Hz", vna_id, frequency_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_start_frequency(frequency_hz)
 
 
 @command
@@ -64,7 +69,8 @@ def set_stop_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_stop_frequency(frequency_hz)
+    _logger.info("Setting stop frequency on VNA %s to %s Hz", vna_id, frequency_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_stop_frequency(frequency_hz)
 
 
 @command
@@ -82,7 +88,8 @@ def set_points(*, vna_id: EquipmentId, count: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_points(count)
+    _logger.info("Setting sweep points on VNA %s to %s", vna_id, count)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_points(count)
 
 
 @command
@@ -97,7 +104,8 @@ def single_sweep(*, vna_id: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).single_sweep()
+    _logger.info("Running single sweep on VNA %s", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).single_sweep()
 
 
 @command
@@ -113,7 +121,8 @@ def abort(*, vna_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).abort()
+    _logger.info("Aborting sweep on VNA %s", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).abort()
 
 
 @command
@@ -128,7 +137,8 @@ def set_averaging_count(*, vna_id: EquipmentId, count: int) -> None:
 
     :returns: None
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_averaging_count(count)
+    _logger.info("Setting averaging count on VNA %s to %s", vna_id, count)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_averaging_count(count)
 
 
 @command
@@ -143,7 +153,8 @@ def toggle_averaging(*, vna_id: EquipmentId, enabled: bool) -> None:
 
     :returns: None
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).toggle_averaging(enabled)
+    _logger.info("%s averaging on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_averaging(enabled)
 
 
 @command
@@ -158,7 +169,8 @@ def set_smoothing_aperture(*, vna_id: EquipmentId, percent: float) -> None:
 
     :returns: None
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_smoothing_aperture(percent)
+    _logger.info("Setting smoothing aperture on VNA %s to %s %%", vna_id, percent)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_smoothing_aperture(percent)
 
 
 @measurement
@@ -175,8 +187,9 @@ def measure_s11_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
     :returns: Peak formatted S11 value in dB.
     :rtype: float
     """
+    _logger.info("Reading S11 magnitude from VNA %s trace %s", vna_id, trace)
     _ = key
-    return float(get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).measure_s11_magnitude(trace=trace))
+    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_s11_magnitude(trace=trace))
 
 
 @measurement
@@ -193,8 +206,9 @@ def measure_s21_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
     :returns: Peak formatted S21 value in dB.
     :rtype: float
     """
+    _logger.info("Reading S21 magnitude from VNA %s trace %s", vna_id, trace)
     _ = key
-    return float(get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).measure_s21_magnitude(trace=trace))
+    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_s21_magnitude(trace=trace))
 
 
 @measurement
@@ -222,9 +236,10 @@ def measure_s_parameter(
     :returns: Peak trace value in the configured format.
     :rtype: float
     """
+    _logger.info("Reading %s %s from VNA %s trace %s", parameter, format, vna_id, trace)
     _ = key
     return float(
-        get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).measure_s_parameter(
+        get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_s_parameter(
             trace=trace,
             parameter=parameter,
             format=format,
@@ -244,7 +259,8 @@ def wait_complete(*, vna_id: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).wait_complete()
+    _logger.info("Waiting for VNA %s sweep to complete", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).wait_complete()
 
 
 @command
@@ -262,7 +278,8 @@ def toggle_display(*, vna_id: EquipmentId, enabled: bool) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).toggle_display(enabled)
+    _logger.info("%s display on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_display(enabled)
 
 
 @command
@@ -279,7 +296,8 @@ def perform_ecal(*, vna_id: int, ports: str) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).perform_ecal(ports)
+    _logger.info("Running ecal on VNA %s ports %s", vna_id, ports)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).perform_ecal(ports)
 
 
 @command
@@ -301,7 +319,8 @@ def set_marker(*, vna_id: EquipmentId, marker: int, frequency_hz: float, trace: 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_marker(marker, frequency_hz, trace=trace)
+    _logger.info("Setting VNA %s marker %s to %s Hz", vna_id, marker, frequency_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_marker(marker, frequency_hz, trace=trace)
 
 
 @measurement
@@ -322,8 +341,9 @@ def measure_marker_frequency(*, vna_id: int, marker: int = 1, key: str) -> float
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading marker frequency from VNA %s marker %s", vna_id, marker)
     _ = key
-    return float(get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).measure_marker_frequency(marker))
+    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_marker_frequency(marker))
 
 
 @measurement
@@ -344,8 +364,9 @@ def measure_marker_value(*, vna_id: int, marker: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading marker value from VNA %s marker %s", vna_id, marker)
     _ = key
-    return float(get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).measure_marker_value(marker))
+    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_marker_value(marker))
 
 
 verify_marker_frequency = tolerance_verifier(
@@ -389,7 +410,8 @@ def save_trace_data(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).save_trace_data(
+    _logger.info("Saving trace data from VNA %s to %s", vna_id, path)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).save_trace_data(
         path,
         trace=trace,
         file_format=file_format,
@@ -412,7 +434,8 @@ def set_if_bw(*, vna_id: EquipmentId, bandwidth_hz: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_if_bw(bandwidth_hz)
+    _logger.info("Setting IF bandwidth on VNA %s to %s Hz", vna_id, bandwidth_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_if_bw(bandwidth_hz)
 
 
 @command
@@ -432,7 +455,8 @@ def set_tx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> Non
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_tx_power(power_dbm, port=port)
+    _logger.info("Setting transmit power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_tx_power(power_dbm, port=port)
 
 
 @command
@@ -452,7 +476,8 @@ def set_rx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> Non
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_rx_power(power_dbm, port=port)
+    _logger.info("Setting receive power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_rx_power(power_dbm, port=port)
 
 
 @command
@@ -470,7 +495,8 @@ def set_sweep_time(*, vna_id: EquipmentId, seconds: float) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_sweep_time(seconds)
+    _logger.info("Setting sweep time on VNA %s to %s s", vna_id, seconds)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_sweep_time(seconds)
 
 
 @command
@@ -488,7 +514,8 @@ def set_trace_count(*, vna_id: EquipmentId, count: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_trace_count(count)
+    _logger.info("Setting trace count on VNA %s to %s", vna_id, count)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_trace_count(count)
 
 
 @command
@@ -508,7 +535,8 @@ def set_trace_hold(*, vna_id: EquipmentId, trace: int, mode: str) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_trace_hold(trace, mode)
+    _logger.info("Setting VNA %s trace %s hold to %s", vna_id, trace, mode)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_trace_hold(trace, mode)
 
 
 @command
@@ -530,7 +558,8 @@ def set_trace_parameters(*, vna_id: EquipmentId, trace: int, parameter: str, for
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).set_trace_parameters(trace, parameter, format)
+    _logger.info("Setting VNA %s trace %s to %s %s", vna_id, trace, parameter, format)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_trace_parameters(trace, parameter, format)
 
 
 @command
@@ -564,7 +593,15 @@ def configure_trigger(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('vna', require_int_id(vna_id, kind='vna')).configure_trigger(
+    _logger.info(
+        "Setting trigger on VNA %s channel %s to %s edge %s delay %s s",
+        vna_id,
+        channel,
+        source,
+        edge,
+        delay_s,
+    )
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).configure_trigger(
         source,
         continuous=continuous,
         edge=edge,

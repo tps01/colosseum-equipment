@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -25,7 +28,13 @@ def set_relay(*, relay_id: EquipmentId, channel: int, enabled: bool) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_relay(channel, enabled)
+    _logger.info(
+        "%s channel %s on relay %s",
+        "Enabling" if enabled else "Disabling",
+        channel,
+        relay_id,
+    )
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).set_relay(channel, enabled)
 
 
 @command
@@ -43,7 +52,8 @@ def set_all(*, relay_id: EquipmentId, bitmask: int) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_all(bitmask)
+    _logger.info("Setting relay %s channels to bitmask %s", relay_id, bitmask)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).set_all(bitmask)
 
 
 @command
@@ -64,7 +74,8 @@ def pulse_relay(*, relay_id: EquipmentId, channel: int, duration_s: float | None
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).pulse_relay(channel, duration_s)
+    _logger.info("Pulsing relay %s channel %s", relay_id, channel)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).pulse_relay(channel, duration_s)
 
 
 @command
@@ -84,7 +95,8 @@ def set_pulse_width_s(*, relay_id: EquipmentId, channel: int, width_s: float) ->
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_pulse_width_s(channel, width_s)
+    _logger.info("Setting pulse width on relay %s channel %s to %s s", relay_id, channel, width_s)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).set_pulse_width_s(channel, width_s)
 
 
 @measurement
@@ -104,8 +116,9 @@ def measure_relay(*, relay_id: int, channel: int, key: str) -> bool:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading relay %s channel %s", relay_id, channel)
     _ = key
-    return bool(get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).measure_relay(channel))
+    return bool(get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).measure_relay(channel))
 
 
 @measurement
@@ -123,5 +136,6 @@ def measure_all(*, relay_id: int, key: str) -> int:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading all channels on relay %s", relay_id)
     _ = key
-    return int(get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).measure_all())
+    return int(get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).measure_all())

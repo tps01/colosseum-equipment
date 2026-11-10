@@ -1,4 +1,5 @@
 """T3EL150303P static operation; Teledyne T3EL programming manual, SCPI section."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -14,9 +15,19 @@ if TYPE_CHECKING:
 
 @instrument_model("eload", "teledyne-t3el150303p")
 @supported_commands(
-    "set_mode", "set_current", "set_voltage", "set_power", "set_resistance", "engage",
-    "disengage", "measure_voltage", "measure_current", "measure_power_w", "measure_input_state",
-    "toggle_short", "preset",
+    "set_mode",
+    "set_current",
+    "set_voltage",
+    "set_power",
+    "set_resistance",
+    "engage",
+    "disengage",
+    "measure_voltage",
+    "measure_current",
+    "measure_power_w",
+    "measure_input_state",
+    "toggle_short",
+    "preset",
 )
 class TeledyneT3el(GenericEload):
     """Single input, static CC/CV/CP/CR. Dynamic/list operation is excluded."""

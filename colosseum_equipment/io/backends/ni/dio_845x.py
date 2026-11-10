@@ -60,7 +60,9 @@ class Ni845xDioBackend:
         self._mask = _MASK
         self._direction = require_mask_value(direction, self._mask, what="direction")
         self._output = require_output_value(
-            initial_output, direction=self._direction, mask=self._mask,
+            initial_output,
+            direction=self._direction,
+            mask=self._mask,
         )
         try:
             # Drive intended levels before enabling outputs.
@@ -76,7 +78,9 @@ class Ni845xDioBackend:
             api.check_status(
                 session.lib,
                 session.lib.ni845xDioSetPortLineDirectionMap(
-                    session.handle, _PORT, self._direction,
+                    session.handle,
+                    _PORT,
+                    self._direction,
                 ),
                 action="DioSetPortLineDirectionMap",
             )
@@ -86,7 +90,9 @@ class Ni845xDioBackend:
             api.check_status(
                 session.lib,
                 session.lib.ni845xDioSetDriverType(
-                    session.handle, _PORT, self._driver_type,
+                    session.handle,
+                    _PORT,
+                    self._driver_type,
                 ),
                 action="DioSetDriverType",
             )
@@ -103,7 +109,9 @@ class Ni845xDioBackend:
         self._direction = require_mask_value(direction, self._mask, what="direction")
         if initial is not None:
             self._output = require_output_value(
-                initial, direction=self._direction, mask=self._mask,
+                initial,
+                direction=self._direction,
+                mask=self._mask,
             )
         else:
             self._output &= self._direction
@@ -138,8 +146,7 @@ class Ni845xDioBackend:
     def set_pull(self, line: int, pull: str) -> None:
         _ = line, pull
         raise EquipmentCapabilityError(
-            "set_pull is not supported on ni-845x DIO; "
-            "use col.io.i2c.set_pullup for I2C bus pull-ups",
+            "set_pull is not supported on ni-845x DIO; use col.io.i2c.set_pullup for I2C bus pull-ups",
         )
 
     def write_port(self, value: int) -> None:
@@ -165,7 +172,10 @@ class Ni845xDioBackend:
             api.check_status(
                 session.lib,
                 session.lib.ni845xDioWriteLine(
-                    session.handle, _PORT, line, 1 if value else 0,
+                    session.handle,
+                    _PORT,
+                    line,
+                    1 if value else 0,
                 ),
                 action="DioWriteLine",
             )

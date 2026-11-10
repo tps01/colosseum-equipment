@@ -135,10 +135,12 @@ class MaskEditorApp:
         ttk.Button(toolbar, text="Save", command=self._on_save).pack(side=tk.LEFT, padx=4, pady=4)
         ttk.Button(toolbar, text="Import…", command=self._on_import).pack(side=tk.LEFT, padx=4)
         ttk.Button(toolbar, text="Load template…", command=self._on_template).pack(
-            side=tk.LEFT, padx=4,
+            side=tk.LEFT,
+            padx=4,
         )
         ttk.Button(toolbar, text="Background CSV…", command=self._on_bg_csv).pack(
-            side=tk.LEFT, padx=4,
+            side=tk.LEFT,
+            padx=4,
         )
         ttk.Button(toolbar, text="Cancel", command=self._on_cancel).pack(side=tk.RIGHT, padx=4)
 
@@ -156,7 +158,8 @@ class MaskEditorApp:
         list_btns = ttk.Frame(list_frame)
         list_btns.pack(side=tk.TOP, fill=tk.X, pady=4)
         ttk.Button(list_btns, text="Delete", command=self._on_delete).pack(
-            side=tk.LEFT, padx=(0, 4),
+            side=tk.LEFT,
+            padx=(0, 4),
         )
         ttk.Button(list_btns, text="Delete all", command=self._on_delete_all).pack(side=tk.LEFT)
 
@@ -166,7 +169,10 @@ class MaskEditorApp:
         self._kind_var = tk.StringVar(value="keep_below")
         for kind in sorted(REGION_KINDS):
             ttk.Radiobutton(
-                kind_frame, text=kind, value=kind, variable=self._kind_var,
+                kind_frame,
+                text=kind,
+                value=kind,
+                variable=self._kind_var,
                 command=self._on_kind_change,
             ).pack(anchor=tk.W)
 
@@ -277,7 +283,12 @@ class MaskEditorApp:
         if self._bg_line is not None:
             xs, ys = self._bg_line
             (line,) = self._ax.plot(
-                xs, ys, color="0.5", linewidth=1.0, alpha=0.7, label="background",
+                xs,
+                ys,
+                color="0.5",
+                linewidth=1.0,
+                alpha=0.7,
+                label="background",
             )
             line.set_clip_on(True)
 

@@ -1,9 +1,14 @@
 """Single-shot arming must not wait for the event that the procedure creates."""
+
 from __future__ import annotations
+
+import csv
+import logging
 
 import pytest
 from colosseum_equipment.instruments.oscope.generic import GenericOscope
 from colosseum_equipment.instruments.oscope.tek_mdo4000 import TekMdo4000Oscope
+from colosseum_equipment.instruments.registry import reset_best_effort_warnings
 
 
 class Transport:
@@ -17,6 +22,30 @@ class Transport:
     def query(self, command):
         self.queries.append(command)
         return "1"
+
+
+def test_tek_waveform_csv_and_evidence_stay_quiet(
+    unit_runtime_context,
+    tmp_path,
+    monkeypatch,
+    caplog,
+):
+    reset_best_effort_warnings()
+    scope = TekMdo4000Oscope(Transport(), {"model": "tektronix-mdo4000"})
+    metadata = {"xinc_s": 0.5, "xorigin_s": 1.0, "capture_id": "capture-7"}
+    monkeypatch.setattr(scope, "_read_waveform_points", lambda channel: ([2.0, 3.0], metadata))
+    path = tmp_path / "wave.csv"
+    with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
+        assert scope.save_waveform(channel=1, path=str(path), key="wave") == path
+    with path.open(newline="", encoding="utf-8") as handle:
+        assert list(csv.reader(handle)) == [
+            ["time_s", "voltage_v"],
+            ["1.0", "2.0"],
+            ["1.5", "3.0"],
+        ]
+    row = unit_runtime_context.db.get_measurement("equipment", "save_waveform", "wave")
+    assert row is not None and row.value == metadata
+    assert "using generic SCPI" not in caplog.text
 
 
 @pytest.mark.parametrize("driver", [GenericOscope, TekMdo4000Oscope])
@@ -58,6 +87,7 @@ def test_tek_wait_requires_acquisition_stopped(monkeypatch):
 
 def test_tek_wait_times_out_while_still_running(monkeypatch):
     from colosseum_equipment.exceptions import EquipmentTimeoutError
+
     scope = TekMdo4000Oscope(Transport(), {})
     ticks = iter([0, 0.001, 2])
     monkeypatch.setattr(scope, "get_acquire_state", lambda: "1")

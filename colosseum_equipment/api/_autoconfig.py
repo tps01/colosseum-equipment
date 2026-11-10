@@ -12,10 +12,13 @@ from colosseum.config.loader import (
     default_test_name,
 )
 from colosseum.context import apply_no_artifacts, get_context, init_context
+from colosseum.logging import get_logger
 from colosseum.logging.setup import setup_logging
 
 from colosseum_equipment.autoconfig.discovery import discover_equipment_config
 from colosseum_equipment.autoconfig.toml_write import TomlWriteError, write_config_toml
+
+_logger = get_logger("colosseum.equipment")
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -46,6 +49,7 @@ def autoconfig(
     no_artifacts: bool = False,
     qm: bool = False,
     gnss: bool = False,
+    gpib_scan: bool = False,
 ) -> ConfigStore:
     """Scan VISA ``?*INSTR`` and serial COM ports; build equipment config.
 
@@ -53,8 +57,10 @@ def autoconfig(
     needed, then ``*IDN?`` across common bauds. VISA ASRL sessions enable CR
     termination. Hard ASRL open errors abort further baud tries on that port.
     Fluke handheld ``QM`` and GNSS vendor probes are off by default; pass
-    ``qm=True`` / ``gnss=True`` to enable them after IDN fails. FTDI adapters are
-    not discovered.
+    ``qm=True`` / ``gnss=True`` to enable them after IDN fails. Pass
+    ``gpib_scan=True`` to probe ``GPIB0`` primary addresses ``0``–``30`` when
+    ``list_resources`` returned no GPIB names but a linux-gpib board appears
+    present. FTDI adapters are not discovered.
 
     When a config is already loaded, discovered ``equipment`` replaces that table
     only. Other top-level tables (for example messaging, ``io``,
@@ -76,6 +82,9 @@ def autoconfig(
     :type qm: bool, optional
     :param gnss: When ``True``, run GNSS vendor probes after IDN (and QM if enabled) miss.
     :type gnss: bool, optional
+    :param gpib_scan: When ``True``, sweep ``GPIB0::<pad>::INSTR`` for pads ``0``–``30``
+        if enumeration listed no GPIB resources but board ``0`` looks present.
+    :type gpib_scan: bool, optional
 
     :returns: Normalized configuration store for discovered equipment.
     :rtype: ConfigStore
@@ -83,6 +92,7 @@ def autoconfig(
     :raises ConfigError: When PyVISA is unavailable, no resources are found, or none classify.
     :raises RuntimeError: When ``no_artifacts`` is set after runtime bootstrap.
     """
+    _logger.info("Scanning VISA and serial ports for equipment")
     try:
         ctx = get_context()
     except RuntimeError:
@@ -104,6 +114,7 @@ def autoconfig(
         logger=ctx.logger,
         qm=qm,
         gnss=gnss,
+        gpib_scan=gpib_scan,
     )
     raw = _raw_with_discovered_equipment(ctx, result.raw)
     store = apply_raw_config(ctx, raw, source_label="(autoconfig)")

@@ -21,16 +21,18 @@ def _genesys(responses: dict[str, str] | None = None, **config: object):
 
 
 def test_genesys_uses_output_state_and_colon_source_commands() -> None:
-    supply, transport = _genesys({
-        ":VOLT?": "12.500000",
-        ":CURR?": "1.250000",
-        "OUTP:STAT?": "ON",
-        "MEAS:VOLT?": "12.400000",
-        "MEAS:CURR?": "0.500000",
-        "SOUR:MOD?": "CV",
-        ":VOLT:PROT:LEV?": "15.000000",
-        ":CURR:PROT:STAT?": "OFF",
-    })
+    supply, transport = _genesys(
+        {
+            ":VOLT?": "12.500000",
+            ":CURR?": "1.250000",
+            "OUTP:STAT?": "ON",
+            "MEAS:VOLT?": "12.400000",
+            "MEAS:CURR?": "0.500000",
+            "SOUR:MOD?": "CV",
+            ":VOLT:PROT:LEV?": "15.000000",
+            ":CURR:PROT:STAT?": "OFF",
+        }
+    )
     supply.set_voltage(12.5)
     supply.set_current_limit(1.25)
     supply.set_output(True)

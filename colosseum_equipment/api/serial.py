@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_transport
 from colosseum_equipment.protocols.serial import SerialChannel
 from colosseum_equipment.protocols.serial import strip_ansi as strip_ansi_text
 
+_logger = get_logger("colosseum.equipment")
+
 
 def _channel(serial_id: EquipmentId) -> SerialChannel:
-    return SerialChannel(get_transport('serial', require_int_id(serial_id, kind='serial')))
+    return SerialChannel(get_transport("serial", require_int_id(serial_id, kind="serial")))
 
 
 @command
@@ -30,6 +33,7 @@ def write(*, serial_id: EquipmentId, data: str, append_newline: str = "") -> Non
 
     :raises EquipmentConnectionError: Port open or write failed.
     """
+    _logger.info("Writing %s characters to serial %s", len(data), serial_id)
     _channel(serial_id).write(data, append_newline=append_newline)
 
 
@@ -47,6 +51,7 @@ def write_bytes(*, serial_id: EquipmentId, data: bytes) -> None:
 
     :raises EquipmentConnectionError: Port open or write failed.
     """
+    _logger.info("Writing %s bytes to serial %s", len(data), serial_id)
     _channel(serial_id).write_bytes(data)
 
 
@@ -66,6 +71,7 @@ def read(*, serial_id: int, key: str, strip_ansi: bool = False) -> str:
 
     :raises EquipmentConnectionError: Port read failed or timed out.
     """
+    _logger.info("Reading a line from serial %s", serial_id)
     _ = key
     text = _channel(serial_id).read_line()
     return strip_ansi_text(text) if strip_ansi else text
@@ -87,6 +93,7 @@ def read_bytes(*, serial_id: int, size: int, key: str) -> bytes:
 
     :raises EquipmentConnectionError: Port read failed or timed out.
     """
+    _logger.info("Reading up to %s bytes from serial %s", size, serial_id)
     _ = key
     return _channel(serial_id).read_bytes(size)
 
@@ -115,6 +122,7 @@ def read_until(
 
     :raises EquipmentConnectionError: Port read failed or timed out.
     """
+    _logger.info("Reading serial %s until %s", serial_id, terminator)
     _ = key
     text = _channel(serial_id).read_until(terminator)
     return strip_ansi_text(text) if strip_ansi else text
@@ -133,6 +141,7 @@ def flush(*, serial_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Port flush failed.
     :raises EquipmentCapabilityError: Transport does not support flush.
     """
+    _logger.info("Flushing serial %s", serial_id)
     _channel(serial_id).flush()
 
 
@@ -151,6 +160,7 @@ def measure_in_waiting(*, serial_id: int, key: str) -> int:
     :raises EquipmentConnectionError: Port access failed.
     :raises EquipmentCapabilityError: Transport does not expose buffer depth.
     """
+    _logger.info("Reading bytes waiting on serial %s", serial_id)
     _ = key
     return int(_channel(serial_id).measure_in_waiting())
 
@@ -170,4 +180,5 @@ def set_timeout_s(*, serial_id: EquipmentId, timeout_s: float) -> None:
     :raises EquipmentConnectionError: Port access failed.
     :raises EquipmentCapabilityError: Transport does not support changing timeout.
     """
+    _logger.info("Setting timeout on serial %s to %s s", serial_id, timeout_s)
     _channel(serial_id).set_timeout_s(timeout_s)

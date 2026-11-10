@@ -52,7 +52,9 @@ col.endex()
 Model registrations describe implemented command subsets. They do not prove
 hardware qualification or support for every function. The
 [support matrix](https://tps01.github.io/colosseum-equipment/guides/transports_support.html)
-links the model-by-model limits and qualification evidence.
+links the model-by-model limits and qualification evidence, including Linux
+GPIB host setup (`GPIB0::<pad>::INSTR`, not `/dev/gpib0`), USB CDC vs USBTMC vs
+`USB::RAW`, and opt-in `gpib_scan` autoconfig.
 
 ## Trace / waveform masks
 
@@ -94,3 +96,6 @@ mypy
 ```
 
 Historical feature notes: [documentation history](https://tps01.github.io/colosseum-equipment/guides/documentation-history.html).
+
+For bounded SCPI parser fuzzing in Linux CI or Docker Desktop on Windows, see
+[the fuzz fixture instructions](tests/fixtures/fuzz/README.md).

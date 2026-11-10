@@ -259,9 +259,7 @@ def test_evaluate_keep_inside_and_outside() -> None:
 def test_evaluate_mask_file_csv(tmp_path: Path) -> None:
     csv_path = tmp_path / "trace.csv"
     csv_path.write_text(
-        "frequency_hz,amplitude_dbm\n"
-        "1000000000,-50\n"
-        "1050000000,-35\n",
+        "frequency_hz,amplitude_dbm\n" "1000000000,-50\n" "1050000000,-35\n",
         encoding="utf-8",
     )
     mask = validate_mask(_freq_mask())
@@ -324,7 +322,10 @@ def test_apply_mask_setup_oscope(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("kind", ["speca", "oscope"])
 def test_mask_setup_uses_verification_path_precedence(
-    kind, unit_runtime_context, tmp_path: Path, monkeypatch,
+    kind,
+    unit_runtime_context,
+    tmp_path: Path,
+    monkeypatch,
 ) -> None:
     from colosseum.runner.runtime import ensure_output_dir
     from colosseum_equipment.tools.mask_verify import resolve_mask_path
@@ -370,9 +371,7 @@ def test_speca_verify_mask_api_pass_fail(unit_runtime_context, tmp_path: Path) -
 
     csv_path = tmp_path / "wifi.csv"
     csv_path.write_text(
-        "frequency_hz,amplitude_dbm\n"
-        "1000000000,-50\n"
-        "1050000000,-55\n",
+        "frequency_hz,amplitude_dbm\n" "1000000000,-50\n" "1050000000,-55\n",
         encoding="utf-8",
     )
     mask_path = tmp_path / "mask.json"
@@ -416,9 +415,7 @@ def test_oscope_verify_mask_api(unit_runtime_context, tmp_path: Path) -> None:
 
     csv_path = tmp_path / "wave.csv"
     csv_path.write_text(
-        "time_s,voltage_v\n"
-        "0.0,0.05\n"
-        "5e-6,1.0\n",
+        "time_s,voltage_v\n" "0.0,0.05\n" "5e-6,1.0\n",
         encoding="utf-8",
     )
     mask_path = tmp_path / "pulse.json"
@@ -506,3 +503,14 @@ def test_template_json_files_are_valid() -> None:
     for path in sorted(root.glob("*.json")):
         raw = json.loads(path.read_text(encoding="utf-8"))
         validate_mask(raw)
+
+
+@pytest.mark.parametrize("version", [None, [], {}, "bad", float("inf")])
+def test_validate_mask_invalid_version_has_schema_error(version):
+    with pytest.raises(MaskSchemaError):
+        validate_mask(_freq_mask(version=version))
+
+
+def test_validate_mask_oversized_numeric_field_has_schema_error():
+    with pytest.raises(MaskSchemaError):
+        validate_mask(_freq_mask(setup={"span_hz": 10**400}))

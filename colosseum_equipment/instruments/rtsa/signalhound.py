@@ -2,6 +2,7 @@
 
 Manual: https://signalhound.com/sigdownloads/Spike/docs/html/scpi_programming.html
 """
+
 from __future__ import annotations
 
 import math
@@ -23,9 +24,19 @@ if TYPE_CHECKING:
 
 @instrument_model("rtsa", "signalhound-bb60c-spike", "signalhound-sm200c-spike")
 @supported_commands(
-    "set_center_freq", "set_bandwidth", "set_acq_time", "set_continuous_run", "set_num_samples",
-    "get_num_samples", "set_trigger_source", "set_trigger_level", "set_trigger_position",
-    "run", "wait_complete", "acquire", "save_IQ_data",
+    "set_center_freq",
+    "set_bandwidth",
+    "set_acq_time",
+    "set_continuous_run",
+    "set_num_samples",
+    "get_num_samples",
+    "set_trigger_source",
+    "set_trigger_level",
+    "set_trigger_position",
+    "run",
+    "wait_complete",
+    "acquire",
+    "save_IQ_data",
 )
 class SignalHoundSpikeIq(GenericRtsa):
     """Finite IQ captures; sample_rate_hz is independent of the analog IF bandwidth.
@@ -101,15 +112,27 @@ class SignalHoundSpikeIq(GenericRtsa):
         if export_format not in {"bin", "mat", "iq.tar"}:
             raise EquipmentCapabilityError(f"unsupported IQ export format {export_format!r}")
         artifact = resolve_artifact_path(path)
-        metadata = {"center_freq_hz": center, "sample_rate_hz": rate, "num_samples": count,
-                    "iq_dtype": "float64", "iq_byte_order": "little", "iq_units": "sqrt(mW)",
-                    "format": export_format, "run_id": self._run_id}
+        metadata = {
+            "center_freq_hz": center,
+            "sample_rate_hz": rate,
+            "num_samples": count,
+            "iq_dtype": "float64",
+            "iq_byte_order": "little",
+            "iq_units": "sqrt(mW)",
+            "format": export_format,
+            "run_id": self._run_id,
+        }
         if export_format == "mat":
             write_iq_mat(artifact, payload, metadata=metadata)
         elif export_format == "iq.tar":
             write_iq_tar(artifact, payload, metadata=metadata)
         else:
             write_iq_bin(artifact, payload)
-        record_artifact(domain="equipment", command="save_IQ_data", key=key or f"rtsa_iq_{self._run_id}",
-                        path=artifact, value=metadata)
+        record_artifact(
+            domain="equipment",
+            command="save_IQ_data",
+            key=key or f"rtsa_iq_{self._run_id}",
+            path=artifact,
+            value=metadata,
+        )
         return artifact

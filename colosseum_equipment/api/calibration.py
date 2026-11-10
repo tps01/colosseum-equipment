@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from colosseum.decorators import command
+from colosseum.logging import get_logger
 
 from colosseum_equipment import calibration as _cal
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -26,4 +29,5 @@ def load_calibration(*, filename: str, key: str) -> None:
 
     :raises CalibrationError: File missing, unreadable, or empty.
     """
+    _logger.info("Loading calibration %s from %s", key, filename)
     _cal.load_calibration_file(filename=filename, key=key)

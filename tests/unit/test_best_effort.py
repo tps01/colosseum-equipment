@@ -9,6 +9,7 @@ from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.registry import instrument_model, reset_best_effort_warnings
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
+from colosseum_equipment.instruments.vsg.keysight_esg import KeysightESGVSG
 
 from tests.support.stubs import RfStubTransport, StubTransport
 
@@ -60,3 +61,24 @@ def test_generic_vsg_multicarrier_stays_unsupported() -> None:
     instrument = GenericVSG(StubTransport(), {"model": "generic"})
     with pytest.raises(EquipmentCapabilityError):
         instrument.set_multicarrier(2, 1e6)
+
+
+def test_esg_confirmed_sweep_stays_quiet_and_fallback_still_warns(caplog) -> None:
+    reset_best_effort_warnings()
+    transport = RfStubTransport({"*IDN?": "Agilent,E4438C,0,1"})
+    instrument = KeysightESGVSG(transport, {"model": "keysight-esg"})
+    with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
+        instrument.freq_sweep(1e6, 2e6, 3, 0.1)
+    assert transport.written == [
+        "LIST:TYPE STEP",
+        "FREQ:STAR 1000000.000000",
+        "FREQ:STOP 2000000.000000",
+        "SWE:POIN 3",
+        "SWE:DWEL 0.100000000",
+        "INIT:CONT ON",
+    ]
+    assert "using generic SCPI" not in caplog.text
+    with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
+        instrument.set_frequency(1e9)
+        instrument.set_frequency(2e9)
+    assert caplog.text.count("using generic SCPI") == 1

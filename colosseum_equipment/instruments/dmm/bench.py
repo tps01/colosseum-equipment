@@ -3,6 +3,7 @@
 Manuals: Keysight 34410A/11A command reference 9018-61141;
 Keithley 2100-900-01 and 2001-900-01 operator manuals.
 """
+
 from __future__ import annotations
 
 import math
@@ -17,17 +18,44 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _FUNCTIONS = {
-    "VOLT": "VOLT:DC", "VOLTAGE": "VOLT:DC", "DC": "VOLT:DC", "AC": "VOLT:AC",
-    "CURR": "CURR:DC", "CURRENT": "CURR:DC", "RESISTANCE": "RES", "FRESISTANCE": "FRES",
-    "FREQUENCY": "FREQ", "VOLTAGE:DC": "VOLT:DC", "VOLTAGE:AC": "VOLT:AC",
-    "CURRENT:DC": "CURR:DC", "CURRENT:AC": "CURR:AC",
+    "VOLT": "VOLT:DC",
+    "VOLTAGE": "VOLT:DC",
+    "DC": "VOLT:DC",
+    "AC": "VOLT:AC",
+    "CURR": "CURR:DC",
+    "CURRENT": "CURR:DC",
+    "RESISTANCE": "RES",
+    "FRESISTANCE": "FRES",
+    "FREQUENCY": "FREQ",
+    "VOLTAGE:DC": "VOLT:DC",
+    "VOLTAGE:AC": "VOLT:AC",
+    "CURRENT:DC": "CURR:DC",
+    "CURRENT:AC": "CURR:AC",
 }
 _BASIC = (
-    "set_function", "get_function", "set_range", "get_range", "set_auto_range", "get_auto_range",
-    "set_nplc", "get_nplc", "set_auto_zero", "get_auto_zero", "set_trigger_source",
-    "get_trigger_source", "initiate", "fetch", "measure_voltage", "measure_voltage_dc",
-    "measure_voltage_ac", "measure_current", "measure_current_dc", "measure_current_ac",
-    "measure_resistance", "measure_resistance_4w", "measure_frequency_hz",
+    "set_function",
+    "get_function",
+    "set_range",
+    "get_range",
+    "set_auto_range",
+    "get_auto_range",
+    "set_nplc",
+    "get_nplc",
+    "set_auto_zero",
+    "get_auto_zero",
+    "set_trigger_source",
+    "get_trigger_source",
+    "initiate",
+    "fetch",
+    "measure_voltage",
+    "measure_voltage_dc",
+    "measure_voltage_ac",
+    "measure_current",
+    "measure_current_dc",
+    "measure_current_ac",
+    "measure_resistance",
+    "measure_resistance_4w",
+    "measure_frequency_hz",
 )
 
 
@@ -42,7 +70,7 @@ class BenchDmm(GenericDMM):
         super().__init__(transport, config)
 
     def _function(self, function: str) -> str:
-        token = function.strip().strip('\"').upper()
+        token = function.strip().strip('"').upper()
         token = _FUNCTIONS.get(token, token)
         if token not in {"VOLT:DC", "VOLT:AC", "CURR:DC", "CURR:AC", "RES", "FRES", "FREQ"}:
             raise EquipmentCapabilityError(f"unsupported DMM function {function!r}")
@@ -50,7 +78,7 @@ class BenchDmm(GenericDMM):
 
     def set_function(self, function: str, *, channel: int = 1) -> None:
         self._require_channel(channel)
-        self._scpi.write(f'CONF:{self._function(function)}')
+        self._scpi.write(f"CONF:{self._function(function)}")
 
     def get_function(self, *, channel: int = 1) -> str:
         self._require_channel(channel)
@@ -147,7 +175,7 @@ class Keysight3441x(BenchDmm):
     def get_function(self, *, channel: int = 1) -> str:
         self._require_channel(channel)
         # CONF? includes range/resolution after the function name.
-        return self._function(self._scpi.query("CONF?").strip('\"').split()[0])
+        return self._function(self._scpi.query("CONF?").strip('"').split()[0])
 
     def set_auto_zero(self, enabled: bool, *, channel: int = 1) -> None:
         self._scpi.write(f"{self._sense(channel, 'ZERO:AUTO', integrating=True)} {int(enabled)}")
@@ -167,6 +195,7 @@ class Keysight3441x(BenchDmm):
         if math.isnan(ohms) or (ohms != 1e7 and ohms < 1e10):
             raise EquipmentCapabilityError("input impedance is 10 Mohm or automatic high impedance")
         self._scpi.write(f"VOLT:DC:IMP:AUTO {int(ohms >= 1e10)}")
+
 
 @instrument_model("dmm", "keithley-2100")
 @supported_commands(*_BASIC)

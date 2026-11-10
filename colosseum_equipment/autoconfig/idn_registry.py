@@ -345,10 +345,7 @@ def lambda_gen_identity(idn: str) -> bool:
     ``LAMBDA_GENH40-19-IEMD`` both match. The word ``GENESYS`` does not.
     """
     normalized = idn.strip().upper()
-    return (
-        _LAMBDA_VENDOR.search(normalized) is not None
-        and _LAMBDA_GEN_MODEL.search(normalized) is not None
-    )
+    return _LAMBDA_VENDOR.search(normalized) is not None and _LAMBDA_GEN_MODEL.search(normalized) is not None
 
 
 def classify_idn(idn: str) -> IdnMatch | None:

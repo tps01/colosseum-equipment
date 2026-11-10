@@ -150,7 +150,11 @@ def test_write_capture_iq_sample_formats(tmp_path: Path) -> None:
 
     f32_path = tmp_path / "f32.bin"
     f32_meta = write_capture_iq(
-        f32_path, iq, file_format="bin", sample_format="f32", metadata={"center_hz": 1e9},
+        f32_path,
+        iq,
+        file_format="bin",
+        sample_format="f32",
+        metadata={"center_hz": 1e9},
     )
     assert f32_meta["sample_format"] == "f32"
     assert "peak" not in f32_meta
@@ -164,7 +168,11 @@ def test_write_capture_iq_sample_formats(tmp_path: Path) -> None:
 
     i16_path = tmp_path / "i16.bin"
     i16_meta = write_capture_iq(
-        i16_path, iq, file_format="bin", sample_format="i16", metadata={"center_hz": 1e9},
+        i16_path,
+        iq,
+        file_format="bin",
+        sample_format="i16",
+        metadata={"center_hz": 1e9},
     )
     assert i16_meta["sample_format"] == "i16"
     assert i16_meta["peak"] == pytest.approx(0.5)

@@ -10,6 +10,7 @@ import inspect
 from typing import TYPE_CHECKING, Any, cast
 
 from colosseum.decorators import command
+from colosseum.logging import get_logger
 
 from colosseum_equipment.connections import get_transport
 from colosseum_equipment.instruments.registry import kind_id_params
@@ -19,6 +20,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 _KIND_ID_PARAMS: dict[str, str] = kind_id_params()
+_logger = get_logger("colosseum.equipment")
+
+
+def _selected_instrument(**instrument_ids: object) -> tuple[str, int]:
+    return _resolve_kind(
+        **{key: instrument_ids[key] for key in _KIND_ID_PARAMS if instrument_ids.get(key) is not None},
+    )
 
 
 def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
@@ -33,11 +41,7 @@ def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
 
 
 def _resolve_kind(**kwargs: object) -> tuple[str, int]:
-    selected = [
-        (kwargs[param], kind)
-        for param, kind in _KIND_ID_PARAMS.items()
-        if kwargs.get(param) is not None
-    ]
+    selected = [(kwargs[param], kind) for param, kind in _KIND_ID_PARAMS.items() if kwargs.get(param) is not None]
     if len(selected) != 1:
         names = ", ".join(f"{name}=" for name in _KIND_ID_PARAMS)
         raise ValueError(f"Specify exactly one of {names}")
@@ -47,11 +51,7 @@ def _resolve_kind(**kwargs: object) -> tuple[str, int]:
 
 def _scpi_helper(**instrument_ids: object) -> SCPIHelper:
     kind, equipment_id = _resolve_kind(
-        **{
-            key: instrument_ids[key]
-            for key in _KIND_ID_PARAMS
-            if instrument_ids.get(key) is not None
-        },
+        **{key: instrument_ids[key] for key in _KIND_ID_PARAMS if instrument_ids.get(key) is not None},
     )
     return for_instrument(kind, equipment_id)
 
@@ -61,13 +61,24 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
         inspect.Parameter("command", inspect.Parameter.KEYWORD_ONLY, annotation=str),
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+                param,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],
     ]
 
+    action = {
+        "write": "Sending SCPI write to %s %s",
+        "query": "Querying SCPI on %s %s",
+        "query_float": "Querying a SCPI number on %s %s",
+    }[method]
+
     def api(*, command: str, **instrument_ids: int | None) -> object:
+        kind, equipment_id = _selected_instrument(**instrument_ids)
+        _logger.info(action, kind, equipment_id)
         helper = _scpi_helper(**instrument_ids)
         return getattr(helper, method)(command)
 
@@ -111,13 +122,24 @@ def _make_status_api(name: str, method: str, return_annotation: object) -> Calla
     params = [
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+                param,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],
     ]
 
+    action = {
+        "status_byte": "Reading SCPI status byte from %s %s",
+        "esr": "Reading SCPI event status from %s %s",
+        "clear_status": "Clearing SCPI status on %s %s",
+    }[method]
+
     def api(**instrument_ids: int | None) -> object:
+        kind, equipment_id = _selected_instrument(**instrument_ids)
+        _logger.info(action, kind, equipment_id)
         helper = _scpi_helper(**instrument_ids)
         return getattr(helper, method)()
 
@@ -156,13 +178,23 @@ def _make_drain_error_queue() -> Callable[..., list[str]]:
         ),
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+                param,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],
     ]
 
     def api(*, max_errors: int = 50, **instrument_ids: int | None) -> list[str]:
+        kind, equipment_id = _selected_instrument(**instrument_ids)
+        _logger.info(
+            "Draining SCPI error queue on %s %s (up to %s)",
+            kind,
+            equipment_id,
+            max_errors,
+        )
         helper = _scpi_helper(**instrument_ids)
         return helper.drain_error_queue(max_errors=max_errors)
 

@@ -87,3 +87,6 @@ wheelhouse/
 offline-bundle/
 *-offline-*.zip
 colosseum-*-offline-*.tar.gz
+
+# Fuzzer-generated corpus and crash artifacts
+.fuzz-work/

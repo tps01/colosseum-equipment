@@ -77,9 +77,11 @@ class BeagleApi:
 
     def __getattr__(self, name):
         if name in ("bg_timeout", "bg_latency", "bg_target_power", "bg_i2c_pullup", "bg_spi_configure"):
+
             def call(*args):
                 self.calls.append((name, *args))
                 return 0
+
             return call
         raise AttributeError(name)
 
@@ -117,14 +119,18 @@ def bg(monkeypatch):
 
 
 def config(**kwargs):
-    return {"driver": "totalphase-beagle", "resource": "1234567890", "model": "i2c-spi",
-            "protocol": "i2c", **kwargs}
+    return {"driver": "totalphase-beagle", "resource": "1234567890", "model": "i2c-spi", "protocol": "i2c", **kwargs}
 
 
-@pytest.mark.parametrize("model,protocol,features", [
-    ("i2c-spi", "i2c", 3), ("i2c-spi", "spi", 3),
-    ("usb-12", "usb", 4), ("usb-480", "usb", 20),
-])
+@pytest.mark.parametrize(
+    "model,protocol,features",
+    [
+        ("i2c-spi", "i2c", 3),
+        ("i2c-spi", "spi", 3),
+        ("usb-12", "usb", 4),
+        ("usb-480", "usb", 20),
+    ],
+)
 def test_beagle_packets_preserve_timing_and_protocol_data(bg, tmp_path, model, protocol, features):
     bg.features = features
     bg.packets.append((1, 0))
@@ -185,12 +191,19 @@ def test_beagle_partial_initialization_turns_power_off(bg, monkeypatch):
     assert bg.closed == 1
 
 
-@pytest.mark.parametrize("changes", [
-    {"model": "usb-480-power"}, {"model": "usb-12", "protocol": "spi"},
-    {"mode": 4}, {"max_duration_s": float("nan")}, {"max_records": 0},
-    {"max_bytes": -1}, {"model": "usb-12", "protocol": "usb", "sample_rate_hz": 50_000_000},
-    {"model": "usb-480", "protocol": "usb", "target_power": True},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"model": "usb-480-power"},
+        {"model": "usb-12", "protocol": "spi"},
+        {"mode": 4},
+        {"max_duration_s": float("nan")},
+        {"max_records": 0},
+        {"max_bytes": -1},
+        {"model": "usb-12", "protocol": "usb", "sample_rate_hz": 50_000_000},
+        {"model": "usb-480", "protocol": "usb", "target_power": True},
+    ],
+)
 def test_bad_analyzer_configuration_is_rejected_before_open(bg, changes):
     with pytest.raises(IoConfigError):
         AnalyzerBackend(config(**changes))
@@ -237,10 +250,14 @@ def test_busy_bus_drain_is_bounded(bg, tmp_path):
         backend.close()
 
 
-@pytest.mark.parametrize("limits,reason", [
-    ({"max_records": 1}, "record_limit"), ({"max_bytes": 1}, "byte_limit"),
-    ({"max_duration_s": 0.01}, "duration_limit"),
-])
+@pytest.mark.parametrize(
+    "limits,reason",
+    [
+        ({"max_records": 1}, "record_limit"),
+        ({"max_bytes": 1}, "byte_limit"),
+        ({"max_duration_s": 0.01}, "duration_limit"),
+    ],
+)
 def test_sim_capture_is_bounded(tmp_path, limits, reason):
     backend = AnalyzerBackend({"driver": "sim", "records": [{"data": "abcd"}] * 10, **limits})
     try:
@@ -290,10 +307,12 @@ class EquipmentEntryPoint:
 
 
 def test_public_analyzer_config_evidence_and_active_shutdown(
-    io_runtime_context, io_bench, monkeypatch,
+    io_runtime_context,
+    io_bench,
+    monkeypatch,
 ):
     monkeypatch.setattr(plugin_loader, "entry_points_for_group", lambda group: [EquipmentEntryPoint()])
-    load_config(io_bench('''
+    load_config(io_bench("""
         [[io.analyzer]]
         analyzer_id = 1
         driver = "sim"
@@ -303,7 +322,7 @@ def test_public_analyzer_config_evidence_and_active_shutdown(
         analyzer_id = 2
         driver = "sim"
         protocol = "usb"
-    '''))
+    """))
     path = col.io.analyzer.start(analyzer_id=1, path="raw.jsonl")
     assert path == "raw.jsonl"
     status = col.io.analyzer.status(analyzer_id=1)
@@ -315,7 +334,9 @@ def test_public_analyzer_config_evidence_and_active_shutdown(
     summary = col.io.analyzer.export(analyzer_id=1, path="capture.jsonl", key="bus")
     assert summary["loss_detected"]
     rows = io_runtime_context.db.list_measurements(
-        domain="equipment", command="io.analyzer.export", key="bus",
+        domain="equipment",
+        command="io.analyzer.export",
+        key="bus",
     )
     assert len(rows) == 1
     assert rows[0].status == "FAIL"
@@ -329,20 +350,22 @@ def test_public_analyzer_config_evidence_and_active_shutdown(
 
 def test_empty_analyzer_export_is_fail(io_runtime_context, io_bench, monkeypatch):
     monkeypatch.setattr(plugin_loader, "entry_points_for_group", lambda group: [EquipmentEntryPoint()])
-    load_config(io_bench('''
+    load_config(io_bench("""
         [io.analyzer]
         analyzer_id = 1
         driver = "sim"
         protocol = "i2c"
         records = []
         max_duration_s = 0.05
-    '''))
+    """))
     path = col.io.analyzer.start(analyzer_id=1, path="empty.jsonl")
     summary = col.io.analyzer.stop(analyzer_id=1)
     assert summary["records"] == 0
     exported = col.io.analyzer.export(analyzer_id=1, path=path, key="empty_bus")
     assert exported["records"] == 0
     rows = io_runtime_context.db.list_measurements(
-        domain="equipment", command="io.analyzer.export", key="empty_bus",
+        domain="equipment",
+        command="io.analyzer.export",
+        key="empty_bus",
     )
     assert rows[0].status == "FAIL"

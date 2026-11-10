@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.protocols.scpi import (
@@ -50,3 +52,23 @@ def test_read_binary_block_empty_read_raises_truncated() -> None:
     scpi = SCPIHelper(transport)
     with pytest.raises(EquipmentResponseError, match="expected 5 payload bytes, got 2"):
         scpi.read_binary_block("DATA?")
+
+
+@pytest.mark.parametrize(
+    "seed",
+    sorted((Path(__file__).parents[1] / "fixtures/fuzz/corpus").iterdir()),
+    ids=lambda path: path.name,
+)
+def test_fuzz_seed_invariants(seed) -> None:
+    from tests.fuzz.scpi_binary import check_input
+
+    check_input(seed.read_bytes())
+
+
+@pytest.mark.parametrize("target", ["ubx_stream", "mask_validation"])
+def test_additional_fuzz_seed_invariants(target) -> None:
+    from importlib import import_module
+
+    check = import_module(f"tests.fuzz.{target}").check_input
+    for seed in (Path(__file__).parents[1] / "fixtures/fuzz" / target).iterdir():
+        check(seed.read_bytes())

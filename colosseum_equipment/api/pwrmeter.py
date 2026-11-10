@@ -5,15 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment import calibration as _cal
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
+_logger = get_logger("colosseum.equipment")
+
 
 def _inst(pwrmeter_id: EquipmentId) -> Any:
-    return get_cached_instrument('pwrmeter', require_int_id(pwrmeter_id, kind='pwrmeter'))
+    return get_cached_instrument("pwrmeter", require_int_id(pwrmeter_id, kind="pwrmeter"))
 
 
 def _correct_dbm(inst: Any, raw_dbm: float, *, channel: int, calibration: str | None) -> float:
@@ -51,6 +54,12 @@ def set_frequency(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting frequency on power meter %s channel %s to %s Hz",
+        pwrmeter_id,
+        channel,
+        frequency_hz,
+    )
     _ = calibration
     inst = _inst(pwrmeter_id)
     inst.set_frequency(frequency_hz, channel=channel)
@@ -74,6 +83,12 @@ def set_averaging_count(*, pwrmeter_id: EquipmentId, count: int, channel: int = 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting averaging count on power meter %s channel %s to %s",
+        pwrmeter_id,
+        channel,
+        count,
+    )
     _inst(pwrmeter_id).set_averaging_count(count, channel=channel)
 
 
@@ -94,6 +109,12 @@ def set_offset_db(*, pwrmeter_id: EquipmentId, offset_db: float, channel: int = 
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info(
+        "Setting offset on power meter %s channel %s to %s dB",
+        pwrmeter_id,
+        channel,
+        offset_db,
+    )
     _inst(pwrmeter_id).set_offset_db(offset_db, channel=channel)
 
 
@@ -112,6 +133,7 @@ def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Zeroing power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).zero_sensor(channel=channel)
 
 
@@ -130,6 +152,7 @@ def calibrate(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Calibrating power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).calibrate(channel=channel)
 
 
@@ -146,6 +169,7 @@ def preset(*, pwrmeter_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Presetting power meter %s", pwrmeter_id)
     _inst(pwrmeter_id).preset()
 
 
@@ -168,6 +192,7 @@ def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Acquiring power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).acquire(channel=channel)
 
 
@@ -197,6 +222,7 @@ def measure_power_dbm(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading power from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
     inst = _inst(pwrmeter_id)
     return _correct_dbm(
@@ -242,6 +268,7 @@ def measure_power(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading power from power meter %s channel %s", pwrmeter_id, channel)
     return measure_power_dbm(
         pwrmeter_id=pwrmeter_id,
         channel=channel,
@@ -251,7 +278,10 @@ def measure_power(
 
 
 verify_power = tolerance_verifier(
-    "measure_power_dbm", name="verify_power", default_tolerance=0.5, unit="dBm",
+    "measure_power_dbm",
+    name="verify_power",
+    default_tolerance=0.5,
+    unit="dBm",
 )
 
 
@@ -272,6 +302,7 @@ def measure_power_w(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading power in watts from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
     return float(_inst(pwrmeter_id).measure_power_w(channel=channel))
 
@@ -301,6 +332,7 @@ def measure_power_peak_dbm(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading peak power from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
     inst = _inst(pwrmeter_id)
     return _correct_dbm(
@@ -336,6 +368,7 @@ def measure_power_avg_dbm(
     :raises EquipmentConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("Reading average power from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
     inst = _inst(pwrmeter_id)
     return _correct_dbm(

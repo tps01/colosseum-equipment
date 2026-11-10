@@ -99,10 +99,7 @@ def measurement_doc(
         key_domain="equipment",
         allow_all=False,
     )
-    return (
-        f"{summary}\n\n{params}\n\n:returns: Measured {quantity}.\n"
-        f":rtype: {rtype}\n\n{_measurement_raises()}"
-    )
+    return f"{summary}\n\n{params}\n\n:returns: Measured {quantity}.\n:rtype: {rtype}\n\n{_measurement_raises()}"
 
 
 def tolerance_verify_doc(measure_command: str, *, unit: str = "") -> str:

@@ -5,14 +5,17 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
+_logger = get_logger("colosseum.equipment")
+
 
 def _inst(eload_id: EquipmentId) -> Any:
-    return get_cached_instrument('eload', require_int_id(eload_id, kind='eload'))
+    return get_cached_instrument("eload", require_int_id(eload_id, kind="eload"))
 
 
 @command
@@ -33,6 +36,7 @@ def set_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting mode on ELoad %s channel %s to %s", eload_id, channel, mode)
     _inst(eload_id).set_mode(mode, channel=channel)
 
 
@@ -54,6 +58,7 @@ def set_current(*, eload_id: EquipmentId, current: float, channel: int = 1) -> N
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting current on ELoad %s channel %s to %s A", eload_id, channel, current)
     _inst(eload_id).set_current(current, channel=channel)
 
 
@@ -75,6 +80,7 @@ def set_voltage(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> N
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting voltage on ELoad %s channel %s to %s V", eload_id, channel, voltage)
     _inst(eload_id).set_voltage(voltage, channel=channel)
 
 
@@ -95,6 +101,7 @@ def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting power on ELoad %s channel %s to %s W", eload_id, channel, power)
     _inst(eload_id).set_power(power, channel=channel)
 
 
@@ -116,6 +123,12 @@ def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting resistance on ELoad %s channel %s to %s ohms",
+        eload_id,
+        channel,
+        resistance,
+    )
     _inst(eload_id).set_resistance(resistance, channel=channel)
 
 
@@ -135,6 +148,7 @@ def engage(*, eload_id: EquipmentId, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Engaging ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).engage(channel=channel)
 
 
@@ -154,6 +168,7 @@ def disengage(*, eload_id: EquipmentId, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Disengaging ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).disengage(channel=channel)
 
 
@@ -171,6 +186,7 @@ def preset(*, eload_id: EquipmentId) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Presetting ELoad %s", eload_id)
     _inst(eload_id).preset()
 
 
@@ -192,6 +208,12 @@ def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1)
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting slew rate on ELoad %s channel %s to %s A/s",
+        eload_id,
+        channel,
+        amps_per_s,
+    )
     _inst(eload_id).set_slew_rate(amps_per_s, channel=channel)
 
 
@@ -212,6 +234,12 @@ def toggle_short(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> N
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s short on ELoad %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        eload_id,
+        channel,
+    )
     _inst(eload_id).toggle_short(enabled, channel=channel)
 
 
@@ -233,6 +261,7 @@ def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> Non
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting OVP on ELoad %s channel %s to %s V", eload_id, channel, voltage)
     _inst(eload_id).set_ovp_v(voltage, channel=channel)
 
 
@@ -254,6 +283,7 @@ def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> Non
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting OCP on ELoad %s channel %s to %s A", eload_id, channel, current)
     _inst(eload_id).set_ocp_a(current, channel=channel)
 
 
@@ -274,6 +304,7 @@ def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting OPP on ELoad %s channel %s to %s W", eload_id, channel, power)
     _inst(eload_id).set_opp_w(power, channel=channel)
 
 
@@ -293,6 +324,7 @@ def clear_protection(*, eload_id: EquipmentId, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Clearing protection on ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).clear_protection(channel=channel)
 
 
@@ -314,6 +346,7 @@ def set_transient_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) ->
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting transient mode on ELoad %s channel %s to %s", eload_id, channel, mode)
     _inst(eload_id).set_transient_mode(mode, channel=channel)
 
 
@@ -335,6 +368,12 @@ def set_transient_level_a(*, eload_id: EquipmentId, current: float, channel: int
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting transient level on ELoad %s channel %s to %s A",
+        eload_id,
+        channel,
+        current,
+    )
     _inst(eload_id).set_transient_level_a(current, channel=channel)
 
 
@@ -355,6 +394,12 @@ def set_transient_timer_s(*, eload_id: EquipmentId, seconds: float, channel: int
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting transient timer on ELoad %s channel %s to %s s",
+        eload_id,
+        channel,
+        seconds,
+    )
     _inst(eload_id).set_transient_timer_s(seconds, channel=channel)
 
 
@@ -375,6 +420,12 @@ def toggle_transient(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s transient on ELoad %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        eload_id,
+        channel,
+    )
     _inst(eload_id).toggle_transient(enabled, channel=channel)
 
 
@@ -406,6 +457,14 @@ def configure_list_step(
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting list step %s on ELoad %s channel %s to %s A for %s s",
+        step,
+        eload_id,
+        channel,
+        current_a,
+        dwell_s,
+    )
     _inst(eload_id).configure_list_step(
         step,
         current_a=current_a,
@@ -431,6 +490,7 @@ def set_list_count(*, eload_id: EquipmentId, count: int, channel: int = 1) -> No
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting list count on ELoad %s channel %s to %s", eload_id, channel, count)
     _inst(eload_id).set_list_count(count, channel=channel)
 
 
@@ -451,6 +511,12 @@ def toggle_list(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> No
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s list mode on ELoad %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        eload_id,
+        channel,
+    )
     _inst(eload_id).toggle_list(enabled, channel=channel)
 
 
@@ -471,6 +537,7 @@ def measure_voltage(*, eload_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading voltage from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_voltage(channel=channel))
 
@@ -495,6 +562,7 @@ def measure_current(*, eload_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading current from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_current(channel=channel))
 
@@ -519,6 +587,7 @@ def measure_power_w(*, eload_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading power from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_power_w(channel=channel))
 
@@ -543,6 +612,7 @@ def measure_resistance_ohm(*, eload_id: int, channel: int = 1, key: str) -> floa
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading resistance from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_resistance_ohm(channel=channel))
 
@@ -571,6 +641,7 @@ def measure_input_state(*, eload_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading input state from ELoad %s channel %s", eload_id, channel)
     _ = key
     engaged = _inst(eload_id).measure_input_state(channel=channel)
     return 1.0 if engaged else 0.0

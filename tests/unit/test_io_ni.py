@@ -308,7 +308,12 @@ class _FakeNi845x:
 
     def ni845xSpiConfigurationOpen(self, handle_p: Any) -> int:
         hid = self._new_handle(
-            self.configs, kind="spi", cs=0, clock_khz=1000, mode_pol=0, mode_pha=0,
+            self.configs,
+            kind="spi",
+            cs=0,
+            clock_khz=1000,
+            mode_pol=0,
+            mode_pha=0,
         )
         _set_handle(handle_p, hid)
         return 0
@@ -415,11 +420,17 @@ def test_845x_shared_session_voltage_mismatch(monkeypatch: pytest.MonkeyPatch) -
     fake = _FakeNi845x()
     ni845x_api.set_ni845x_library(fake)
     first = Ni845xDioBackend(
-        resource="USB-8452", model="usb-8452", direction=0x0F, voltage=1.8,
+        resource="USB-8452",
+        model="usb-8452",
+        direction=0x0F,
+        voltage=1.8,
     )
     with pytest.raises(IoConfigError, match="already opened"):
         Ni845xI2cBackend(
-            resource="USB-8452", model="usb-8452", voltage=3.3, address=0x50,
+            resource="USB-8452",
+            model="usb-8452",
+            voltage=3.3,
+            address=0x50,
         )
     first.close()
 
@@ -428,14 +439,21 @@ def test_845x_dio_i2c_spi_transactions(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeNi845x()
     ni845x_api.set_ni845x_library(fake)
     dio = Ni845xDioBackend(
-        resource="USB-8452", model="usb-8452", direction=0x0F, voltage=3.3,
+        resource="USB-8452",
+        model="usb-8452",
+        direction=0x0F,
+        voltage=3.3,
     )
     dio.write_port(0b1010)
     assert fake.dio_value == 0b1010
     assert dio.read_pin(1) is True
 
     i2c = Ni845xI2cBackend(
-        resource="USB-8452", model="usb-8452", voltage=3.3, clock_hz=100_000, address=0x50,
+        resource="USB-8452",
+        model="usb-8452",
+        voltage=3.3,
+        clock_hz=100_000,
+        address=0x50,
     )
     i2c.write(b"")  # address ACK probe
     assert fake.i2c_writes[-1] == b""
@@ -450,8 +468,8 @@ def test_845x_dio_i2c_spi_transactions(monkeypatch: pytest.MonkeyPatch) -> None:
         mode=3,
         chip_select=2,
     )
-    fake.spi_miso = b"\xAA\xBB"
-    assert spi.transfer(b"\x01\x02") == b"\xAA\xBB"
+    fake.spi_miso = b"\xaa\xbb"
+    assert spi.transfer(b"\x01\x02") == b"\xaa\xbb"
     cfg = next(c for c in fake.configs.values() if c.get("kind") == "spi")
     assert cfg["cs"] == 2
     assert cfg["mode_pol"] == ni845x_api.kNi845xSpiClockPolarityIdleHigh
@@ -467,7 +485,9 @@ def test_8451_rejects_fast_spi(monkeypatch: pytest.MonkeyPatch) -> None:
     ni845x_api.set_ni845x_library(_FakeNi845x())
     with pytest.raises(IoConfigError, match="12000000"):
         Ni845xSpiBackend(
-            resource="USB-8451", model="usb-8451", clock_hz=20_000_000,
+            resource="USB-8451",
+            model="usb-8451",
+            clock_hz=20_000_000,
         )
 
 
@@ -496,7 +516,10 @@ def test_ni845x_spi_short_transfer_raises(monkeypatch: pytest.MonkeyPatch) -> No
 def test_ni845x_dio_rejects_illegal_bits(monkeypatch: pytest.MonkeyPatch) -> None:
     ni845x_api.set_ni845x_library(_FakeNi845x())
     dio = Ni845xDioBackend(
-        resource="USB-8452", model="usb-8452", direction=0x0F, initial_output=0x05,
+        resource="USB-8452",
+        model="usb-8452",
+        direction=0x0F,
+        initial_output=0x05,
     )
     assert dio.read_port() & 0x0F == 0x05
     with pytest.raises(IoConfigError, match="input-only bits"):
@@ -580,7 +603,8 @@ def test_factory_ni_drivers_with_fakes(monkeypatch: pytest.MonkeyPatch) -> None:
     daqmx_api.set_daqmx_library(_FakeDaqmx())
     ni845x_api.set_ni845x_library(_FakeNi845x())
     dio6501 = io_factory.open_dio_backend(
-        1, {"driver": "ni-6501", "resource": "Dev1", "direction": 0xFF},
+        1,
+        {"driver": "ni-6501", "resource": "Dev1", "direction": 0xFF},
     )
     assert isinstance(dio6501, Ni6501DioBackend)
     dio6501.close()

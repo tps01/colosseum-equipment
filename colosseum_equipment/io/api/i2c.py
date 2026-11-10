@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.io.connections import get_backend
+
+_logger = get_logger("colosseum.equipment")
 
 
 @command
@@ -28,9 +31,12 @@ def configure(
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Invalid address or clock for the configured model.
     """
+    _logger.info("Configuring I2C %s address %s clock %s Hz", i2c_id, address, clock_hz)
     return dict(
         get_backend("i2c", i2c_id).configure(
-            address=address, address_bits=address_bits, clock_hz=clock_hz,
+            address=address,
+            address_bits=address_bits,
+            clock_hz=clock_hz,
         ),
     )
 
@@ -45,6 +51,7 @@ def set_pullup(*, i2c_id: int, enabled: bool) -> None:
     :raises IoConnectionError: Transport or instrument connection failed.
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
+    _logger.info("%s pull-ups on I2C %s", "Enabling" if enabled else "Disabling", i2c_id)
     get_backend("i2c", i2c_id).set_pullup(enabled)
 
 
@@ -57,6 +64,7 @@ def write(*, i2c_id: int, data: bytes) -> None:
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
+    _logger.info("Writing %s bytes to I2C %s", len(data), i2c_id)
     get_backend("i2c", i2c_id).write(bytes(data))
 
 
@@ -72,6 +80,7 @@ def read(*, i2c_id: int, nbytes: int, key: str) -> bytes:
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
+    _logger.info("Reading %s bytes from I2C %s", nbytes, i2c_id)
     _ = key
     return bytes(get_backend("i2c", i2c_id).read(nbytes))
 
@@ -89,5 +98,11 @@ def write_read(*, i2c_id: int, write_data: bytes, read_nbytes: int, key: str) ->
 
     :raises IoConnectionError: Transport or instrument connection failed.
     """
+    _logger.info(
+        "Writing %s bytes and reading %s bytes on I2C %s",
+        len(write_data),
+        read_nbytes,
+        i2c_id,
+    )
     _ = key
     return bytes(get_backend("i2c", i2c_id).write_read(bytes(write_data), read_nbytes))

@@ -204,10 +204,7 @@ class GenericVna(ScpiInstrumentMixin):
         parameter: str = "S11",
     ) -> Path:
         self._ensure_scpi_vna("save_trace_data")
-        if file_format.lower() == "s2p" or path.lower().endswith(".s2p"):
-            export_format = "s2p"
-        else:
-            export_format = "csv"
+        export_format = "s2p" if file_format.lower() == "s2p" or path.lower().endswith(".s2p") else "csv"
 
         display_was_enabled = True
         try:

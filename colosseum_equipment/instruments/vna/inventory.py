@@ -3,6 +3,7 @@
 Manuals: Keysight ENA/PNA online programming help and R&S ZNL/ZNLE
 1178.5966.02. CSV contains the actual stimulus axis; single traces are not S2P.
 """
+
 from __future__ import annotations
 
 import math
@@ -22,10 +23,22 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _COMMANDS = (
-    "preset", "set_start_frequency", "set_stop_frequency", "set_points", "single_sweep",
-    "wait_complete", "abort", "set_averaging_count", "toggle_averaging", "set_if_bw",
-    "set_tx_power", "set_trace_parameters", "save_trace_data", "measure_s11_magnitude",
-    "measure_s21_magnitude", "measure_s_parameter",
+    "preset",
+    "set_start_frequency",
+    "set_stop_frequency",
+    "set_points",
+    "single_sweep",
+    "wait_complete",
+    "abort",
+    "set_averaging_count",
+    "toggle_averaging",
+    "set_if_bw",
+    "set_tx_power",
+    "set_trace_parameters",
+    "save_trace_data",
+    "measure_s11_magnitude",
+    "measure_s21_magnitude",
+    "measure_s_parameter",
 )
 
 
@@ -110,7 +123,12 @@ class InventoryVna(GenericVna):
         return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA:FDAT?"))
 
     def save_trace_data(
-        self, path: str, *, trace: int = 1, file_format: str = "csv", parameter: str = "S11",
+        self,
+        path: str,
+        *,
+        trace: int = 1,
+        file_format: str = "csv",
+        parameter: str = "S11",
     ) -> Path:
         if file_format.lower() != "csv" or path.lower().endswith((".s1p", ".s2p")):
             raise EquipmentCapabilityError("formatted trace export is CSV, not a full Touchstone matrix")
@@ -128,8 +146,11 @@ class InventoryVna(GenericVna):
         artifact = resolve_artifact_path(path)
         write_trace_csv(artifact, frequencies, values)
         record_artifact(
-            domain="equipment", command="save_trace_data", key=f"vna_trace_{trace}_{parameter.lower()}",
-            path=artifact, value={"trace": trace, "parameter": parameter, "units": "dB", "points": len(values)},
+            domain="equipment",
+            command="save_trace_data",
+            key=f"vna_trace_{trace}_{parameter.lower()}",
+            path=artifact,
+            value={"trace": trace, "parameter": parameter, "units": "dB", "points": len(values)},
         )
         return artifact
 

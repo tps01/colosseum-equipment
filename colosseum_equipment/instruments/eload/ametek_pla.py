@@ -2,6 +2,7 @@
 
 https://www.manualsdir.com/manuals/754240/ametek-pla-plw-programming-manual.html
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -17,8 +18,17 @@ if TYPE_CHECKING:
 
 @instrument_model("eload", "ametek-pla4k-600-240")
 @supported_commands(
-    "set_mode", "set_current", "set_voltage", "set_power", "set_resistance", "engage", "disengage",
-    "measure_voltage", "measure_current", "measure_input_state", "preset",
+    "set_mode",
+    "set_current",
+    "set_voltage",
+    "set_power",
+    "set_resistance",
+    "engage",
+    "disengage",
+    "measure_voltage",
+    "measure_current",
+    "measure_input_state",
+    "preset",
 )
 class AmetekPla(GenericEload):
     """Single-input static modes. Select SCPI syntax on the instrument first.

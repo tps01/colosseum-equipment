@@ -10,14 +10,17 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import command, measurement
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
 from colosseum_equipment.connections import get_cached_instrument
 
+_logger = get_logger("colosseum.equipment")
+
 
 def _inst(dmm_id: EquipmentId) -> Any:
-    return get_cached_instrument('dmm', require_int_id(dmm_id, kind='dmm'))
+    return get_cached_instrument("dmm", require_int_id(dmm_id, kind="dmm"))
 
 
 @command
@@ -38,6 +41,7 @@ def set_function(*, dmm_id: EquipmentId, function: str, channel: int = 1) -> Non
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting function on DMM %s channel %s to %s", dmm_id, channel, function)
     _inst(dmm_id).set_function(function, channel=channel)
 
 
@@ -59,6 +63,7 @@ def set_range(*, dmm_id: EquipmentId, value: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting range on DMM %s channel %s to %s", dmm_id, channel, value)
     _inst(dmm_id).set_range(value, channel=channel)
 
 
@@ -79,6 +84,12 @@ def set_auto_range(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> N
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s auto range on DMM %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        dmm_id,
+        channel,
+    )
     _inst(dmm_id).set_auto_range(enabled, channel=channel)
 
 
@@ -100,6 +111,7 @@ def set_nplc(*, dmm_id: EquipmentId, nplc: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting NPLC on DMM %s channel %s to %s", dmm_id, channel, nplc)
     _inst(dmm_id).set_nplc(nplc, channel=channel)
 
 
@@ -120,6 +132,7 @@ def set_aperture_s(*, dmm_id: EquipmentId, seconds: float, channel: int = 1) -> 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting aperture on DMM %s channel %s to %s s", dmm_id, channel, seconds)
     _inst(dmm_id).set_aperture_s(seconds, channel=channel)
 
 
@@ -140,6 +153,12 @@ def set_auto_zero(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> No
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s auto zero on DMM %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        dmm_id,
+        channel,
+    )
     _inst(dmm_id).set_auto_zero(enabled, channel=channel)
 
 
@@ -160,6 +179,7 @@ def set_input_z(*, dmm_id: EquipmentId, ohms: float, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting input impedance on DMM %s channel %s to %s ohms", dmm_id, channel, ohms)
     _inst(dmm_id).set_input_z(ohms, channel=channel)
 
 
@@ -180,6 +200,7 @@ def set_trigger_source(*, dmm_id: EquipmentId, source: str, channel: int = 1) ->
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting trigger source on DMM %s channel %s to %s", dmm_id, channel, source)
     _inst(dmm_id).set_trigger_source(source, channel=channel)
 
 
@@ -199,6 +220,7 @@ def initiate(*, dmm_id: EquipmentId, channel: int = 1) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Initiating measurement on DMM %s channel %s", dmm_id, channel)
     _inst(dmm_id).initiate(channel=channel)
 
 
@@ -219,6 +241,7 @@ def get_function(*, dmm_id: int, channel: int = 1, key: str) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading function from DMM %s channel %s", dmm_id, channel)
     _ = key
     return str(_inst(dmm_id).get_function(channel=channel))
 
@@ -240,6 +263,7 @@ def get_range(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading range from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).get_range(channel=channel))
 
@@ -261,6 +285,7 @@ def get_auto_range(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading auto range from DMM %s channel %s", dmm_id, channel)
     _ = key
     return 1.0 if _inst(dmm_id).get_auto_range(channel=channel) else 0.0
 
@@ -282,6 +307,7 @@ def get_nplc(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading NPLC from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).get_nplc(channel=channel))
 
@@ -303,6 +329,7 @@ def get_aperture_s(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading aperture from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).get_aperture_s(channel=channel))
 
@@ -324,6 +351,7 @@ def get_auto_zero(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading auto zero from DMM %s channel %s", dmm_id, channel)
     _ = key
     return 1.0 if _inst(dmm_id).get_auto_zero(channel=channel) else 0.0
 
@@ -345,6 +373,7 @@ def get_input_z(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading input impedance from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).get_input_z(channel=channel))
 
@@ -366,6 +395,7 @@ def get_trigger_source(*, dmm_id: int, channel: int = 1, key: str) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading trigger source from DMM %s channel %s", dmm_id, channel)
     _ = key
     return str(_inst(dmm_id).get_trigger_source(channel=channel))
 
@@ -388,6 +418,7 @@ def fetch(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Fetching reading from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).fetch(channel=channel))
 
@@ -418,6 +449,7 @@ def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
     Pair with verify_voltage using the same key. Configure equipment.dmm first;
     see the PSU/DMM acquisition recipe in the instrument workflow guide.
     """
+    _logger.info("Reading voltage from DMM %s channel %s", dmm_id, channel)
     return measure_voltage_dc(dmm_id=dmm_id, channel=channel, key=key)
 
 
@@ -441,6 +473,7 @@ def measure_voltage_dc(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading DC voltage from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_voltage_dc(channel))
 
@@ -465,6 +498,7 @@ def measure_voltage_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading AC voltage from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_voltage_ac(channel))
 
@@ -491,6 +525,7 @@ def measure_current(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading current from DMM %s channel %s", dmm_id, channel)
     return measure_current_dc(dmm_id=dmm_id, channel=channel, key=key)
 
 
@@ -514,6 +549,7 @@ def measure_current_dc(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading DC current from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_current_dc(channel))
 
@@ -538,6 +574,7 @@ def measure_current_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading AC current from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_current_ac(channel))
 
@@ -562,6 +599,7 @@ def measure_resistance(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading resistance from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_resistance(channel))
 
@@ -586,6 +624,7 @@ def measure_resistance_4w(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading 4-wire resistance from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_resistance_4w(channel))
 
@@ -614,6 +653,7 @@ def measure_frequency_hz(*, dmm_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading frequency from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_frequency_hz(channel))
 

@@ -2,6 +2,7 @@
 
 Manuals: Tektronix 077-0444-01 (TDS2000C) and 071-0381-03 (TDS3000B).
 """
+
 from __future__ import annotations
 
 import math
@@ -18,16 +19,44 @@ if TYPE_CHECKING:
 
 
 @instrument_model(
-    "oscope", "tektronix-tds3034b", "tektronix-tds3032b", "tektronix-tds2024c", "tektronix-tds2014",
+    "oscope",
+    "tektronix-tds3034b",
+    "tektronix-tds3032b",
+    "tektronix-tds2024c",
+    "tektronix-tds2014",
 )
 @supported_commands(
-    "set_channel_display", "get_channel_display", "set_channel_scale_v", "get_channel_scale_v",
-    "set_channel_coupling", "get_channel_coupling", "set_timebase_scale", "set_trigger_mode",
-    "set_trigger_source", "set_trigger_level_v", "set_trigger_slope", "force_trigger",
-    "set_acquire_mode", "set_acquire_averages", "run", "stop", "arm_single", "single_acquire",
-    "abort", "get_acquire_state", "wait_complete", "acquire", "measure_vpp", "measure_vmax",
-    "measure_vmin", "measure_vrms", "measure_frequency_hz", "measure_period_s",
-    "measure_rise_time_s", "measure_fall_time_s", "save_waveform",
+    "set_channel_display",
+    "get_channel_display",
+    "set_channel_scale_v",
+    "get_channel_scale_v",
+    "set_channel_coupling",
+    "get_channel_coupling",
+    "set_timebase_scale",
+    "set_trigger_mode",
+    "set_trigger_source",
+    "set_trigger_level_v",
+    "set_trigger_slope",
+    "force_trigger",
+    "set_acquire_mode",
+    "set_acquire_averages",
+    "run",
+    "stop",
+    "arm_single",
+    "single_acquire",
+    "abort",
+    "get_acquire_state",
+    "wait_complete",
+    "acquire",
+    "measure_vpp",
+    "measure_vmax",
+    "measure_vmin",
+    "measure_vrms",
+    "measure_frequency_hz",
+    "measure_period_s",
+    "measure_rise_time_s",
+    "measure_fall_time_s",
+    "save_waveform",
 )
 class TekTdsOscope(TekMdo4000Oscope):
     """Analog sample/average acquisition; screenshots and envelope mode excluded."""
@@ -99,8 +128,8 @@ class TekTdsOscope(TekMdo4000Oscope):
         ymult = self._scpi.query_float("WFMPRE:YMULT?")
         yoff = self._scpi.query_float("WFMPRE:YOFF?")
         yzero = self._scpi.query_float("WFMPRE:YZERO?")
-        xunit = self._scpi.query("WFMPRE:XUNIT?").strip('\"').upper()
-        yunit = self._scpi.query("WFMPRE:YUNIT?").strip('\"').upper()
+        xunit = self._scpi.query("WFMPRE:XUNIT?").strip('"').upper()
+        yunit = self._scpi.query("WFMPRE:YUNIT?").strip('"').upper()
         if xunit not in {"S", "SECONDS"} or yunit not in {"V", "VOLTS"}:
             raise EquipmentCapabilityError("time/voltage CSV requires second/volt waveform units")
         raw = self._scpi.read_binary_block("CURVE?")
@@ -111,22 +140,46 @@ class TekTdsOscope(TekMdo4000Oscope):
         samples = struct.unpack(f"{count}b", raw)
         values = [(value - yoff) * ymult + yzero for value in samples]
         return values, {
-            "channel": ch, "points": count, "xinc_s": xinc,
-            "xorigin_s": xzero - ptoff * xinc, "capture_id": self._capture_id,
-            "vertical_units": "V", "encoding": "RIBINARY",
+            "channel": ch,
+            "points": count,
+            "xinc_s": xinc,
+            "xorigin_s": xzero - ptoff * xinc,
+            "capture_id": self._capture_id,
+            "vertical_units": "V",
+            "encoding": "RIBINARY",
         }
 
 
 @instrument_model(
-    "oscope", "tektronix-mso58", "tektronix-mso64", "tektronix-tbs2204b",
-    "tektronix-mso4104", "tektronix-tds7704b",
+    "oscope",
+    "tektronix-mso58",
+    "tektronix-mso64",
+    "tektronix-tbs2204b",
+    "tektronix-mso4104",
+    "tektronix-tds7704b",
 )
 @supported_commands(
-    "set_channel_display", "get_channel_display", "set_channel_scale_v", "get_channel_scale_v",
-    "set_channel_offset_v", "get_channel_offset_v", "set_timebase_scale", "set_trigger_mode",
-    "set_trigger_source", "set_trigger_level_v", "set_trigger_slope", "force_trigger",
-    "run", "stop", "abort", "arm_single", "single_acquire", "get_acquire_state", "wait_complete",
-    "acquire", "save_waveform",
+    "set_channel_display",
+    "get_channel_display",
+    "set_channel_scale_v",
+    "get_channel_scale_v",
+    "set_channel_offset_v",
+    "get_channel_offset_v",
+    "set_timebase_scale",
+    "set_trigger_mode",
+    "set_trigger_source",
+    "set_trigger_level_v",
+    "set_trigger_slope",
+    "force_trigger",
+    "run",
+    "stop",
+    "abort",
+    "arm_single",
+    "single_acquire",
+    "get_acquire_state",
+    "wait_complete",
+    "acquire",
+    "save_waveform",
 )
 class TekWfmOutOscope(TekMdo4000Oscope):
     """077-1305-05, Waveform Transfer and appendix D (analog YT only).
@@ -198,6 +251,12 @@ class TekWfmOutOscope(TekMdo4000Oscope):
         if len(raw) != count * 2:
             raise EquipmentResponseError("waveform byte count differs from preamble")
         values = [(v - yoff) * ymult + yzero for v in struct.unpack(f">{count}h", raw)]
-        return values, {"channel": ch, "points": count, "xinc_s": xinc,
-                        "xorigin_s": xzero - ptoff * xinc, "capture_id": self._capture_id,
-                        "vertical_units": "V", "encoding": "RIBINARY16 big-endian"}
+        return values, {
+            "channel": ch,
+            "points": count,
+            "xinc_s": xinc,
+            "xorigin_s": xzero - ptoff * xinc,
+            "capture_id": self._capture_id,
+            "vertical_units": "V",
+            "encoding": "RIBINARY16 big-endian",
+        }

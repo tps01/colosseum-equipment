@@ -2,6 +2,7 @@
 
 https://www.batronix.com/files/Rohde-%26-Schwarz/Spectrum-Analyser/FPC1500/FPC_UserManual_en.pdf
 """
+
 from __future__ import annotations
 
 import math
@@ -19,9 +20,21 @@ if TYPE_CHECKING:
 
 @instrument_model("speca", "rohde-fpc1500")
 @supported_commands(
-    "set_center_frequency", "set_start_frequency", "set_stop_frequency", "set_span", "set_rbw",
-    "set_vbw", "set_sweep_time", "set_reference_level", "set_continuous_sweep", "arm_sweep",
-    "single_sweep", "wait_complete", "save_trace_data", "measure_bw", "measure_trace_power_at_frequency",
+    "set_center_frequency",
+    "set_start_frequency",
+    "set_stop_frequency",
+    "set_span",
+    "set_rbw",
+    "set_vbw",
+    "set_sweep_time",
+    "set_reference_level",
+    "set_continuous_sweep",
+    "arm_sweep",
+    "single_sweep",
+    "wait_complete",
+    "save_trace_data",
+    "measure_bw",
+    "measure_trace_power_at_frequency",
 )
 class RohdeFpc1500(GenericSpecA):
     """Spectrum only; no VNA, receiver, tracking generator or licensed measurements."""
@@ -38,7 +51,10 @@ class RohdeFpc1500(GenericSpecA):
         self.wait_complete(timeout_s=float(self._config.get("timeout", 60.0)))
 
     def _fetch_trace(
-        self, trace: int, *, include_frequency: bool = True,
+        self,
+        trace: int,
+        *,
+        include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
         if trace not in (1, 2):
             raise ValueError("FPC spectrum traces are 1 or 2")

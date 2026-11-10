@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from colosseum.logging import get_logger
@@ -30,50 +30,23 @@ def instrument_config(kind: str, config: dict[str, Any], model: str) -> dict[str
     return resolved
 
 
-def resolve_instrument_model(kind: str, config: dict[str, Any], transport: object) -> str:
-    """Return the model slug for ``config``.
+def _resolve_gnss_model(transport: object) -> str:
+    from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
 
-    A non-empty ``model`` wins and does not query. GNSS (no ``*IDN?``) uses a
-    vendor stream probe when ``model`` is omitted. Otherwise a pyVISA instrument
-    is classified from ``*IDN?`` within ``kind``, falling back to ``generic``.
-    A COM or ASRL resource is probed with ``IDN?`` first (Genesys may need
-    ``ADR n`` first). A Lambda GEN reply selects ``tdk-genesys-serial``.
-    """
-    explicit = str(config.get("model") or "").strip().lower()
-    if explicit:
-        return explicit
-    if kind == "gnss":
-        from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
+    hit = probe_gnss_model(transport)
+    if hit and hit in registered_models("gnss"):
+        return hit
+    if hit:
+        _logger.warning(
+            "equipment.gnss probe selected unregistered model `%s`; using generic",
+            hit,
+        )
+    return "generic"
 
-        hit = probe_gnss_model(transport)
-        if hit and hit in registered_models("gnss"):
-            return hit
-        if hit:
-            _logger.warning(
-                "equipment.gnss probe selected unregistered model `%s`; using generic",
-                hit,
-            )
-        return "generic"
-    if kind in _NO_PROBE_KINDS:
-        return "generic"
-    driver, _address = resolve_connection(kind, config)
-    if driver in {"sim", "http"}:
-        return "generic"
 
+def _model_from_idn(kind: str, idn: str, *, bare: bool) -> str:
     from colosseum_equipment.autoconfig.idn_registry import classify_idn, lambda_gen_identity
 
-    asrl = _uses_asrl(kind, config)
-    configured_addr = _configured_device_address(config)
-    idn, bare, discovered_addr = probe_identity(
-        transport,
-        asrl=asrl,
-        log_kind=kind,
-        device_address=configured_addr,
-    )
-    if discovered_addr is not None and "device_address" not in config:
-        config["device_address"] = discovered_addr
-    if idn is None:
-        return "generic"
     if bare and lambda_gen_identity(idn):
         model = "tdk-genesys-serial"
     else:
@@ -98,11 +71,57 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
     return model
 
 
+def resolve_instrument_model(kind: str, config: dict[str, Any], transport: object) -> str:
+    """Return the model slug for ``config``.
+
+    A non-empty ``model`` wins and does not query. GNSS (no ``*IDN?``) uses a
+    vendor stream probe when ``model`` is omitted. Otherwise a pyVISA instrument
+    is classified from ``*IDN?`` within ``kind``, falling back to ``generic``.
+    A COM or ASRL resource is probed with ``IDN?`` first (Genesys may need
+    ``ADR n`` first). A Lambda GEN reply selects ``tdk-genesys-serial``.
+    """
+    explicit = str(config.get("model") or "").strip().lower()
+    if explicit:
+        return explicit
+
+    # Ordered kind/driver rules; first match returns without *IDN?.
+    early_rules: list[tuple[bool, Callable[[], str]]] = [
+        (kind == "gnss", lambda: _resolve_gnss_model(transport)),
+        (kind in _NO_PROBE_KINDS, lambda: "generic"),
+    ]
+    for matches, resolve in early_rules:
+        if matches:
+            return resolve()
+    driver, _address = resolve_connection(kind, config)
+    if driver in {"sim", "http"}:
+        return "generic"
+
+    asrl = _uses_asrl(kind, config)
+    configured_addr = _configured_device_address(config)
+    idn, bare, discovered_addr = probe_identity(
+        transport,
+        asrl=asrl,
+        log_kind=kind,
+        device_address=configured_addr,
+    )
+    if discovered_addr is not None and "device_address" not in config:
+        config["device_address"] = discovered_addr
+    if idn is None:
+        return "generic"
+    return _model_from_idn(kind, idn, bare=bare)
+
+
 def _uses_asrl(kind: str, config: dict[str, Any]) -> bool:
+    from colosseum_equipment.transports.usbtmc import usbtmc_device_path
+
     driver, address = resolve_connection(kind, config)
     if driver == "serial":
-        return True
-    resource = normalize_visa_resource(str(config.get("resource") or address or ""))
+        raw = str(config.get("port") or address or "")
+        return usbtmc_device_path(raw) is None
+    raw = str(config.get("resource") or address or "")
+    if usbtmc_device_path(raw) is not None:
+        return False
+    resource = normalize_visa_resource(raw)
     return resource.upper().startswith("ASRL")
 
 
@@ -200,7 +219,9 @@ def probe_identity(
             return bare, True, None
         addresses = (device_address,) if device_address is not None else None
         genesys = probe_genesys_serial_identity(
-            transport, addresses=addresses, log_kind=log_kind,
+            transport,
+            addresses=addresses,
+            log_kind=log_kind,
         )
         if genesys is not None:
             idn, addr = genesys

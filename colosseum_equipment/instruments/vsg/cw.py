@@ -3,6 +3,7 @@
 Manuals: Keysight PSG E8257D/E8267D/E8663D SCPI reference; MXG N5183A/B;
 ESG E4400B family; R&S SMB100A/SMA100B operating manuals.
 """
+
 from __future__ import annotations
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError
@@ -12,12 +13,26 @@ from colosseum_equipment.instruments.vsg.generic import GenericVSG
 
 
 @instrument_model(
-    "vsg", "keysight-e8257d", "keysight-e8257c", "keysight-e8241a", "keysight-e4422b",
-    "keysight-n5183a", "keysight-n5183b", "rohde-smb100a", "rohde-sma100b",
+    "vsg",
+    "keysight-e8257d",
+    "keysight-e8257c",
+    "keysight-e8241a",
+    "keysight-e4422b",
+    "keysight-n5183a",
+    "keysight-n5183b",
+    "rohde-smb100a",
+    "rohde-sma100b",
 )
 @supported_commands(
-    "set_frequency", "set_power", "set_output", "measure_frequency", "measure_power_dbm",
-    "measure_output_state", "preset", "wait_complete", "set_ref_source",
+    "set_frequency",
+    "set_power",
+    "set_output",
+    "measure_frequency",
+    "measure_power_dbm",
+    "measure_output_state",
+    "preset",
+    "wait_complete",
+    "set_ref_source",
 )
 class CwSignalGenerator(GenericVSG):
     """Common documented CW subset; no ARB, modulation or option-dependent sweeps.
@@ -50,8 +65,13 @@ class CwSignalGenerator(GenericVSG):
 
 @instrument_model("vsg", "rohde-smiq04b", "keysight-8648c", "keysight-83650l")
 @supported_commands(
-    "set_frequency", "set_power", "set_output", "measure_frequency", "measure_output_state",
-    "preset", "wait_complete",
+    "set_frequency",
+    "set_power",
+    "set_output",
+    "measure_frequency",
+    "measure_output_state",
+    "preset",
+    "wait_complete",
 )
 class LegacyScpiCw(GenericVSG):
     """SCPI personality only; frequency/level/output controls, no modulation.

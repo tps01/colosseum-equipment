@@ -185,37 +185,42 @@ class NavDop:
     edop: float
 
 
+def _nav_pvt_utc(payload: bytes) -> str:
+    year, month, day, hour, minute, second = struct.unpack_from("<HBBBBB", payload, 4)
+    return f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+
+
+def _nav_pvt_speed_m_s(payload: bytes) -> float:
+    vel_n, vel_e, vel_d = struct.unpack_from("<iii", payload, 48)
+    g_speed = int(struct.unpack_from("<ii", payload, 60)[0])
+    if g_speed:
+        return g_speed / 1000.0
+    return float((vel_n**2 + vel_e**2 + vel_d**2) ** 0.5) / 1000.0
+
+
 def parse_nav_pvt(payload: bytes) -> NavPvt | None:
     """Decode UBX-NAV-PVT payload (92+ bytes)."""
     if len(payload) < 92:
         return None
-    year, month, day, hour, minute, second = struct.unpack_from("<HBBBBB", payload, 4)
     fix_type = payload[20]
     flags = payload[21]
-    num_sv = payload[23]
+    fix_ok = bool(flags & 0x01)
     lon_i, lat_i, height, h_msl = struct.unpack_from("<iiii", payload, 24)
     h_acc, v_acc = struct.unpack_from("<II", payload, 40)
-    vel_n, vel_e, vel_d = struct.unpack_from("<iii", payload, 48)
-    g_speed, head_mot = struct.unpack_from("<ii", payload, 60)
-    p_dop = struct.unpack_from("<H", payload, 76)[0]
-    fix_ok = bool(flags & 0x01)
-    quality = fix_type if fix_ok else 0
-    speed = (g_speed / 1000.0) if g_speed else (
-        (vel_n ** 2 + vel_e ** 2 + vel_d ** 2) ** 0.5 / 1000.0
-    )
+    head_mot = struct.unpack_from("<ii", payload, 60)[1]
     return NavPvt(
         latitude=lat_i * 1e-7,
         longitude=lon_i * 1e-7,
         altitude_m=h_msl / 1000.0,
         altitude_ellipsoid_m=height / 1000.0,
-        fix_quality=quality,
-        satellites=num_sv,
-        pdop=p_dop / 100.0,
-        utc_time=f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z",
+        fix_quality=fix_type if fix_ok else 0,
+        satellites=payload[23],
+        pdop=struct.unpack_from("<H", payload, 76)[0] / 100.0,
+        utc_time=_nav_pvt_utc(payload),
         fix_ok=fix_ok and fix_type >= 2,
         h_acc_m=h_acc / 1000.0,
         v_acc_m=v_acc / 1000.0,
-        speed_m_s=speed,
+        speed_m_s=_nav_pvt_speed_m_s(payload),
         course_deg=head_mot / 1e5,
     )
 
@@ -423,8 +428,11 @@ class UbxStreamParser:
             if not self._buf:
                 break
             if self._buf[0] == 0xB5:
+                before = len(self._buf)
                 frame = self._take_ubx()
                 if frame is None:
+                    if len(self._buf) < before:
+                        continue
                     break
                 events.append(("ubx", frame))
                 continue
@@ -449,7 +457,7 @@ class UbxStreamParser:
             return None
         frame = bytes(self._buf[:total])
         del self._buf[:total]
-        body = frame[2:6 + length]
+        body = frame[2 : 6 + length]
         if ubx_checksum(body) != frame[6 + length : total]:
             return None
         return frame[2], frame[3], frame[6 : 6 + length]

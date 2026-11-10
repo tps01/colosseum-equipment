@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from colosseum.decorators import VerificationResult, command, measurement, verification
+from colosseum.logging import get_logger
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
@@ -19,9 +20,11 @@ from colosseum_equipment.connections import get_cached_instrument
 from colosseum_equipment.tools.mask_apply import apply_oscope_mask_setup
 from colosseum_equipment.tools.mask_verify import verification_from_mask
 
+_logger = get_logger("colosseum.equipment")
+
 
 def _inst(oscope_id: EquipmentId) -> Any:
-    return get_cached_instrument('oscope', require_int_id(oscope_id, kind='oscope'))
+    return get_cached_instrument("oscope", require_int_id(oscope_id, kind="oscope"))
 
 
 @command
@@ -38,6 +41,7 @@ def preset(*, oscope_id: EquipmentId) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Presetting scope %s", oscope_id)
     _inst(oscope_id).preset()
 
 
@@ -58,6 +62,12 @@ def set_channel_display(*, oscope_id: EquipmentId, channel: int, enabled: bool) 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s channel %s on scope %s",
+        "Enabling" if enabled else "Disabling",
+        channel,
+        oscope_id,
+    )
     _inst(oscope_id).set_channel_display(channel, enabled)
 
 
@@ -79,6 +89,12 @@ def set_channel_scale_v(*, oscope_id: EquipmentId, channel: int, volts_per_div: 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting scale on scope %s channel %s to %s V/div",
+        oscope_id,
+        channel,
+        volts_per_div,
+    )
     _inst(oscope_id).set_channel_scale_v(channel, volts_per_div)
 
 
@@ -99,6 +115,7 @@ def set_channel_offset_v(*, oscope_id: EquipmentId, channel: int, offset_v: floa
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting offset on scope %s channel %s to %s V", oscope_id, channel, offset_v)
     _inst(oscope_id).set_channel_offset_v(channel, offset_v)
 
 
@@ -120,6 +137,7 @@ def set_channel_coupling(*, oscope_id: EquipmentId, channel: int, coupling: str)
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting coupling on scope %s channel %s to %s", oscope_id, channel, coupling)
     _inst(oscope_id).set_channel_coupling(channel, coupling)
 
 
@@ -141,6 +159,12 @@ def set_channel_probe_attenuation(*, oscope_id: EquipmentId, channel: int, atten
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "Setting probe attenuation on scope %s channel %s to %s",
+        oscope_id,
+        channel,
+        attenuation,
+    )
     _inst(oscope_id).set_channel_probe_attenuation(channel, attenuation)
 
 
@@ -161,6 +185,12 @@ def set_channel_bandwidth_limit(*, oscope_id: EquipmentId, channel: int, enabled
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info(
+        "%s bandwidth limit on scope %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        oscope_id,
+        channel,
+    )
     _inst(oscope_id).set_channel_bandwidth_limit(channel, enabled)
 
 
@@ -181,6 +211,7 @@ def set_channel_impedance(*, oscope_id: EquipmentId, channel: int, ohms: float) 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting impedance on scope %s channel %s to %s ohms", oscope_id, channel, ohms)
     _inst(oscope_id).set_channel_impedance(channel, ohms)
 
 
@@ -201,6 +232,7 @@ def get_channel_scale_v(*, oscope_id: int, channel: int, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading scale from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).get_channel_scale_v(channel))
 
@@ -222,6 +254,7 @@ def get_channel_offset_v(*, oscope_id: int, channel: int, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading offset from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).get_channel_offset_v(channel))
 
@@ -242,6 +275,7 @@ def set_timebase_scale(*, oscope_id: EquipmentId, seconds_per_div: float) -> Non
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting timebase on scope %s to %s s/div", oscope_id, seconds_per_div)
     _inst(oscope_id).set_timebase_scale(seconds_per_div)
 
 
@@ -261,6 +295,7 @@ def set_timebase_position_s(*, oscope_id: EquipmentId, position_s: float) -> Non
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting timebase position on scope %s to %s s", oscope_id, position_s)
     _inst(oscope_id).set_timebase_position_s(position_s)
 
 
@@ -280,6 +315,7 @@ def set_record_length(*, oscope_id: EquipmentId, points: int) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting record length on scope %s to %s points", oscope_id, points)
     _inst(oscope_id).set_record_length(points)
 
 
@@ -298,6 +334,7 @@ def get_record_length(*, oscope_id: int, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading record length from scope %s", oscope_id)
     _ = key
     return float(_inst(oscope_id).get_record_length())
 
@@ -318,6 +355,7 @@ def set_trigger_mode(*, oscope_id: EquipmentId, mode: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting trigger mode on scope %s to %s", oscope_id, mode)
     _inst(oscope_id).set_trigger_mode(mode)
 
 
@@ -336,6 +374,7 @@ def set_trigger_source(*, oscope_id: EquipmentId, source: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting trigger source on scope %s to %s", oscope_id, source)
     _inst(oscope_id).set_trigger_source(source)
 
 
@@ -354,6 +393,7 @@ def set_trigger_level_v(*, oscope_id: EquipmentId, level_v: float) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting trigger level on scope %s to %s V", oscope_id, level_v)
     _inst(oscope_id).set_trigger_level_v(level_v)
 
 
@@ -373,6 +413,7 @@ def set_trigger_slope(*, oscope_id: EquipmentId, slope: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting trigger slope on scope %s to %s", oscope_id, slope)
     _inst(oscope_id).set_trigger_slope(slope)
 
 
@@ -391,6 +432,7 @@ def set_trigger_holdoff_s(*, oscope_id: EquipmentId, holdoff_s: float) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting trigger holdoff on scope %s to %s s", oscope_id, holdoff_s)
     _inst(oscope_id).set_trigger_holdoff_s(holdoff_s)
 
 
@@ -408,6 +450,7 @@ def force_trigger(*, oscope_id: EquipmentId) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Forcing trigger on scope %s", oscope_id)
     _inst(oscope_id).force_trigger()
 
 
@@ -426,6 +469,7 @@ def wait_for_trigger(*, oscope_id: int, timeout_s: float) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Waiting for trigger on scope %s", oscope_id)
     _inst(oscope_id).wait_for_trigger(timeout_s=timeout_s)
 
 
@@ -445,6 +489,7 @@ def set_acquire_mode(*, oscope_id: EquipmentId, mode: str) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting acquire mode on scope %s to %s", oscope_id, mode)
     _inst(oscope_id).set_acquire_mode(mode)
 
 
@@ -463,6 +508,7 @@ def set_acquire_averages(*, oscope_id: EquipmentId, count: int) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Setting acquire averages on scope %s to %s", oscope_id, count)
     _inst(oscope_id).set_acquire_averages(count)
 
 
@@ -480,6 +526,7 @@ def run(*, oscope_id: EquipmentId) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Running scope %s", oscope_id)
     _inst(oscope_id).run()
 
 
@@ -497,6 +544,7 @@ def stop(*, oscope_id: EquipmentId) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Stopping scope %s", oscope_id)
     _inst(oscope_id).stop()
 
 
@@ -521,6 +569,7 @@ def arm_single(*, oscope_id: EquipmentId) -> None:
     Generate the stimulus after this call, then call wait_complete before
     fetching. See the instrument acquisition workflow and driver support matrix.
     """
+    _logger.info("Arming single acquisition on scope %s", oscope_id)
     _inst(oscope_id).arm_single()
 
 
@@ -537,6 +586,7 @@ def single_acquire(*, oscope_id: int) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Acquiring single waveform on scope %s", oscope_id)
     _inst(oscope_id).single_acquire()
 
 
@@ -554,6 +604,7 @@ def abort(*, oscope_id: EquipmentId) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Aborting acquisition on scope %s", oscope_id)
     _inst(oscope_id).abort()
 
 
@@ -572,6 +623,7 @@ def wait_complete(*, oscope_id: int, timeout_s: float) -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Waiting for scope %s acquisition to complete", oscope_id)
     _inst(oscope_id).wait_complete(timeout_s=timeout_s)
 
 
@@ -590,6 +642,7 @@ def acquire(*, oscope_id: int, timeout_s: float = 10.0) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Acquiring waveform on scope %s", oscope_id)
     return str(_inst(oscope_id).acquire(timeout_s=timeout_s))
 
 
@@ -608,6 +661,7 @@ def get_acquire_state(*, oscope_id: int, key: str) -> str:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading acquire state from scope %s", oscope_id)
     _ = key
     return str(_inst(oscope_id).get_acquire_state())
 
@@ -629,6 +683,7 @@ def measure_vpp(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading Vpp from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_vpp(channel))
 
@@ -653,6 +708,7 @@ def measure_vmax(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading Vmax from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_vmax(channel))
 
@@ -674,6 +730,7 @@ def measure_vmin(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading Vmin from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_vmin(channel))
 
@@ -695,6 +752,7 @@ def measure_vrms(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading Vrms from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_vrms(channel))
 
@@ -716,6 +774,7 @@ def measure_frequency_hz(*, oscope_id: int, channel: int = 1, key: str) -> float
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading frequency from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_frequency_hz(channel))
 
@@ -737,6 +796,7 @@ def measure_period_s(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading period from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_period_s(channel))
 
@@ -758,6 +818,7 @@ def measure_rise_time_s(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading rise time from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_rise_time_s(channel))
 
@@ -779,6 +840,7 @@ def measure_fall_time_s(*, oscope_id: int, channel: int = 1, key: str) -> float:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Reading fall time from scope %s channel %s", oscope_id, channel)
     _ = key
     return float(_inst(oscope_id).measure_fall_time_s(channel))
 
@@ -802,6 +864,7 @@ def save_waveform(*, oscope_id: int, channel: int, path: str, key: str = "") -> 
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Saving waveform from scope %s channel %s to %s", oscope_id, channel, path)
     _inst(oscope_id).save_waveform(channel=channel, path=path, key=key)
 
 
@@ -822,6 +885,7 @@ def save_screenshot(*, oscope_id: int, path: str, key: str = "") -> None:
         channel.
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
+    _logger.info("Saving screenshot from scope %s to %s", oscope_id, path)
     _inst(oscope_id).save_screenshot(path, key=key)
 
 
@@ -841,8 +905,9 @@ def apply_mask_setup(
     :param channel: Channel for vertical scale/offset (default 1).
     :param key: Optional parameters / evidence key for this step.
     """
+    _logger.info("Applying mask setup to scope %s channel %s", oscope_id, channel)
     _ = key
-    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind='oscope'), channel=channel)
+    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind="oscope"), channel=channel)
 
 
 @verification

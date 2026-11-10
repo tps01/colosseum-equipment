@@ -22,60 +22,65 @@ class MaskSchemaError(ValueError):
 def _as_float(value: object, field: str) -> float:
     try:
         return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise MaskSchemaError(f"{field} must be a number") from exc
+
+
+def _validate_version_domain(mask: dict[str, Any]) -> str:
+    version = mask.get("version", 1)
+    try:
+        version_number = int(version)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise MaskSchemaError(f"invalid mask version {version!r}") from exc
+    if version_number != 1:
+        raise MaskSchemaError(f"unsupported mask version {version!r} (expected 1)")
+    domain = str(mask.get("domain", "")).strip().lower()
+    if domain not in DOMAINS:
+        raise MaskSchemaError(f"domain must be one of {sorted(DOMAINS)}, got {domain!r}")
+    return domain
+
+
+def _normalize_region(region: object, index: int) -> dict[str, Any]:
+    if not isinstance(region, dict):
+        raise MaskSchemaError(f"regions[{index}] must be an object")
+    kind = str(region.get("kind", "")).strip().lower()
+    if kind not in REGION_KINDS:
+        raise MaskSchemaError(
+            f"regions[{index}].kind must be one of {sorted(REGION_KINDS)}, got {kind!r}",
+        )
+    x0 = _as_float(region.get("x0"), f"regions[{index}].x0")
+    x1 = _as_float(region.get("x1"), f"regions[{index}].x1")
+    y0 = _as_float(region.get("y0"), f"regions[{index}].y0")
+    y1 = _as_float(region.get("y1"), f"regions[{index}].y1")
+    if x1 < x0:
+        x0, x1 = x1, x0
+    if y1 < y0:
+        y0, y1 = y1, y0
+    return {
+        "id": str(region.get("id") or f"region_{index}"),
+        "kind": kind,
+        "x0": x0,
+        "x1": x1,
+        "y0": y0,
+        "y1": y1,
+    }
 
 
 def validate_mask(mask: dict[str, Any]) -> dict[str, Any]:
     """Return a normalized deep copy of ``mask`` or raise ``MaskSchemaError``."""
     if not isinstance(mask, dict):
         raise MaskSchemaError("mask must be a JSON object")
-    version = mask.get("version", 1)
-    if int(version) != 1:
-        raise MaskSchemaError(f"unsupported mask version {version!r} (expected 1)")
-    domain = str(mask.get("domain", "")).strip().lower()
-    if domain not in DOMAINS:
-        raise MaskSchemaError(f"domain must be one of {sorted(DOMAINS)}, got {domain!r}")
-
+    domain = _validate_version_domain(mask)
     x_unit = str(mask.get("x_unit") or ("Hz" if domain == "frequency" else "s"))
     y_unit = str(mask.get("y_unit") or ("dBm" if domain == "frequency" else "V"))
     setup_raw = mask.get("setup") or {}
     if not isinstance(setup_raw, dict):
         raise MaskSchemaError("setup must be an object")
     setup = {str(k): _as_float(v, f"setup.{k}") for k, v in setup_raw.items()}
-
     regions_raw = mask.get("regions")
     if not isinstance(regions_raw, list):
         raise MaskSchemaError("regions must be a list")
-    regions: list[dict[str, Any]] = []
-    for index, region in enumerate(regions_raw):
-        if not isinstance(region, dict):
-            raise MaskSchemaError(f"regions[{index}] must be an object")
-        kind = str(region.get("kind", "")).strip().lower()
-        if kind not in REGION_KINDS:
-            raise MaskSchemaError(
-                f"regions[{index}].kind must be one of {sorted(REGION_KINDS)}, got {kind!r}",
-            )
-        x0 = _as_float(region.get("x0"), f"regions[{index}].x0")
-        x1 = _as_float(region.get("x1"), f"regions[{index}].x1")
-        y0 = _as_float(region.get("y0"), f"regions[{index}].y0")
-        y1 = _as_float(region.get("y1"), f"regions[{index}].y1")
-        if x1 < x0:
-            x0, x1 = x1, x0
-        if y1 < y0:
-            y0, y1 = y1, y0
-        region_id = str(region.get("id") or f"region_{index}")
-        regions.append(
-            {
-                "id": region_id,
-                "kind": kind,
-                "x0": x0,
-                "x1": x1,
-                "y0": y0,
-                "y1": y1,
-            },
-        )
-
+    regions = [_normalize_region(region, index) for index, region in enumerate(regions_raw)]
     return {
         "version": 1,
         "domain": domain,
@@ -119,11 +124,7 @@ def list_mask_templates() -> list[str]:
     root = _template_files()
     if root is not None:
         try:
-            return sorted(
-                p.name[:-5]
-                for p in root.iterdir()
-                if getattr(p, "name", "").endswith(".json")
-            )
+            return sorted(p.name[:-5] for p in root.iterdir() if getattr(p, "name", "").endswith(".json"))
         except (OSError, FileNotFoundError, AttributeError):
             pass
     fallback = Path(__file__).resolve().parent / "mask_templates"

@@ -43,7 +43,68 @@ def load_api(prefix: str) -> Any:  # noqa: ANN401
         ) from exc
 
 
-def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False) -> Session:
+def _configure_aa(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
+    checked(api.aa_configure(handle, api.AA_CONFIG_SPI_I2C), "aa_configure")
+    checked(
+        api.aa_target_power(
+            handle,
+            api.AA_TARGET_POWER_BOTH if power else api.AA_TARGET_POWER_NONE,
+        ),
+        "aa_target_power",
+    )
+    checked(api.aa_i2c_bus_timeout(handle, timeout), "aa_i2c_bus_timeout")
+
+
+def _configure_ch(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
+    del timeout
+    checked(api.ch_target_power(handle, int(power)), "ch_target_power")
+
+
+def _configure_bg(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
+    del power
+    checked(api.bg_timeout(handle, timeout), "bg_timeout")
+    checked(api.bg_latency(handle, min(timeout, 50)), "bg_latency")
+
+
+def _power_off_aa(api: Any, handle: int) -> None:  # noqa: ANN401
+    checked(api.aa_target_power(handle, api.AA_TARGET_POWER_NONE), "aa_target_power")
+
+
+def _power_off_ch(api: Any, handle: int) -> None:  # noqa: ANN401
+    checked(api.ch_target_power(handle, 0), "ch_target_power")
+
+
+def _power_off_bg(api: Any, handle: int) -> None:  # noqa: ANN401
+    if checked(api.bg_features(handle), "bg_features") & api.BG_FEATURE_I2C:
+        checked(api.bg_target_power(handle, 0), "bg_target_power")
+
+
+_PREFIX_HOOKS = {
+    "aa": (_configure_aa, _power_off_aa),
+    "ch": (_configure_ch, _power_off_ch),
+    "bg": (_configure_bg, _power_off_bg),
+}
+
+
+def _open_prefixed_handle(prefix: str, resource: str) -> tuple[Any, int]:
+    api = load_api(prefix)
+    found, ports, ids = getattr(api, f"{prefix}_find_devices_ext")(256, 256)
+    checked(found, f"{prefix}_find_devices_ext")
+    if found > 256:
+        raise IoConnectionError("Too many USB adapters to enumerate safely")
+    matches = [int(p) for p, uid in zip(ports, ids, strict=True) if int(uid) == int(resource)]
+    if len(matches) != 1:
+        raise IoConnectionError(f"Total Phase serial {resource} was not uniquely found")
+    port = matches[0]
+    if port & 0x8000:
+        raise IoConnectionError(f"Total Phase serial {resource} is already in use")
+    handle = checked(getattr(api, f"{prefix}_open")(port), f"{prefix}_open")
+    if handle == 0:
+        raise IoConnectionError(f"{prefix}_open returned an invalid handle")
+    return api, handle
+
+
+def _session_params(prefix: str, config: dict[str, Any]) -> tuple[str, bool, int]:
     resource = str(config.get("resource") or "").replace("-", "")
     if not resource.isdecimal() or not 0 < int(resource) <= 0xFFFFFFFF:
         raise IoConfigError("Total Phase resource must be the numeric device serial number")
@@ -58,34 +119,17 @@ def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False
     timeout = int(config.get("timeout_ms", 500))
     if not 1 <= timeout <= 1000:
         raise IoConfigError("timeout_ms must be 1..1000")
+    return resource, power, timeout
+
+
+def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False) -> Session:
+    resource, power, timeout = _session_params(prefix, config)
+    configure, power_off = _PREFIX_HOOKS[prefix]
 
     def _open() -> tuple[Any, int]:
-        api = load_api(prefix)
-        found, ports, ids = getattr(api, f"{prefix}_find_devices_ext")(256, 256)
-        checked(found, f"{prefix}_find_devices_ext")
-        if found > 256:
-            raise IoConnectionError("Too many USB adapters to enumerate safely")
-        matches = [int(p) for p, uid in zip(ports, ids, strict=True) if int(uid) == int(resource)]
-        if len(matches) != 1:
-            raise IoConnectionError(f"Total Phase serial {resource} was not uniquely found")
-        port = matches[0]
-        if port & 0x8000:
-            raise IoConnectionError(f"Total Phase serial {resource} is already in use")
-        handle = checked(getattr(api, f"{prefix}_open")(port), f"{prefix}_open")
-        if handle == 0:
-            raise IoConnectionError(f"{prefix}_open returned an invalid handle")
+        api, handle = _open_prefixed_handle(prefix, resource)
         try:
-            if prefix == "aa":
-                checked(api.aa_configure(handle, api.AA_CONFIG_SPI_I2C), "aa_configure")
-                checked(api.aa_target_power(
-                    handle, api.AA_TARGET_POWER_BOTH if power else api.AA_TARGET_POWER_NONE,
-                ), "aa_target_power")
-                checked(api.aa_i2c_bus_timeout(handle, timeout), "aa_i2c_bus_timeout")
-            elif prefix == "ch":
-                checked(api.ch_target_power(handle, int(power)), "ch_target_power")
-            else:
-                checked(api.bg_timeout(handle, timeout), "bg_timeout")
-                checked(api.bg_latency(handle, min(timeout, 50)), "bg_latency")
+            configure(api, handle, power=power, timeout=timeout)
         except Exception:
             getattr(api, f"{prefix}_close")(handle)
             raise
@@ -93,12 +137,7 @@ def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False
 
     def _close(api: Any, handle: int) -> None:  # noqa: ANN401
         try:
-            if prefix == "aa":
-                checked(api.aa_target_power(handle, api.AA_TARGET_POWER_NONE), "aa_target_power")
-            elif prefix == "ch":
-                checked(api.ch_target_power(handle, 0), "ch_target_power")
-            elif checked(api.bg_features(handle), "bg_features") & api.BG_FEATURE_I2C:
-                checked(api.bg_target_power(handle, 0), "bg_target_power")
+            power_off(api, handle)
         finally:
             checked(getattr(api, f"{prefix}_close")(handle), f"{prefix}_close")
 
@@ -136,16 +175,27 @@ class AardvarkI2cBackend(UsbBackend):
 
     def _apply(self) -> None:
         s = self.session()
-        self.actual_clock_hz = checked(
-            s.api.aa_i2c_bitrate(s.handle, self._clock // 1000), "aa_i2c_bitrate",
-        ) * 1000
-        checked(s.api.aa_i2c_pullup(
-            s.handle, s.api.AA_I2C_PULLUP_BOTH if self._pullup else s.api.AA_I2C_PULLUP_NONE,
-        ), "aa_i2c_pullup")
+        self.actual_clock_hz = (
+            checked(
+                s.api.aa_i2c_bitrate(s.handle, self._clock // 1000),
+                "aa_i2c_bitrate",
+            )
+            * 1000
+        )
+        checked(
+            s.api.aa_i2c_pullup(
+                s.handle,
+                s.api.AA_I2C_PULLUP_BOTH if self._pullup else s.api.AA_I2C_PULLUP_NONE,
+            ),
+            "aa_i2c_pullup",
+        )
         _logger.debug("Aardvark I2C actual clock %s Hz", self.actual_clock_hz)
 
     def configure(
-        self, *, address: int | None = None, address_bits: int | None = None,
+        self,
+        *,
+        address: int | None = None,
+        address_bits: int | None = None,
         clock_hz: int | None = None,
     ) -> dict[str, Any]:
         addr = self._address if address is None else address
@@ -178,7 +228,10 @@ class AardvarkI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             status, written = s.api.aa_i2c_write_ext(
-                s.handle, self._address, self._flags(), array("B", data),
+                s.handle,
+                self._address,
+                self._flags(),
+                array("B", data),
             )
             _i2c_status(status)
             count(written, len(data), "aa_i2c_write_ext")
@@ -189,7 +242,10 @@ class AardvarkI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             status, data, received = s.api.aa_i2c_read_ext(
-                s.handle, self._address, self._flags(), nbytes,
+                s.handle,
+                self._address,
+                self._flags(),
+                nbytes,
             )
             _i2c_status(status)
             count(received, nbytes, "aa_i2c_read_ext")
@@ -203,7 +259,11 @@ class AardvarkI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             status, written, data, received = s.api.aa_i2c_write_read(
-                s.handle, self._address, self._flags(), array("B", write_data), read_nbytes,
+                s.handle,
+                self._address,
+                self._flags(),
+                array("B", write_data),
+                read_nbytes,
             )
             _i2c_status(status)
             count(written, len(write_data), "aa_i2c_write_read write")
@@ -236,21 +296,38 @@ class TotalPhaseSpiBackend(UsbBackend):
     def _apply(self) -> None:
         s = self.session()
         if self._cheetah:
-            checked(s.api.ch_spi_configure(
-                s.handle, self._mode >> 1, self._mode & 1, s.api.CH_SPI_BITORDER_MSB, 0,
-            ), "ch_spi_configure")
+            checked(
+                s.api.ch_spi_configure(
+                    s.handle,
+                    self._mode >> 1,
+                    self._mode & 1,
+                    s.api.CH_SPI_BITORDER_MSB,
+                    0,
+                ),
+                "ch_spi_configure",
+            )
             rate = s.api.ch_spi_bitrate(s.handle, self._clock // 1000)
         else:
-            checked(s.api.aa_spi_configure(
-                s.handle, self._mode >> 1, self._mode & 1, s.api.AA_SPI_BITORDER_MSB,
-            ), "aa_spi_configure")
+            checked(
+                s.api.aa_spi_configure(
+                    s.handle,
+                    self._mode >> 1,
+                    self._mode & 1,
+                    s.api.AA_SPI_BITORDER_MSB,
+                ),
+                "aa_spi_configure",
+            )
             rate = s.api.aa_spi_bitrate(s.handle, self._clock // 1000)
         self.actual_clock_hz = checked(rate, "SPI bitrate") * 1000
         _logger.debug("Total Phase SPI actual clock %s Hz", self.actual_clock_hz)
 
     def configure(
-        self, *, clock_hz: int | None = None, mode: int | None = None,
-        chip_select: int | None = None, bits_per_word: int | None = None,
+        self,
+        *,
+        clock_hz: int | None = None,
+        mode: int | None = None,
+        chip_select: int | None = None,
+        bits_per_word: int | None = None,
     ) -> dict[str, Any]:
         clock = self._clock if clock_hz is None else clock_hz
         selected_mode = self._mode if mode is None else mode
@@ -284,8 +361,7 @@ class TotalPhaseSpiBackend(UsbBackend):
                 try:
                     checked(s.api.ch_spi_queue_oe(s.handle, 1), "ch_spi_queue_oe")
                     checked(s.api.ch_spi_queue_ss(s.handle, 1 << self._cs), "ch_spi_queue_ss")
-                    count(s.api.ch_spi_queue_array(s.handle, array("B", data)),
-                          len(data), "ch_spi_queue_array")
+                    count(s.api.ch_spi_queue_array(s.handle, array("B", data)), len(data), "ch_spi_queue_array")
                     checked(s.api.ch_spi_queue_ss(s.handle, 0), "ch_spi_queue_ss")
                     checked(s.api.ch_spi_queue_oe(s.handle, 0), "ch_spi_queue_oe")
                     received, reply = s.api.ch_spi_batch_shift(s.handle, len(data))

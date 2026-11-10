@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "colosseum-equipment"
-version = "0.12.12"
+version = "0.12.20"
 description = "Colosseum equipment and I/O plugin (instruments, VISA/serial, DIO)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,11 +14,15 @@ dependencies = [
   "colosseum-core>=0.18,<0.19",
   "matplotlib>=3.7,<4",
   "numpy>=1.24,<3",
+  "psutil>=5.9,<8",
   "pyftdi>=0.55,<1",
   "pyserial>=3.5,<4",
+  "pyusb>=1.2,<2",
   "pyvisa>=1.15,<2",
+  "pyvisa-py>=0.7,<1",
   "pyvisa-sim>=0.7,<0.8",
   "scipy>=1.10,<2",
+  "zeroconf>=0.131,<1",
 ]
 
 [project.entry-points."colosseum.plugins"]
@@ -39,16 +43,26 @@ markers = [
     "gui: opens a Tk window (skip in headless CI)",
 ]
 
+[tool.black]
+line-length = 120
+target-version = ["py39"]
+
 [tool.ruff]
 target-version = "py310"
-line-length = 100
+line-length = 120
 src = ["colosseum_equipment"]
 
 [tool.ruff.lint]
-select = ["A", "BLE", "FBT", "N", "COM", "C4", "ISC", "ICN", "TID", "TCH", "E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH"]
+preview = true
+explicit-preview-rules = true
+select = ["A", "BLE", "FBT", "N", "COM", "C4", "C901", "ISC", "ICN", "TID", "TCH", "E", "F", "W", "I", "B", "UP", "ANN", "ARG", "SIM", "RET", "PTH", "PLR1702", "PLR0914", "PLR0915", "PLR0912"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "ARG", "FBT", "E501", "N802"]
+"tests/**" = ["ANN", "ARG", "FBT", "E501", "N802", "C901", "PLR0912", "PLR0914", "PLR0915", "PLR1702"]
+"scripts/**" = ["C901", "PLR0912", "PLR0914", "PLR0915", "PLR1702"]
 "colosseum_equipment/instruments/**" = [
   "N801", "N802", "FBT001", "FBT003", "A002", "BLE001", "E501",
   "ARG002", "SIM105", "SIM102", "TC001", "TC003", "C416", "B007", "F841", "I001",
@@ -85,7 +99,14 @@ module = [
   "customtkinter",
   "customtkinter.*",
   "pyvisa.*",
+  "pyvisa_py.*",
   "pyvisa_sim.*",
+  "usb.*",
+  "psutil",
+  "psutil.*",
+  "zeroconf",
+  "zeroconf.*",
+  "gpib",
   "serial",
   "serial.*",
   "tomli",
