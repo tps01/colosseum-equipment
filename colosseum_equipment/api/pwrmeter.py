@@ -16,7 +16,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def _inst(pwrmeter_id: EquipmentId) -> Any:
-    return get_cached_instrument('pwrmeter', require_int_id(pwrmeter_id, kind='pwrmeter'))
+    return get_cached_instrument("pwrmeter", require_int_id(pwrmeter_id, kind="pwrmeter"))
 
 
 def _correct_dbm(inst: Any, raw_dbm: float, *, channel: int, calibration: str | None) -> float:
@@ -278,7 +278,10 @@ def measure_power(
 
 
 verify_power = tolerance_verifier(
-    "measure_power_dbm", name="verify_power", default_tolerance=0.5, unit="dBm",
+    "measure_power_dbm",
+    name="verify_power",
+    default_tolerance=0.5,
+    unit="dBm",
 )
 
 

@@ -219,7 +219,9 @@ def probe_identity(
             return bare, True, None
         addresses = (device_address,) if device_address is not None else None
         genesys = probe_genesys_serial_identity(
-            transport, addresses=addresses, log_kind=log_kind,
+            transport,
+            addresses=addresses,
+            log_kind=log_kind,
         )
         if genesys is not None:
             idn, addr = genesys

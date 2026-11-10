@@ -32,7 +32,7 @@ def preset(*, rtsa_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Presetting RTSA %s", rtsa_id)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).preset()
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).preset()
 
 
 @command
@@ -51,7 +51,7 @@ def set_center_freq(*, rtsa_id: EquipmentId, frequency_hz: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting center frequency on RTSA %s to %s Hz", rtsa_id, frequency_hz)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_center_freq(frequency_hz)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_center_freq(frequency_hz)
 
 
 @command
@@ -70,7 +70,7 @@ def set_span(*, rtsa_id: EquipmentId, span_hz: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting span on RTSA %s to %s Hz", rtsa_id, span_hz)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_span(span_hz)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_span(span_hz)
 
 
 @command
@@ -89,7 +89,7 @@ def set_bandwidth(*, rtsa_id: EquipmentId, bandwidth_hz: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting bandwidth on RTSA %s to %s Hz", rtsa_id, bandwidth_hz)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_bandwidth(bandwidth_hz)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_bandwidth(bandwidth_hz)
 
 
 @command
@@ -108,7 +108,7 @@ def set_acq_time(*, rtsa_id: EquipmentId, seconds: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting acquisition time on RTSA %s to %s s", rtsa_id, seconds)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_acq_time(seconds)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_acq_time(seconds)
 
 
 @command
@@ -127,7 +127,7 @@ def set_continuous_run(*, rtsa_id: EquipmentId, enabled: bool) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s continuous run on RTSA %s", "Enabling" if enabled else "Disabling", rtsa_id)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_continuous_run(enabled)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_continuous_run(enabled)
 
 
 @command
@@ -146,7 +146,7 @@ def set_num_samples(*, rtsa_id: EquipmentId, count: int) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sample count on RTSA %s to %s", rtsa_id, count)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_num_samples(count)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_num_samples(count)
 
 
 @command
@@ -163,7 +163,7 @@ def get_num_samples(*, rtsa_id: int) -> int:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading sample count from RTSA %s", rtsa_id)
-    return int(get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).get_num_samples())
+    return int(get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).get_num_samples())
 
 
 @command
@@ -184,7 +184,7 @@ def set_trigger_source(*, rtsa_id: EquipmentId, source: str) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger source on RTSA %s to %s", rtsa_id, source)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_trigger_source(source)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_trigger_source(source)
 
 
 @command
@@ -203,7 +203,7 @@ def set_trigger_level(*, rtsa_id: EquipmentId, level_dbm: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger level on RTSA %s to %s dBm", rtsa_id, level_dbm)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_trigger_level(level_dbm)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_trigger_level(level_dbm)
 
 
 @command
@@ -222,7 +222,7 @@ def set_trigger_position(*, rtsa_id: EquipmentId, position_dbm: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger position on RTSA %s to %s dBm", rtsa_id, position_dbm)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).set_trigger_position(position_dbm)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_trigger_position(position_dbm)
 
 
 @command
@@ -239,7 +239,7 @@ def run(*, rtsa_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Running RTSA %s", rtsa_id)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).run()
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).run()
 
 
 @command
@@ -256,7 +256,7 @@ def wait_complete(*, rtsa_id: int, timeout_s: float = 60.0) -> None:
     :raises EquipmentTimeoutError: Acquisition did not complete in time.
     """
     _logger.info("Waiting for RTSA %s acquisition to complete", rtsa_id)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).wait_complete(timeout_s=timeout_s)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).wait_complete(timeout_s=timeout_s)
 
 
 @command
@@ -270,7 +270,7 @@ def abort(*, rtsa_id: EquipmentId) -> None:
     :returns: None
     """
     _logger.info("Aborting acquisition on RTSA %s", rtsa_id)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).abort()
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).abort()
 
 
 @command
@@ -286,7 +286,7 @@ def acquire(*, rtsa_id: int, timeout_s: float = 60.0) -> str:
     :rtype: str
     """
     _logger.info("Acquiring spectrum on RTSA %s", rtsa_id)
-    return str(get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).acquire(timeout_s=timeout_s))
+    return str(get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).acquire(timeout_s=timeout_s))
 
 
 @command
@@ -303,7 +303,7 @@ def peak_search(*, rtsa_id: int, marker: int = 1) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Searching for peak on RTSA %s marker %s", rtsa_id, marker)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).peak_search(marker)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).peak_search(marker)
 
 
 @command
@@ -322,7 +322,7 @@ def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving trace data from RTSA %s to %s", rtsa_id, path)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).save_spectrum_trace_data(path, trace=trace)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).save_spectrum_trace_data(path, trace=trace)
 
 
 @command
@@ -348,8 +348,10 @@ def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str 
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving IQ data from RTSA %s to %s", rtsa_id, path)
-    get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).save_IQ_data(
-        path, file_format=file_format, key=key,
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).save_IQ_data(
+        path,
+        file_format=file_format,
+        key=key,
     )
 
 
@@ -413,7 +415,7 @@ def capture_iq(
         path,
     )
     return dict(
-        get_cached_instrument('rtsa', require_int_id(rtsa_id, kind='rtsa')).capture_iq(
+        get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).capture_iq(
             center_hz=center_hz,
             span_hz=span_hz,
             bandwidth_hz=bandwidth_hz,

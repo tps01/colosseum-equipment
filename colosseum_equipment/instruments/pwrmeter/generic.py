@@ -32,8 +32,7 @@ class GenericPwrMeter(ScpiInstrumentMixin):
         ch = int(channel)
         if ch < 1 or ch > self._channel_count:
             raise EquipmentCapabilityError(
-                f"pwrmeter model `{self._model}` does not support channel {ch} "
-                f"(valid 1..{self._channel_count})",
+                f"pwrmeter model `{self._model}` does not support channel {ch} " f"(valid 1..{self._channel_count})",
             )
         return ch
 

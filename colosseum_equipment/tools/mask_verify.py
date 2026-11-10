@@ -128,10 +128,7 @@ def _evaluate_region(
 
 def _violation_message(first_violation: MaskViolation, reported: int) -> str:
     if reported == 0:
-        return (
-            f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed "
-            f"(violations suppressed)"
-        )
+        return f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed " f"(violations suppressed)"
     extra = f" (+{reported - 1} more)" if reported > 1 else ""
     return (
         f"mask region `{first_violation.region_id}` ({first_violation.kind}) failed at "
@@ -166,7 +163,11 @@ def evaluate_mask(
     uncovered: list[str] = []
     for region in regions:
         region_first, missing = _evaluate_region(
-            xs, ys, region, max_violations=max_violations, violations=violations,
+            xs,
+            ys,
+            region,
+            max_violations=max_violations,
+            violations=violations,
         )
         if first_violation is None and region_first is not None:
             first_violation = region_first
@@ -194,8 +195,7 @@ def evaluate_mask_file(trace_csv: Path, mask: dict[str, Any]) -> MaskEvalResult:
     mask_domain = str(mask.get("domain", "")).strip().lower()
     if mask_domain and domain_hint != mask_domain:
         raise ValueError(
-            f"mask domain {mask_domain!r} does not match trace domain {domain_hint!r} "
-            f"in {trace_csv}",
+            f"mask domain {mask_domain!r} does not match trace domain {domain_hint!r} " f"in {trace_csv}",
         )
     return evaluate_mask(xs, ys, mask)
 
@@ -243,7 +243,9 @@ def _resolve_csv(ctx: Any, stored: str) -> Path | None:
 
 
 def _preferred_trace_csv(
-    ctx: Any, key: str, prefer_commands: tuple[str, ...],
+    ctx: Any,
+    key: str,
+    prefer_commands: tuple[str, ...],
 ) -> Path | None:
     for command in prefer_commands:
         row = ctx.db.get_measurement("equipment", command, key, row_index=0)

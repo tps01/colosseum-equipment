@@ -10,7 +10,6 @@ Validated workflow (documented):
 
 from __future__ import annotations
 
-import csv
 import struct
 import time
 from pathlib import Path
@@ -24,7 +23,7 @@ from colosseum_equipment.exceptions import (
     EquipmentTimeoutError,
 )
 from colosseum_equipment.instruments.oscope.generic import GenericOscope
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 from colosseum_equipment.protocols.scpi import wait_opc
 
 _TEK_ACQUIRE = {
@@ -53,6 +52,9 @@ _TEK_ACQUIRE = {
     "tektronix-dpo4034b",
     "tektronix-dpo4104b",
     "tektronix-mdo4104c",
+)
+@_confirmed_generic_commands(
+    "save_waveform",
 )
 class TekMdo4000Oscope(GenericOscope):
     _model = "tektronix-mdo4000"
@@ -288,27 +290,6 @@ class TekMdo4000Oscope(GenericOscope):
             "capture_id": self._capture_id,
         }
         return volts, meta
-
-    def save_waveform(self, *, channel: int, path: str, key: str = "") -> Path:
-        volts, meta = self._read_waveform_points(channel)
-        artifact_path = resolve_artifact_path(path)
-        artifact_path.parent.mkdir(parents=True, exist_ok=True)
-        xinc = float(meta["xinc_s"])
-        xorigin = float(meta["xorigin_s"])
-        with artifact_path.open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.writer(handle)
-            writer.writerow(["time_s", "voltage_v"])
-            for index, voltage in enumerate(volts):
-                writer.writerow([xorigin + index * xinc, voltage])
-        evidence_key = key or f"oscope_wave_ch{channel}_{self._capture_id or 'last'}"
-        record_artifact(
-            domain="equipment",
-            command="save_waveform",
-            key=evidence_key,
-            path=artifact_path,
-            value=meta,
-        )
-        return artifact_path
 
     def save_screenshot(self, path: str, *, key: str = "") -> Path:
         artifact_path = resolve_artifact_path(path)

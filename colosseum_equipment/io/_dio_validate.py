@@ -27,7 +27,6 @@ def require_output_value(value: int, *, direction: int, mask: int) -> int:
     illegal = value & ~direction & mask
     if illegal:
         raise IoConfigError(
-            f"output value 0x{value:X} sets input-only bits 0x{illegal:X} "
-            f"(direction=0x{direction:X})",
+            f"output value 0x{value:X} sets input-only bits 0x{illegal:X} " f"(direction=0x{direction:X})",
         )
     return value & direction & mask

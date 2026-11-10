@@ -3,6 +3,7 @@
 Manuals: Keysight 33250A User's Guide 9018-03925;
 https://www.thinksrs.com/downloads/pdfs/manuals/CG635m.pdf (remote programming).
 """
+
 from __future__ import annotations
 
 import math
@@ -19,9 +20,17 @@ if TYPE_CHECKING:
 
 @instrument_model("asg", "keysight-33250a")
 @supported_commands(
-    "set_frequency", "set_waveform", "set_amplitude_vpp", "set_amplitude_vrms", "set_offset_v",
-    "set_load_ohms", "get_load_ohms", "set_duty_cycle_pct", "set_output",
-    "set_modulation_state", "set_burst_state",
+    "set_frequency",
+    "set_waveform",
+    "set_amplitude_vpp",
+    "set_amplitude_vrms",
+    "set_offset_v",
+    "set_load_ohms",
+    "get_load_ohms",
+    "set_duty_cycle_pct",
+    "set_output",
+    "set_modulation_state",
+    "set_burst_state",
 )
 class Keysight33250A(GenericASG):
     """One output, standard waveforms; arbitrary-memory upload is a separate task."""
@@ -41,8 +50,9 @@ class Keysight33250A(GenericASG):
 
     def set_waveform(self, waveform: str, *, channel: int = 1) -> None:
         self._require_channel(channel)
-        token = {"sine": "SIN", "square": "SQU", "ramp": "RAMP", "pulse": "PULS",
-                 "noise": "NOIS", "dc": "DC"}.get(waveform.lower())
+        token = {"sine": "SIN", "square": "SQU", "ramp": "RAMP", "pulse": "PULS", "noise": "NOIS", "dc": "DC"}.get(
+            waveform.lower()
+        )
         if token is None:
             raise EquipmentCapabilityError(f"unsupported standard waveform {waveform!r}")
         self._scpi.write(f"FUNC {token}")
@@ -86,8 +96,12 @@ class SrsCg635(GenericASG):
 
 @instrument_model("asg", "gwinstek-afg3032")
 @supported_commands(
-    "set_frequency", "set_amplitude_vpp", "set_amplitude_vrms", "set_output",
-    "set_modulation_state", "set_burst_state",
+    "set_frequency",
+    "set_amplitude_vpp",
+    "set_amplitude_vrms",
+    "set_output",
+    "set_modulation_state",
+    "set_burst_state",
 )
 class GwInstekAfg3032(GenericASG):
     """AFG-3021/3022/3031/3032 User Manual, remote interface pp.300-308.

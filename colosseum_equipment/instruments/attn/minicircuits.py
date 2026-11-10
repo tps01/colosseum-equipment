@@ -95,8 +95,7 @@ class MiniCircuitsAttn:
         if ch is None:
             if len(parts) != 1:
                 raise EquipmentCapabilityError(
-                    f"{self._model} ATT? returned {len(parts)} channels; "
-                    "pass channel= for multi-channel models",
+                    f"{self._model} ATT? returned {len(parts)} channels; " "pass channel= for multi-channel models",
                 )
             return float(parts[0])
         if ch < 1 or ch > len(parts):

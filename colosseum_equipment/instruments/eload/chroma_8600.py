@@ -6,10 +6,15 @@ Manual: 8600 Series Programming Manual — ``FUNCtion``, ``CURRent:LEVel``, ``IN
 from __future__ import annotations
 
 from colosseum_equipment.instruments.eload.generic import GenericEload
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 
 
 @instrument_model("eload", "chroma-8600", "chroma-8601")
+@_confirmed_generic_commands(
+    "set_voltage",
+    "measure_voltage",
+    "measure_current",
+)
 class Chroma8600Eload(GenericEload):
     _MODE_MAP = {
         "cc": "CURRent",
@@ -27,10 +32,6 @@ class Chroma8600Eload(GenericEload):
         self._apply_channel(channel)
         self._scpi.write(f"CURR:LEV {current}")
 
-    def set_voltage(self, voltage: float, *, channel: int = 1) -> None:
-        self._apply_channel(channel)
-        self._scpi.write(f"VOLT {voltage}")
-
     def set_power(self, power: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
         self._scpi.write(f"POW:LEV {power}")
@@ -46,11 +47,3 @@ class Chroma8600Eload(GenericEload):
     def disengage(self, *, channel: int = 1) -> None:
         self._apply_channel(channel)
         self._scpi.write("INP 0")
-
-    def measure_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:VOLT?")
-
-    def measure_current(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:CURR?")

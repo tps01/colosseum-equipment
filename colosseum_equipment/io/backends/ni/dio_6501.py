@@ -63,7 +63,9 @@ class Ni6501DioBackend:
         self._mask = _MASK
         self._direction = require_mask_value(direction, self._mask, what="direction")
         self._output = require_output_value(
-            initial_output, direction=self._direction, mask=self._mask,
+            initial_output,
+            direction=self._direction,
+            mask=self._mask,
         )
         _task_seq += 1
         self._task_suffix = f"{_task_seq}"
@@ -166,8 +168,7 @@ class Ni6501DioBackend:
         # DAQmx reports samples-per-channel written (numSampsPerChan=1).
         if int(written.value) != 1:
             raise IoConnectionError(
-                f"ni-6501 WriteDigitalLines wrote {written.value} samples "
-                f"(expected 1) across {n} lines",
+                f"ni-6501 WriteDigitalLines wrote {written.value} samples " f"(expected 1) across {n} lines",
             )
 
     def _read_di_lines(self) -> int:
@@ -207,7 +208,9 @@ class Ni6501DioBackend:
         self._direction = require_mask_value(direction, self._mask, what="direction")
         if initial is not None:
             self._output = require_output_value(
-                initial, direction=self._direction, mask=self._mask,
+                initial,
+                direction=self._direction,
+                mask=self._mask,
             )
         else:
             self._output &= self._direction
@@ -237,8 +240,7 @@ class Ni6501DioBackend:
     def set_pull(self, line: int, pull: str) -> None:
         _ = line, pull
         raise EquipmentCapabilityError(
-            "set_pull is not supported on ni-6501 "
-            "(fixed onboard 4.7 kΩ pull-up in open-drain mode)",
+            "set_pull is not supported on ni-6501 " "(fixed onboard 4.7 kΩ pull-up in open-drain mode)",
         )
 
     def write_port(self, value: int) -> None:

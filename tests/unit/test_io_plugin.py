@@ -132,10 +132,12 @@ def test_io_dio_scpi_fallback_write_read(
     from tests.support.stubs import RfStubTransport
 
     _ = io_runtime_context
-    transport = RfStubTransport({
-        "SENS:DIG:DATA?": "10",
-        "SYST:ERR?": "0,No error",
-    })
+    transport = RfStubTransport(
+        {
+            "SENS:DIG:DATA?": "10",
+            "SYST:ERR?": "0,No error",
+        }
+    )
     monkeypatch.setattr(
         "colosseum_equipment.io.backends.scpi.dio.open_transport",
         lambda *_args, **_kwargs: transport,
@@ -167,7 +169,7 @@ def test_io_dio_scpi_syst_err_raises(
     from tests.support.stubs import RfStubTransport
 
     _ = io_runtime_context
-    transport = RfStubTransport({"SYST:ERR?": "-113,\"Undefined header\""})
+    transport = RfStubTransport({"SYST:ERR?": '-113,"Undefined header"'})
     monkeypatch.setattr(
         "colosseum_equipment.io.backends.scpi.dio.open_transport",
         lambda *_args, **_kwargs: transport,

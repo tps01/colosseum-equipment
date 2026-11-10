@@ -28,7 +28,10 @@ def _export_failed(summary: dict[str, Any]) -> bool:
 
 @command
 def configure(
-    *, analyzer_id: int, protocol: str | None = None, mode: int | None = None,
+    *,
+    analyzer_id: int,
+    protocol: str | None = None,
+    mode: int | None = None,
     sample_rate_hz: int | None = None,
 ) -> dict[str, Any]:
     """Configure an idle analyzer. SPI modes use active-low CS and MSB first.
@@ -42,7 +45,9 @@ def configure(
     _logger.info("Configuring analyzer %s protocol %s", analyzer_id, protocol)
     return dict(
         get_backend("analyzer", analyzer_id).configure(
-            protocol=protocol, mode=mode, sample_rate_hz=sample_rate_hz,
+            protocol=protocol,
+            mode=mode,
+            sample_rate_hz=sample_rate_hz,
         ),
     )
 

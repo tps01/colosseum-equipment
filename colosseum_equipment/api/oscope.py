@@ -24,7 +24,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def _inst(oscope_id: EquipmentId) -> Any:
-    return get_cached_instrument('oscope', require_int_id(oscope_id, kind='oscope'))
+    return get_cached_instrument("oscope", require_int_id(oscope_id, kind="oscope"))
 
 
 @command
@@ -907,7 +907,7 @@ def apply_mask_setup(
     """
     _logger.info("Applying mask setup to scope %s channel %s", oscope_id, channel)
     _ = key
-    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind='oscope'), channel=channel)
+    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind="oscope"), channel=channel)
 
 
 @verification

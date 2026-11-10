@@ -32,7 +32,7 @@ def wait_for_fix(*, gnss_id: int, timeout_s: float) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Waiting up to %s s for a fix on GNSS %s", timeout_s, gnss_id)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).wait_for_fix(timeout_s)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).wait_for_fix(timeout_s)
 
 
 @command
@@ -50,7 +50,7 @@ def cold_start(*, gnss_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Cold starting GNSS %s", gnss_id)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).cold_start()
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).cold_start()
 
 
 @command
@@ -68,7 +68,7 @@ def mark_acquisition_start(*, gnss_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Marking acquisition start on GNSS %s", gnss_id)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).mark_acquisition_start()
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).mark_acquisition_start()
 
 
 @command
@@ -92,7 +92,7 @@ def load_config(*, gnss_id: EquipmentId, path: str) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Loading GNSS %s config from %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).load_config(path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).load_config(path)
 
 
 @command
@@ -118,7 +118,7 @@ def save_config(*, gnss_id: int, path: str) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Saving GNSS %s config to %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_config(path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_config(path)
 
 
 @command
@@ -142,7 +142,7 @@ def set_message_rate(*, gnss_id: EquipmentId, message: str, rate_hz: float) -> N
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting message %s rate on GNSS %s to %s Hz", message, gnss_id, rate_hz)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).set_message_rate(message, rate_hz)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).set_message_rate(message, rate_hz)
 
 
 @command
@@ -154,7 +154,7 @@ def set_message_profile(*, gnss_id: EquipmentId, messages: str = "default") -> N
     :param messages: Profile name. Default ``default`` is the light fix/DOP/sky baseline.
     """
     _logger.info("Setting message profile on GNSS %s to %s", gnss_id, messages)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).set_message_profile(messages)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).set_message_profile(messages)
 
 
 @command
@@ -182,8 +182,10 @@ def start_logging(*, gnss_id: int, path: str, key: str = "", messages: str = "de
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Starting GNSS %s logging to %s (%s)", gnss_id, path, messages)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).start_logging(
-        path, key=key, messages=messages,
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).start_logging(
+        path,
+        key=key,
+        messages=messages,
     )
 
 
@@ -202,7 +204,7 @@ def stop_logging(*, gnss_id: EquipmentId) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Stopping logging on GNSS %s", gnss_id)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).stop_logging()
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).stop_logging()
 
 
 @command
@@ -221,7 +223,7 @@ def save_track_plot(*, gnss_id: int, path: str) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Saving track plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_track_plot(path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_track_plot(path)
 
 
 @command
@@ -240,7 +242,7 @@ def save_skyplot(*, gnss_id: int, path: str) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Saving sky plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_skyplot(path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_skyplot(path)
 
 
 @command
@@ -259,7 +261,7 @@ def save_quality_plot(*, gnss_id: int, path: str) -> None:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Saving quality plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_quality_plot(path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_quality_plot(path)
 
 
 @command
@@ -270,7 +272,7 @@ def save_signal_levels_plot(*, gnss_id: int, path: str) -> None:
     :param path: Destination PNG path under the run output directory.
     """
     _logger.info("Saving signal-level plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_signal_levels_plot(path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_signal_levels_plot(path)
 
 
 @command
@@ -289,8 +291,10 @@ def save_deviation_plot(
     :param ref_lon: Optional reference longitude (deg). Default: mean of fix samples.
     """
     _logger.info("Saving deviation plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).save_deviation_plot(
-        path, ref_lat=ref_lat, ref_lon=ref_lon,
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_deviation_plot(
+        path,
+        ref_lat=ref_lat,
+        ref_lon=ref_lon,
     )
 
 
@@ -312,7 +316,7 @@ def get_satellite_snapshot(*, gnss_id: int, max_age_s: float = 5.0) -> list[dict
     """
     _logger.info("Reading satellite snapshot from GNSS %s", gnss_id)
     return list(
-        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).get_satellite_snapshot(max_age_s=max_age_s),
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_satellite_snapshot(max_age_s=max_age_s),
     )
 
 
@@ -332,7 +336,7 @@ def get_fix_type(*, gnss_id: int, max_age_s: float = 5.0) -> str:
     :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading fix type from GNSS %s", gnss_id)
-    return str(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).get_fix_type(max_age_s=max_age_s))
+    return str(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_fix_type(max_age_s=max_age_s))
 
 
 @command
@@ -352,7 +356,9 @@ def get_constellations_present(*, gnss_id: int, max_age_s: float = 5.0) -> list[
     """
     _logger.info("Reading constellations from GNSS %s", gnss_id)
     return list(
-        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).get_constellations_present(max_age_s=max_age_s),
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_constellations_present(
+            max_age_s=max_age_s
+        ),
     )
 
 
@@ -375,7 +381,9 @@ def measure_latitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float
     """
     _logger.info("Reading latitude from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_latitude(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_latitude(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -397,7 +405,9 @@ def measure_longitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> floa
     """
     _logger.info("Reading longitude from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_longitude(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longitude(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -419,7 +429,9 @@ def measure_altitude_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     """
     _logger.info("Reading altitude from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_altitude_m(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_altitude_m(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -442,7 +454,9 @@ def measure_fix_quality(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> fl
     """
     _logger.info("Reading fix quality from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_fix_quality(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_quality(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -464,7 +478,9 @@ def measure_satellites(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     """
     _logger.info("Reading satellites used from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_satellites(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites(max_age_s=max_age_s)
+    )
 
 
 verify_satellites = minimum_verifier("measure_satellites", name="verify_satellites")
@@ -490,12 +506,15 @@ def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0
     _logger.info("Reading visible satellites from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_satellites_visible(max_age_s=max_age_s),
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites_visible(
+            max_age_s=max_age_s
+        ),
     )
 
 
 verify_satellites_visible = minimum_verifier(
-    "measure_satellites_visible", name="verify_satellites_visible",
+    "measure_satellites_visible",
+    name="verify_satellites_visible",
 )
 
 
@@ -518,7 +537,7 @@ def measure_hdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """
     _logger.info("Reading HDOP from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_hdop(max_age_s=max_age_s))
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_hdop(max_age_s=max_age_s))
 
 
 verify_hdop = limit_verifier("measure_hdop", name="verify_hdop", upper=True)
@@ -543,7 +562,7 @@ def measure_pdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """
     _logger.info("Reading PDOP from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_pdop(max_age_s=max_age_s))
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_pdop(max_age_s=max_age_s))
 
 
 verify_pdop = limit_verifier("measure_pdop", name="verify_pdop", upper=True)
@@ -568,7 +587,7 @@ def measure_vdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """
     _logger.info("Reading VDOP from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_vdop(max_age_s=max_age_s))
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_vdop(max_age_s=max_age_s))
 
 
 verify_vdop = limit_verifier("measure_vdop", name="verify_vdop", upper=True)
@@ -593,7 +612,7 @@ def measure_gdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """
     _logger.info("Reading GDOP from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_gdop(max_age_s=max_age_s))
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_gdop(max_age_s=max_age_s))
 
 
 verify_gdop = limit_verifier("measure_gdop", name="verify_gdop", upper=True)
@@ -618,11 +637,15 @@ def measure_max_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> f
     """
     _logger.info("Reading max C/N0 from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_max_cn0_dbhz(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_max_cn0_dbhz(max_age_s=max_age_s)
+    )
 
 
 verify_max_cn0_dbhz = minimum_verifier(
-    "measure_max_cn0_dbhz", name="verify_max_cn0_dbhz", unit="dB-Hz",
+    "measure_max_cn0_dbhz",
+    name="verify_max_cn0_dbhz",
+    unit="dB-Hz",
 )
 
 
@@ -645,11 +668,15 @@ def measure_mean_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> 
     """
     _logger.info("Reading mean C/N0 from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_mean_cn0_dbhz(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_mean_cn0_dbhz(max_age_s=max_age_s)
+    )
 
 
 verify_mean_cn0_dbhz = minimum_verifier(
-    "measure_mean_cn0_dbhz", name="verify_mean_cn0_dbhz", unit="dB-Hz",
+    "measure_mean_cn0_dbhz",
+    name="verify_mean_cn0_dbhz",
+    unit="dB-Hz",
 )
 
 
@@ -683,8 +710,10 @@ def measure_cn0_dbhz(
     _logger.info("Reading C/N0 from GNSS %s %s PRN %s", gnss_id, constellation, prn)
     _ = key
     return float(
-        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_cn0_dbhz(
-            prn, constellation=constellation, max_age_s=max_age_s,
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_cn0_dbhz(
+            prn,
+            constellation=constellation,
+            max_age_s=max_age_s,
         ),
     )
 
@@ -708,7 +737,9 @@ def measure_speed_m_s(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> floa
     """
     _logger.info("Reading speed from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_speed_m_s(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_speed_m_s(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -730,7 +761,9 @@ def measure_course_deg(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> flo
     """
     _logger.info("Reading course from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_course_deg(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_course_deg(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -752,7 +785,9 @@ def measure_h_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """
     _logger.info("Reading horizontal accuracy from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_h_acc_m(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_h_acc_m(max_age_s=max_age_s)
+    )
 
 
 verify_h_acc_m = limit_verifier("measure_h_acc_m", name="verify_h_acc_m", upper=True, unit="m")
@@ -777,7 +812,9 @@ def measure_v_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
     """
     _logger.info("Reading vertical accuracy from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_v_acc_m(max_age_s=max_age_s))
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_v_acc_m(max_age_s=max_age_s)
+    )
 
 
 verify_v_acc_m = limit_verifier("measure_v_acc_m", name="verify_v_acc_m", upper=True, unit="m")
@@ -803,7 +840,9 @@ def measure_geoid_separation_m(*, gnss_id: int, key: str, max_age_s: float = 5.0
     _logger.info("Reading geoid separation from GNSS %s", gnss_id)
     _ = key
     return float(
-        get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_geoid_separation_m(max_age_s=max_age_s),
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_geoid_separation_m(
+            max_age_s=max_age_s
+        ),
     )
 
 
@@ -824,7 +863,7 @@ def measure_data_age_s(*, gnss_id: int, key: str) -> float:
     """
     _logger.info("Reading data age from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_data_age_s())
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_data_age_s())
 
 
 @measurement
@@ -846,7 +885,9 @@ def measure_utc_time(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> str:
     """
     _logger.info("Reading UTC time from GNSS %s", gnss_id)
     _ = key
-    return str(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_utc_time(max_age_s=max_age_s))
+    return str(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_utc_time(max_age_s=max_age_s)
+    )
 
 
 @measurement
@@ -866,7 +907,7 @@ def measure_ttff_s(*, gnss_id: int, key: str) -> float:
     """
     _logger.info("Reading time to first fix from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_ttff_s())
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_ttff_s())
 
 
 verify_ttff_s = limit_verifier("measure_ttff_s", name="verify_ttff_s", upper=True, unit="s")
@@ -889,11 +930,12 @@ def measure_fix_availability(*, gnss_id: int, key: str) -> float:
     """
     _logger.info("Reading fix availability from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_fix_availability())
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_availability())
 
 
 verify_fix_availability = minimum_verifier(
-    "measure_fix_availability", name="verify_fix_availability",
+    "measure_fix_availability",
+    name="verify_fix_availability",
 )
 
 
@@ -914,11 +956,14 @@ def measure_longest_outage_s(*, gnss_id: int, key: str) -> float:
     """
     _logger.info("Reading longest outage from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_longest_outage_s())
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longest_outage_s())
 
 
 verify_longest_outage_s = limit_verifier(
-    "measure_longest_outage_s", name="verify_longest_outage_s", upper=True, unit="s",
+    "measure_longest_outage_s",
+    name="verify_longest_outage_s",
+    upper=True,
+    unit="s",
 )
 
 
@@ -939,11 +984,14 @@ def measure_reacquisition_s(*, gnss_id: int, key: str) -> float:
     """
     _logger.info("Reading reacquisition time from GNSS %s", gnss_id)
     _ = key
-    return float(get_cached_instrument('gnss', require_int_id(gnss_id, kind='gnss')).measure_reacquisition_s())
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_reacquisition_s())
 
 
 verify_reacquisition_s = limit_verifier(
-    "measure_reacquisition_s", name="verify_reacquisition_s", upper=True, unit="s",
+    "measure_reacquisition_s",
+    name="verify_reacquisition_s",
+    upper=True,
+    unit="s",
 )
 
 

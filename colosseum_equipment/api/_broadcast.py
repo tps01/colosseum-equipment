@@ -92,8 +92,7 @@ def broadcastable(kind: str, id_param: str) -> Callable[[Callable[P, None]], Cal
             parts = [f"id={item_id}: {type(exc).__name__}: {exc}" for item_id, exc in failures]
             failed = ", ".join(str(item_id) for item_id, _ in failures)
             raise EquipmentError(
-                f"equipment.{kind} id='all' {fn.__name__}: failed ids {failed}; "
-                + "; ".join(parts),
+                f"equipment.{kind} id='all' {fn.__name__}: failed ids {failed}; " + "; ".join(parts),
             )
 
         return cast("Callable[P, None]", wrapper)

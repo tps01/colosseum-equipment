@@ -4,6 +4,7 @@ References: 10580-00176 pp.25-27/37-40 and 10580-00341K ch.3/4.
 https://dl.cdn-anritsu.com/en-us/test-measurement/files/Manuals/Programming-Manual/10580-00176.pdf
 https://dl.cdn-anritsu.com/en-us/test-measurement/files/Manuals/Programming-Manual/10580-00341K.pdf
 """
+
 from __future__ import annotations
 
 import math
@@ -22,9 +23,21 @@ if TYPE_CHECKING:
 
 @instrument_model("speca", "anritsu-ms2721b", "anritsu-ms2723b", "anritsu-ms2720t")
 @supported_commands(
-    "set_center_frequency", "set_start_frequency", "set_stop_frequency", "set_span", "set_rbw",
-    "set_vbw", "set_reference_level", "set_continuous_sweep", "arm_sweep", "single_sweep",
-    "wait_complete", "abort", "save_trace_data", "measure_bw", "measure_trace_power_at_frequency",
+    "set_center_frequency",
+    "set_start_frequency",
+    "set_stop_frequency",
+    "set_span",
+    "set_rbw",
+    "set_vbw",
+    "set_reference_level",
+    "set_continuous_sweep",
+    "arm_sweep",
+    "single_sweep",
+    "wait_complete",
+    "abort",
+    "save_trace_data",
+    "measure_bw",
+    "measure_trace_power_at_frequency",
 )
 class AnritsuMs272x(GenericSpecA):
     """SPA mode must already be selected; mode changes need a long settling time.
@@ -54,7 +67,10 @@ class AnritsuMs272x(GenericSpecA):
         self.wait_complete(timeout_s=float(self._config.get("timeout", 60.0)))
 
     def _fetch_trace(
-        self, trace: int, *, include_frequency: bool = True,
+        self,
+        trace: int,
+        *,
+        include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
         if trace not in (1, 2, 3):
             raise ValueError("spectrum trace number must be 1..3")

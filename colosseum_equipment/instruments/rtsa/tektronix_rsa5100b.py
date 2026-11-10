@@ -234,8 +234,7 @@ class TektronixRSA5100BRtsa(GenericRtsa):
                     )
                 return first
         raise EquipmentResponseError(
-            f"Unable to obtain RFIN record IDs after {_RECORD_ID_RETRIES} tries "
-            f"(last reply {details!r})",
+            f"Unable to obtain RFIN record IDs after {_RECORD_ID_RETRIES} tries " f"(last reply {details!r})",
         )
 
     def _fetch_iq_header(self, record_id: int) -> tuple[float, int]:
@@ -248,8 +247,7 @@ class TektronixRSA5100BRtsa(GenericRtsa):
                 num_samples = int(float(fields[2]))
                 return sample_rate_hz, num_samples
         raise EquipmentResponseError(
-            f"Unable to obtain RFIN IQ header after {_HEADER_RETRIES} tries "
-            f"(last reply {header!r})",
+            f"Unable to obtain RFIN IQ header after {_HEADER_RETRIES} tries " f"(last reply {header!r})",
         )
 
     def _fetch_iq_float32(self, record_id: int, num_samples: int) -> npt.NDArray[np.complex64]:

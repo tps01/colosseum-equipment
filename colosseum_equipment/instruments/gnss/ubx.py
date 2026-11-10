@@ -457,7 +457,7 @@ class UbxStreamParser:
             return None
         frame = bytes(self._buf[:total])
         del self._buf[:total]
-        body = frame[2:6 + length]
+        body = frame[2 : 6 + length]
         if ubx_checksum(body) != frame[6 + length : total]:
             return None
         return frame[2], frame[3], frame[6 : 6 + length]

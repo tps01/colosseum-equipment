@@ -111,7 +111,7 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
         if driver in _SCPI_ALIASES and driver not in _alias_warned:
             _alias_warned.add(driver)
             shown = driver or "omitted"
-            _logger.warning("col.io dio driver `%s` is accepted; prefer driver = \"scpi\"", shown)
+            _logger.warning('col.io dio driver `%s` is accepted; prefer driver = "scpi"', shown)
         return ScpiDioBackend.from_config(dio_id, config)
     raise IoConfigError(f"col.io dio: unsupported driver `{driver}`")
 

@@ -98,11 +98,18 @@ def test_classify_tek_rsa5115b() -> None:
 def test_inventory_exact_models_resolve_to_registered_builders() -> None:
     from colosseum_equipment.autoconfig.idn_registry import _INVENTORY_MODELS
     from colosseum_equipment.instruments.registry import registered_models
+
     manufacturers = {
-        "anritsu": "ANRITSU", "gwinstek": "GW INSTEK", "ametek": "AMETEK",
-        "keysight": "Agilent Technologies", "rohde": "Rohde&Schwarz",
-        "keithley": "KEITHLEY INSTRUMENTS INC.", "tektronix": "TEKTRONIX",
-        "chroma": "CHROMA", "srs": "Stanford Research Systems", "teledyne": "Teledyne LeCroy",
+        "anritsu": "ANRITSU",
+        "gwinstek": "GW INSTEK",
+        "ametek": "AMETEK",
+        "keysight": "Agilent Technologies",
+        "rohde": "Rohde&Schwarz",
+        "keithley": "KEITHLEY INSTRUMENTS INC.",
+        "tektronix": "TEKTRONIX",
+        "chroma": "CHROMA",
+        "srs": "Stanford Research Systems",
+        "teledyne": "Teledyne LeCroy",
         "bk": "B&K Precision",
     }
     for token, (kind, model) in _INVENTORY_MODELS.items():

@@ -133,9 +133,20 @@ def _on_off(raw: str, label: str) -> bool:
 
 @instrument_model("psu", "tdk-genesys-serial")
 @supported_commands(
-    "set_voltage", "set_current_limit", "set_output", "get_voltage", "get_current_limit", "get_output",
-    "measure_voltage", "measure_current", "measure_power_w", "measure_output_state",
-    "set_ovp_v", "get_ovp_v", "wait_for_voltage", "wait_for_current",
+    "set_voltage",
+    "set_current_limit",
+    "set_output",
+    "get_voltage",
+    "get_current_limit",
+    "get_output",
+    "measure_voltage",
+    "measure_current",
+    "measure_power_w",
+    "measure_output_state",
+    "set_ovp_v",
+    "get_ovp_v",
+    "wait_for_voltage",
+    "wait_for_current",
 )
 class TdkGenesysSerialPSU(GenericPSU):
     """Genesys serial family: CR-terminated native protocol.

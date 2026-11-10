@@ -24,10 +24,7 @@ OUT_DIR = (
 # Prefer colocated under workshop if workshop_examples isn't intended —
 # use pay_attention-style path under colosseum-equipment/examples/outputs
 OUT_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "examples"
-    / "outputs"
-    / "2026-10-18_112400_deep_instrument_apis_demo-pass"
+    Path(__file__).resolve().parents[1] / "examples" / "outputs" / "2026-10-18_112400_deep_instrument_apis_demo-pass"
 )
 
 

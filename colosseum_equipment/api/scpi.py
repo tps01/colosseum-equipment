@@ -25,11 +25,7 @@ _logger = get_logger("colosseum.equipment")
 
 def _selected_instrument(**instrument_ids: object) -> tuple[str, int]:
     return _resolve_kind(
-        **{
-            key: instrument_ids[key]
-            for key in _KIND_ID_PARAMS
-            if instrument_ids.get(key) is not None
-        },
+        **{key: instrument_ids[key] for key in _KIND_ID_PARAMS if instrument_ids.get(key) is not None},
     )
 
 
@@ -45,11 +41,7 @@ def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
 
 
 def _resolve_kind(**kwargs: object) -> tuple[str, int]:
-    selected = [
-        (kwargs[param], kind)
-        for param, kind in _KIND_ID_PARAMS.items()
-        if kwargs.get(param) is not None
-    ]
+    selected = [(kwargs[param], kind) for param, kind in _KIND_ID_PARAMS.items() if kwargs.get(param) is not None]
     if len(selected) != 1:
         names = ", ".join(f"{name}=" for name in _KIND_ID_PARAMS)
         raise ValueError(f"Specify exactly one of {names}")
@@ -59,11 +51,7 @@ def _resolve_kind(**kwargs: object) -> tuple[str, int]:
 
 def _scpi_helper(**instrument_ids: object) -> SCPIHelper:
     kind, equipment_id = _resolve_kind(
-        **{
-            key: instrument_ids[key]
-            for key in _KIND_ID_PARAMS
-            if instrument_ids.get(key) is not None
-        },
+        **{key: instrument_ids[key] for key in _KIND_ID_PARAMS if instrument_ids.get(key) is not None},
     )
     return for_instrument(kind, equipment_id)
 
@@ -73,7 +61,10 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
         inspect.Parameter("command", inspect.Parameter.KEYWORD_ONLY, annotation=str),
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+                param,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],
@@ -131,7 +122,10 @@ def _make_status_api(name: str, method: str, return_annotation: object) -> Calla
     params = [
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+                param,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],
@@ -184,7 +178,10 @@ def _make_drain_error_queue() -> Callable[..., list[str]]:
         ),
         *[
             inspect.Parameter(
-                param, inspect.Parameter.KEYWORD_ONLY, default=None, annotation=int | None,
+                param,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=int | None,
             )
             for param in _KIND_ID_PARAMS
         ],

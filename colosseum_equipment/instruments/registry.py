@@ -20,6 +20,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
+from inspect import unwrap
 from types import FunctionType
 from typing import Any, TypeVar
 
@@ -115,6 +116,17 @@ def instrument_model(
     return decorate
 
 
+def _confirmed_generic_commands(*names: str) -> Callable[[_ModelT], _ModelT]:
+    """Reuse matching generic implementations without adding fallback warnings."""
+
+    def decorate(cls: _ModelT) -> _ModelT:
+        for name in names:
+            setattr(cls, name, unwrap(getattr(cls, name)))
+        return cls
+
+    return decorate
+
+
 def best_effort_commands(cls: _ModelT) -> _ModelT:
     """Warn once when a named model inherits a generic command, then run it."""
     for name, member in list(vars(cls).items()):
@@ -139,11 +151,12 @@ def _best_effort(method: FunctionType, owner: type) -> Callable[..., object]:
                 if key not in _best_effort_warned:
                     _best_effort_warned.add(key)
                     kind_name = getattr(type(self), "instrument_kind", None) or getattr(
-                        owner, "instrument_kind", "equipment",
+                        owner,
+                        "instrument_kind",
+                        "equipment",
                     )
                     _logger.warning(
-                        "%s model `%s` %s is using generic SCPI; confirm the command "
-                        "matches this instrument",
+                        "%s model `%s` %s is using generic SCPI; confirm the command " "matches this instrument",
                         kind_name,
                         model_name,
                         method.__name__,
@@ -176,11 +189,7 @@ def config_kind_specs() -> tuple[KindSpec, ...]:
     """Kind specs for plugin config registration (no instrument model imports)."""
     import colosseum_equipment.instruments as instruments_pkg
 
-    names = {
-        info.name
-        for info in pkgutil.iter_modules(instruments_pkg.__path__)
-        if info.ispkg
-    }
+    names = {info.name for info in pkgutil.iter_modules(instruments_pkg.__path__) if info.ispkg}
     names.add("serial")
     return tuple(
         KindSpec(

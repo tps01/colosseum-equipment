@@ -695,7 +695,8 @@ def test_autoconfig_preserves_non_equipment_sections(
 
 
 def test_autoconfig_export_writes_toml(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import colosseum_equipment.api._autoconfig as autoconfig_module
     from colosseum.config.toml_relaxed import read_relaxed_toml

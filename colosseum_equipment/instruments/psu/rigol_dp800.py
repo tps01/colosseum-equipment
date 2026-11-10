@@ -59,17 +59,13 @@ class RigolDp800(GenericPSU):
     def toggle_ovp(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)
         self._scpi.write(
-            "source:voltage:protection:state on"
-            if enabled
-            else "source:voltage:protection:state off",
+            "source:voltage:protection:state on" if enabled else "source:voltage:protection:state off",
         )
 
     def toggle_ocp(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)
         self._scpi.write(
-            "source:current:protection:state on"
-            if enabled
-            else "source:current:protection:state off",
+            "source:current:protection:state on" if enabled else "source:current:protection:state off",
         )
 
     def get_ovp_v(self, *, channel: int = 1) -> float:

@@ -34,7 +34,7 @@ def set_relay(*, relay_id: EquipmentId, channel: int, enabled: bool) -> None:
         channel,
         relay_id,
     )
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_relay(channel, enabled)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).set_relay(channel, enabled)
 
 
 @command
@@ -53,7 +53,7 @@ def set_all(*, relay_id: EquipmentId, bitmask: int) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting relay %s channels to bitmask %s", relay_id, bitmask)
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_all(bitmask)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).set_all(bitmask)
 
 
 @command
@@ -75,7 +75,7 @@ def pulse_relay(*, relay_id: EquipmentId, channel: int, duration_s: float | None
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Pulsing relay %s channel %s", relay_id, channel)
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).pulse_relay(channel, duration_s)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).pulse_relay(channel, duration_s)
 
 
 @command
@@ -96,7 +96,7 @@ def set_pulse_width_s(*, relay_id: EquipmentId, channel: int, width_s: float) ->
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting pulse width on relay %s channel %s to %s s", relay_id, channel, width_s)
-    get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).set_pulse_width_s(channel, width_s)
+    get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).set_pulse_width_s(channel, width_s)
 
 
 @measurement
@@ -118,7 +118,7 @@ def measure_relay(*, relay_id: int, channel: int, key: str) -> bool:
     """
     _logger.info("Reading relay %s channel %s", relay_id, channel)
     _ = key
-    return bool(get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).measure_relay(channel))
+    return bool(get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).measure_relay(channel))
 
 
 @measurement
@@ -138,4 +138,4 @@ def measure_all(*, relay_id: int, key: str) -> int:
     """
     _logger.info("Reading all channels on relay %s", relay_id)
     _ = key
-    return int(get_cached_instrument('relay', require_int_id(relay_id, kind='relay')).measure_all())
+    return int(get_cached_instrument("relay", require_int_id(relay_id, kind="relay")).measure_all())

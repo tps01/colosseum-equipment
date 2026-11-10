@@ -48,7 +48,7 @@ def set_center_frequency(
     """
     _ = calibration
     _logger.info("Setting center frequency on SpecA %s to %s Hz", speca_id, frequency)
-    inst = get_cached_instrument('speca', require_int_id(speca_id, kind='speca'))
+    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
     inst.set_center_frequency(frequency)
     _cal.bind_frequency(inst, frequency)
 
@@ -69,7 +69,7 @@ def set_span(*, speca_id: EquipmentId, span: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting span on SpecA %s to %s Hz", speca_id, span)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_span(span)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_span(span)
 
 
 @command
@@ -88,7 +88,7 @@ def set_start_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting start frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_start_frequency(frequency_hz)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_start_frequency(frequency_hz)
 
 
 @command
@@ -107,7 +107,7 @@ def set_stop_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting stop frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_stop_frequency(frequency_hz)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_stop_frequency(frequency_hz)
 
 
 @command
@@ -126,7 +126,7 @@ def set_rbw(*, speca_id: EquipmentId, rbw: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting RBW on SpecA %s to %s Hz", speca_id, rbw)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_rbw(rbw)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_rbw(rbw)
 
 
 @command
@@ -144,7 +144,7 @@ def peak_search(*, speca_id: int, marker: int = 1) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Searching for peak on SpecA %s marker %s", speca_id, marker)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).peak_search(marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).peak_search(marker)
 
 
 @command
@@ -165,7 +165,7 @@ def toggle_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s marker %s on SpecA %s", "Enabling" if enabled else "Disabling", marker, speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).toggle_marker(marker, enabled)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_marker(marker, enabled)
 
 
 @command
@@ -183,7 +183,7 @@ def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Moving SpecA %s marker %s to next peak right", speca_id, marker)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).next_peak_right(marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_right(marker)
 
 
 @command
@@ -201,7 +201,7 @@ def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Moving SpecA %s marker %s to next peak left", speca_id, marker)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).next_peak_left(marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_left(marker)
 
 
 @command
@@ -219,7 +219,7 @@ def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Moving SpecA %s marker %s to highest peak", speca_id, marker)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).next_highest_peak(marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_highest_peak(marker)
 
 
 @command
@@ -240,7 +240,7 @@ def set_marker_frequency(*, speca_id: EquipmentId, marker: int, frequency_hz: fl
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting SpecA %s marker %s to %s Hz", speca_id, marker, frequency_hz)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_marker_frequency(marker, frequency_hz)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_frequency(marker, frequency_hz)
 
 
 @measurement
@@ -271,7 +271,7 @@ def measure_marker_power(
     """
     _logger.info("Reading marker power from SpecA %s marker %s", speca_id, marker)
     _ = key
-    inst = get_cached_instrument('speca', require_int_id(speca_id, kind='speca'))
+    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
     raw = float(inst.measure_marker_power(marker))
     if calibration is None:
         return raw
@@ -299,7 +299,9 @@ def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> flo
     """
     _logger.info("Reading marker frequency from SpecA %s marker %s", speca_id, marker)
     _ = key
-    return float(get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).measure_marker_frequency(marker))
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_frequency(marker)
+    )
 
 
 verify_marker_frequency = tolerance_verifier(
@@ -349,7 +351,8 @@ def measure_trace_power_at_frequency(
     _logger.info("Reading trace power on SpecA %s at %s Hz", speca_id, frequency_hz)
     _ = key
     power_dbm, actual_hz = get_cached_instrument(
-        "speca", speca_id,
+        "speca",
+        speca_id,
     ).measure_trace_power_at_frequency(
         frequency_hz,
         trace_path=trace_path,
@@ -408,7 +411,7 @@ def save_trace_data(
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving trace data from SpecA %s to %s", speca_id, path)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).save_trace_data(
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).save_trace_data(
         path,
         trace=trace,
         include_frequency=include_frequency,
@@ -430,7 +433,7 @@ def apply_mask_setup(*, speca_id: EquipmentId, mask: str, key: str = "") -> None
     """
     _logger.info("Applying mask setup to SpecA %s", speca_id)
     _ = key
-    apply_speca_mask_setup(mask, speca_id=require_int_id(speca_id, kind='speca'))
+    apply_speca_mask_setup(mask, speca_id=require_int_id(speca_id, kind="speca"))
 
 
 @verification
@@ -508,7 +511,7 @@ def measure_bw(
     _logger.info("Measuring bandwidth on SpecA %s", speca_id)
     _ = key
     return float(
-        get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).measure_bw(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_bw(
             start_hz,
             stop_hz,
             threshold_db=threshold_db,
@@ -540,7 +543,7 @@ def preset(*, speca_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Presetting SpecA %s", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).preset()
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).preset()
 
 
 @command
@@ -559,7 +562,7 @@ def set_reference_level(*, speca_id: EquipmentId, level_dbm: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting reference level on SpecA %s to %s dBm", speca_id, level_dbm)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_reference_level(level_dbm)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_reference_level(level_dbm)
 
 
 @command
@@ -578,7 +581,7 @@ def set_vbw(*, speca_id: EquipmentId, vbw: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting VBW on SpecA %s to %s Hz", speca_id, vbw)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_vbw(vbw)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_vbw(vbw)
 
 
 @command
@@ -597,7 +600,7 @@ def set_sweep_time(*, speca_id: EquipmentId, seconds: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sweep time on SpecA %s to %s s", speca_id, seconds)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_sweep_time(seconds)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_time(seconds)
 
 
 @command
@@ -616,7 +619,7 @@ def set_sweep_points(*, speca_id: EquipmentId, count: int) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sweep points on SpecA %s to %s", speca_id, count)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_sweep_points(count)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_points(count)
 
 
 @command
@@ -635,7 +638,7 @@ def toggle_trigger_delay(*, speca_id: EquipmentId, enabled: bool) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s trigger delay on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).toggle_trigger_delay(enabled)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_trigger_delay(enabled)
 
 
 @command
@@ -654,7 +657,7 @@ def set_trigger_delay(*, speca_id: EquipmentId, delay_s: float) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger delay on SpecA %s to %s s", speca_id, delay_s)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_trigger_delay(delay_s)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_delay(delay_s)
 
 
 @command
@@ -673,7 +676,7 @@ def set_trigger_source(*, speca_id: EquipmentId, source: str) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger source on SpecA %s to %s", speca_id, source)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_trigger_source(source)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_source(source)
 
 
 @command
@@ -690,7 +693,7 @@ def user_preset(*, speca_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Recalling user preset on SpecA %s", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).user_preset()
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).user_preset()
 
 
 @command
@@ -709,7 +712,7 @@ def set_detector(*, speca_id: EquipmentId, detector: str) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting detector on SpecA %s to %s", speca_id, detector)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_detector(detector)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_detector(detector)
 
 
 @command
@@ -730,7 +733,7 @@ def set_trace_mode(*, speca_id: EquipmentId, trace: int, mode: str) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting SpecA %s trace %s mode to %s", speca_id, trace, mode)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_trace_mode(trace, mode)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trace_mode(trace, mode)
 
 
 @command
@@ -749,7 +752,7 @@ def set_continuous_sweep(*, speca_id: EquipmentId, enabled: bool) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s continuous sweep on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_continuous_sweep(enabled)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_continuous_sweep(enabled)
 
 
 @command
@@ -766,7 +769,7 @@ def arm_sweep(*, speca_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Arming single sweep on SpecA %s", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).arm_sweep()
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).arm_sweep()
 
 
 @command
@@ -785,7 +788,7 @@ def wait_complete(*, speca_id: int, timeout_s: float = 60.0) -> None:
     :raises EquipmentTimeoutError: Sweep did not complete in time.
     """
     _logger.info("Waiting for SpecA %s sweep to complete", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).wait_complete(timeout_s=timeout_s)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).wait_complete(timeout_s=timeout_s)
 
 
 @command
@@ -802,7 +805,7 @@ def abort(*, speca_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Aborting sweep on SpecA %s", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).abort()
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).abort()
 
 
 @command
@@ -818,7 +821,7 @@ def set_attenuation_db(*, speca_id: EquipmentId, attenuation_db: float) -> None:
     :returns: None
     """
     _logger.info("Setting attenuation on SpecA %s to %s dB", speca_id, attenuation_db)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_attenuation_db(attenuation_db)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_attenuation_db(attenuation_db)
 
 
 @command
@@ -838,7 +841,7 @@ def set_auto_attenuation(*, speca_id: EquipmentId, enabled: bool) -> None:
         "Enabling" if enabled else "Disabling",
         speca_id,
     )
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_auto_attenuation(enabled)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_auto_attenuation(enabled)
 
 
 @command
@@ -854,7 +857,7 @@ def toggle_preamp(*, speca_id: EquipmentId, enabled: bool) -> None:
     :returns: None
     """
     _logger.info("%s preamp on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).toggle_preamp(enabled)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_preamp(enabled)
 
 
 @command
@@ -870,7 +873,7 @@ def set_averaging_count(*, speca_id: EquipmentId, count: int) -> None:
     :returns: None
     """
     _logger.info("Setting averaging count on SpecA %s to %s", speca_id, count)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_averaging_count(count)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_averaging_count(count)
 
 
 @command
@@ -886,7 +889,7 @@ def set_average_type(*, speca_id: EquipmentId, average_type: str) -> None:
     :returns: None
     """
     _logger.info("Setting average type on SpecA %s to %s", speca_id, average_type)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_average_type(average_type)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_average_type(average_type)
 
 
 @command
@@ -902,7 +905,7 @@ def set_marker_to_center(*, speca_id: EquipmentId, marker: int = 1) -> None:
     :returns: None
     """
     _logger.info("Moving SpecA %s marker %s to center", speca_id, marker)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_marker_to_center(marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_to_center(marker)
 
 
 @command
@@ -925,7 +928,7 @@ def toggle_delta_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) ->
         marker,
         speca_id,
     )
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).toggle_delta_marker(marker, enabled)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_delta_marker(marker, enabled)
 
 
 @command
@@ -948,7 +951,9 @@ def set_marker_delta_reference(*, speca_id: EquipmentId, marker: int, reference_
         marker,
         reference_marker,
     )
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).set_marker_delta_reference(marker, reference_marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_delta_reference(
+        marker, reference_marker
+    )
 
 
 @measurement
@@ -967,7 +972,9 @@ def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) 
     """
     _logger.info("Reading delta frequency from SpecA %s marker %s", speca_id, marker)
     _ = key
-    return float(get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).measure_marker_delta_frequency(marker))
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_frequency(marker)
+    )
 
 
 @measurement
@@ -986,7 +993,9 @@ def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> f
     """
     _logger.info("Reading delta power from SpecA %s marker %s", speca_id, marker)
     _ = key
-    return float(get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).measure_marker_delta_power(marker))
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_power(marker)
+    )
 
 
 @measurement
@@ -1013,7 +1022,7 @@ def measure_channel_power_dbm(
     """
     _logger.info("Reading channel power from SpecA %s marker %s", speca_id, marker)
     _ = key
-    inst = get_cached_instrument('speca', require_int_id(speca_id, kind='speca'))
+    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
     raw = float(inst.measure_channel_power_dbm(marker))
     if calibration is None:
         return raw
@@ -1037,7 +1046,7 @@ def measure_acpr_db(*, speca_id: int, key: str, side: str = "both") -> float:
     """
     _logger.info("Reading ACPR from SpecA %s side %s", speca_id, side)
     _ = key
-    return float(get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).measure_acpr_db(side=side))
+    return float(get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_acpr_db(side=side))
 
 
 @measurement
@@ -1077,7 +1086,7 @@ def measure_obw_hz(
     _logger.info("Measuring occupied bandwidth on SpecA %s", speca_id)
     _ = key
     return float(
-        get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).measure_obw_hz(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_obw_hz(
             start_hz,
             stop_hz,
             threshold_db=threshold_db,
@@ -1101,7 +1110,7 @@ def single_sweep(*, speca_id: int) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Running single sweep on SpecA %s", speca_id)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).single_sweep()
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).single_sweep()
 
 
 @command
@@ -1121,4 +1130,4 @@ def save_screenshot(*, speca_id: int, path: str, key: str = "") -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving screenshot from SpecA %s to %s", speca_id, path)
-    get_cached_instrument('speca', require_int_id(speca_id, kind='speca')).save_screenshot(path, key=key)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).save_screenshot(path, key=key)

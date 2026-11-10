@@ -88,11 +88,7 @@ def _instrument_url(base: SplitResult, path: str) -> SplitResult:
     """Resolve ``path`` on the instrument origin. Absolute URLs to other hosts fail."""
     joined = urljoin(urlunsplit(base), path.lstrip("/"))
     target = _require_http_url(joined, purpose="HTTP instrument URL")
-    if (
-        target.scheme != base.scheme
-        or target.hostname != base.hostname
-        or (target.port or 0) != (base.port or 0)
-    ):
+    if target.scheme != base.scheme or target.hostname != base.hostname or (target.port or 0) != (base.port or 0):
         raise EquipmentConnectionError(
             f"HTTP path must stay on {base.hostname}, got `{path}`",
         )

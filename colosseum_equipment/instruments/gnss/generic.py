@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import csv
+from abc import ABC, abstractmethod
 import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, BinaryIO, TextIO
+from typing import TYPE_CHECKING, Any, BinaryIO, Protocol, TextIO
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import enqueue_measurement, record_artifact
@@ -580,7 +581,8 @@ class GenericGnss:
     def _ensure_stream(self, max_age_s: float) -> None:
         now = time.monotonic()
         if not self._last_byte_mono or (now - self._last_byte_mono) > max(
-            max_age_s, _STREAM_STALE_S,
+            max_age_s,
+            _STREAM_STALE_S,
         ):
             if not self._logging_active():
                 # Try a quick poll before declaring no stream.
@@ -706,7 +708,8 @@ class GenericGnss:
             return float(sat.snr)
 
     def get_satellite_snapshot(
-        self, max_age_s: float = _DEFAULT_MAX_AGE_S,
+        self,
+        max_age_s: float = _DEFAULT_MAX_AGE_S,
     ) -> list[dict[str, float | str | int | None]]:
         self._ensure_stream(max_age_s)
         now = time.monotonic()
@@ -715,7 +718,8 @@ class GenericGnss:
             return self._snapshot_sky_locked(now)
 
     def get_constellations_present(
-        self, max_age_s: float = _DEFAULT_MAX_AGE_S,
+        self,
+        max_age_s: float = _DEFAULT_MAX_AGE_S,
     ) -> list[str]:
         snap = self.get_satellite_snapshot(max_age_s=max_age_s)
         return sorted({str(row["constellation"]) for row in snap})
@@ -723,20 +727,14 @@ class GenericGnss:
     def measure_speed_m_s(self, max_age_s: float = _DEFAULT_MAX_AGE_S) -> float:
         self._ensure_stream(max_age_s)
         with self._state_lock:
-            if (
-                self._velocity is None
-                or (time.monotonic() - self._velocity_recv_mono) > max_age_s
-            ):
+            if self._velocity is None or (time.monotonic() - self._velocity_recv_mono) > max_age_s:
                 raise StaleDataError("speed not available from recent RMC/VTG")
             return self._velocity.speed_m_s
 
     def measure_course_deg(self, max_age_s: float = _DEFAULT_MAX_AGE_S) -> float:
         self._ensure_stream(max_age_s)
         with self._state_lock:
-            if (
-                self._velocity is None
-                or (time.monotonic() - self._velocity_recv_mono) > max_age_s
-            ):
+            if self._velocity is None or (time.monotonic() - self._velocity_recv_mono) > max_age_s:
                 raise StaleDataError("course not available from recent RMC/VTG")
             return self._velocity.course_deg
 
@@ -1021,3 +1019,61 @@ class GenericGnss:
     def close(self) -> None:
         self.stop_logging()
         self._transport.close()
+
+
+class _StreamParser(Protocol):
+    def feed(self, data: bytes) -> list[tuple[str, object]]: ...
+
+
+class _BinaryGnss(GenericGnss, ABC):
+    """Shared byte transport for UBX, OEM7, and SBF receivers."""
+
+    _parser: _StreamParser
+
+    @staticmethod
+    def _resolve_config_path(path: str) -> Path:
+        resolved = Path(path)
+        if not resolved.is_file():
+            alt = resolve_artifact_path(path)
+            resolved = alt if alt.is_file() else resolved
+        if not resolved.is_file():
+            raise FileNotFoundError(f"GNSS config not found: {path}")
+        return resolved
+
+    @abstractmethod
+    def _apply_events(self, events: list[tuple[str, object]]) -> None:
+        """Apply vendor parser events to the receiver state."""
+
+    @abstractmethod
+    def _has_fix(self) -> bool:
+        """Return whether vendor or fallback state has a usable fix."""
+
+    def _write_bytes(self, payload: bytes) -> None:
+        write_bytes = getattr(self._transport, "write_bytes", None)
+        if callable(write_bytes):
+            write_bytes(payload)
+            return
+        write_raw = getattr(self._transport, "write_raw", None)
+        if callable(write_raw):
+            write_raw(payload)
+            return
+        self._transport.write(payload.decode("latin-1"))
+
+    def _on_listener_chunk(self, data: bytes) -> None:
+        if data:
+            self._write_wire(data)
+            self._note_bytes()
+        self._apply_events(self._parser.feed(data))
+
+    def _poll_transport(self, timeout_s: float) -> NmeaFix:
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            chunk = self._read_bytes(512)
+            if chunk:
+                self._note_bytes()
+                self._apply_events(self._parser.feed(chunk))
+            if self._has_fix() and self._fix is not None:
+                return self._fix
+        raise EquipmentTimeoutError(
+            f"gnss model `{self._model}` did not report a fix within {timeout_s}s",
+        )

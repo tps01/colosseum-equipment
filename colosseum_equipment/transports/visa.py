@@ -27,9 +27,7 @@ def _find_checkout_root() -> Path | None:
         return package_root
     current = Path.cwd().resolve()
     for directory in (current, *current.parents):
-        if (directory / "pyproject.toml").is_file() and (
-            directory / "colosseum_equipment"
-        ).is_dir():
+        if (directory / "pyproject.toml").is_file() and (directory / "colosseum_equipment").is_dir():
             return directory
     return None
 

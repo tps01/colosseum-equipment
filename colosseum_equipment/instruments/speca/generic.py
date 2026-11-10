@@ -289,9 +289,7 @@ class GenericSpecA:
         trace: int = 1,
         trace_path: str | Path | None = None,
     ) -> float:
-        path = (
-            Path(trace_path) if trace_path is not None else getattr(self, "_last_trace_path", None)
-        )
+        path = Path(trace_path) if trace_path is not None else getattr(self, "_last_trace_path", None)
         if path is not None:
             frequencies, amplitudes = read_trace_csv(path)
         else:
@@ -311,9 +309,7 @@ class GenericSpecA:
         *,
         trace_path: str | Path | None = None,
     ) -> tuple[float, float]:
-        path = (
-            Path(trace_path) if trace_path is not None else getattr(self, "_last_trace_path", None)
-        )
+        path = Path(trace_path) if trace_path is not None else getattr(self, "_last_trace_path", None)
         if path is None:
             raise ValueError("no trace CSV; call save_trace_data first or pass trace_path=")
         return read_trace_power_at_frequency(path, frequency_hz)

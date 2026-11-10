@@ -18,7 +18,9 @@ if "tkinter" not in sys.modules:
         setattr(tk, name, mod)
         sys.modules[f"tkinter.{name}"] = mod
     tk.Tk = type("Tk", (), {"__init__": lambda self, *a, **k: None, "mainloop": lambda self: None})
-    tk.StringVar = tk.BooleanVar = tk.IntVar = tk.DoubleVar = type("Var", (), {"__init__": lambda *a, **k: None, "get": lambda self: "", "set": lambda self, v: None})
+    tk.StringVar = tk.BooleanVar = tk.IntVar = tk.DoubleVar = type(
+        "Var", (), {"__init__": lambda *a, **k: None, "get": lambda self: "", "set": lambda self, v: None}
+    )
     tk.END = "end"
     sys.modules["tkinter"] = tk
 
@@ -101,8 +103,7 @@ def test_parse_s2p_single_param_and_full_two_port(tmp_path: Path) -> None:
 
     full = tmp_path / "full.s2p"
     full.write_text(
-        "# Hz S RI R 50\n"
-        "1e9 1 0 0.1 0 0 0 1 0\n",
+        "# Hz S RI R 50\n" "1e9 1 0 0.1 0 0 0 1 0\n",
         encoding="utf-8",
     )
     freqs, losses = path_cal.parse_calibration_file(full)
@@ -114,8 +115,7 @@ def test_parse_s2p_strips_inline_touchstone_comments(tmp_path: Path) -> None:
     """Inline `!` comments must not break tokenization (#53)."""
     issue = tmp_path / "inline.s2p"
     issue.write_text(
-        "# GHz S DB R 50\n"
-        "1 0 0 -20 0 0 0 0 0 ! calibration point\n",
+        "# GHz S DB R 50\n" "1 0 0 -20 0 0 0 0 0 ! calibration point\n",
         encoding="utf-8",
     )
     freqs, losses = path_cal.parse_calibration_file(issue)
@@ -124,8 +124,7 @@ def test_parse_s2p_strips_inline_touchstone_comments(tmp_path: Path) -> None:
 
     option_comment = tmp_path / "option_comment.s2p"
     option_comment.write_text(
-        "# GHz S DB R 50 ! note mentioning RI and MA\n"
-        "1 0 0 -20 0 0 0 0 0\n",
+        "# GHz S DB R 50 ! note mentioning RI and MA\n" "1 0 0 -20 0 0 0 0 0\n",
         encoding="utf-8",
     )
     freqs, losses = path_cal.parse_calibration_file(option_comment)
@@ -134,8 +133,7 @@ def test_parse_s2p_strips_inline_touchstone_comments(tmp_path: Path) -> None:
 
     no_space = tmp_path / "no_space.s2p"
     no_space.write_text(
-        "# GHz S RI R 50\n"
-        "2 0.01 0.0!inline comment without leading space\n",
+        "# GHz S RI R 50\n" "2 0.01 0.0!inline comment without leading space\n",
         encoding="utf-8",
     )
     freqs, losses = path_cal.parse_calibration_file(no_space)
@@ -170,7 +168,8 @@ def test_vsg_set_power_and_frequency_retune(unit_runtime_context, tmp_path: Path
 
 
 def test_play_iq_records_carrier_and_applies_calibration(
-    unit_runtime_context, tmp_path: Path,
+    unit_runtime_context,
+    tmp_path: Path,
 ) -> None:
     path = _write_csv(tmp_path / "cal.csv")
     cal_api.load_calibration(filename=str(path), key="cable")
@@ -207,7 +206,8 @@ def test_play_iq_records_carrier_and_applies_calibration(
 
 
 def test_vsg_set_frequency_calibration_requires_prior_desired(
-    unit_runtime_context, tmp_path: Path,
+    unit_runtime_context,
+    tmp_path: Path,
 ) -> None:
     path = _write_csv(tmp_path / "cal.csv")
     cal_api.load_calibration(filename=str(path), key="cable")

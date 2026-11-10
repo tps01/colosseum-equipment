@@ -363,10 +363,7 @@ def write_signal_levels_plot(
         snapshot,
         key=lambda row: (str(row.get("constellation") or ""), int(row.get("prn") or 0)),
     )
-    labels = [
-        f"{row.get('constellation', '')[:3]}{row.get('prn')}"
-        for row in ordered
-    ]
+    labels = [f"{row.get('constellation', '')[:3]}{row.get('prn')}" for row in ordered]
     values = [float(row.get("cn0") or 0) for row in ordered]
     used_flags = [bool(row.get("used")) for row in ordered]
     colors = ["C0" if used else "0.75" for used in used_flags]
@@ -391,11 +388,7 @@ def _enu_offsets_m(
     ref_lat: float | None,
     ref_lon: float | None,
 ) -> tuple[list[float], list[float], float, float]:
-    fix_rows = [
-        row
-        for row in rows
-        if row.get("latitude") not in ("", None) and row.get("longitude") not in ("", None)
-    ]
+    fix_rows = [row for row in rows if row.get("latitude") not in ("", None) and row.get("longitude") not in ("", None)]
     if not fix_rows:
         raise ValueError("track has no fix samples for deviation plot")
     lats = [float(row["latitude"]) for row in fix_rows]

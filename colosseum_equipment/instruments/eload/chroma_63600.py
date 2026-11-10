@@ -3,6 +3,7 @@
 Manual: Chroma 63600 Series Operation & Programming Manual v2.2,
 chapter 5 (CHAN, MODE, LOAD and static level/slew commands).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -18,8 +19,18 @@ if TYPE_CHECKING:
 
 @instrument_model("eload", "chroma-63600-5")
 @supported_commands(
-    "set_mode", "set_current", "set_voltage", "set_power", "set_resistance", "engage", "disengage",
-    "measure_voltage", "measure_current", "measure_power_w", "measure_input_state", "set_slew_rate",
+    "set_mode",
+    "set_current",
+    "set_voltage",
+    "set_power",
+    "set_resistance",
+    "engage",
+    "disengage",
+    "measure_voltage",
+    "measure_current",
+    "measure_power_w",
+    "measure_input_state",
+    "set_slew_rate",
 )
 class Chroma63600(GenericEload):
     """Address logical load channels through one mainframe session.

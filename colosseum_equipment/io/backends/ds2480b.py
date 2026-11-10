@@ -167,8 +167,7 @@ class Ds2480bOneWireBackend:
             reply = self._read(1)
         except IoConnectionError as exc:
             raise IoConnectionError(
-                f"DS2480B detect failed on {self._port!r}; check Prolific COM driver "
-                "and DS9481R connection",
+                f"DS2480B detect failed on {self._port!r}; check Prolific COM driver " "and DS9481R connection",
             ) from exc
         # Presence coding: bit 0/1 of reply encode presence; accept any reply byte.
         _ = reply
@@ -240,7 +239,7 @@ class Ds2480bOneWireBackend:
             raise IoConnectionError("no 1-Wire presence pulse detected")
         raw = hex_to_rom(rom)
         if raw is None:
-            self.write(b"\xCC")  # SKIP ROM
+            self.write(b"\xcc")  # SKIP ROM
             return
         self.write(b"\x55")  # MATCH ROM
         self.write(raw)
@@ -254,7 +253,10 @@ class Ds2480bOneWireBackend:
         return 1 if (reply & 0x01) else 0
 
     def _search_bit_step(
-        self, rom: bytearray, bit_index: int, last_discrepancy: int,
+        self,
+        rom: bytearray,
+        bit_index: int,
+        last_discrepancy: int,
     ) -> tuple[int | None, int]:
         """Return ``(direction, last_zero_update)`` or ``(None, 0)`` on bus error."""
         id_bit = self._touch_bit(1)
@@ -288,7 +290,7 @@ class Ds2480bOneWireBackend:
         while not done:
             if not self.reset():
                 break
-            self.write(b"\xF0")  # SEARCH ROM
+            self.write(b"\xf0")  # SEARCH ROM
             last_zero = 0
             bus_error = False
             for bit_index in range(1, 65):

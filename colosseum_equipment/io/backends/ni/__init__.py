@@ -11,4 +11,3 @@ __all__ = [
     "Ni845xI2cBackend",
     "Ni845xSpiBackend",
 ]
-

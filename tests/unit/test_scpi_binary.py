@@ -55,7 +55,8 @@ def test_read_binary_block_empty_read_raises_truncated() -> None:
 
 
 @pytest.mark.parametrize(
-    "seed", sorted((Path(__file__).parents[1] / "fixtures/fuzz/corpus").iterdir()),
+    "seed",
+    sorted((Path(__file__).parents[1] / "fixtures/fuzz/corpus").iterdir()),
     ids=lambda path: path.name,
 )
 def test_fuzz_seed_invariants(seed) -> None:

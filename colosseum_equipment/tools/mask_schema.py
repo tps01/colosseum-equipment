@@ -124,11 +124,7 @@ def list_mask_templates() -> list[str]:
     root = _template_files()
     if root is not None:
         try:
-            return sorted(
-                p.name[:-5]
-                for p in root.iterdir()
-                if getattr(p, "name", "").endswith(".json")
-            )
+            return sorted(p.name[:-5] for p in root.iterdir() if getattr(p, "name", "").endswith(".json"))
         except (OSError, FileNotFoundError, AttributeError):
             pass
     fallback = Path(__file__).resolve().parent / "mask_templates"

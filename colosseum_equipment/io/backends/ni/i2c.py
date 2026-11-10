@@ -55,7 +55,8 @@ class Ni845xI2cBackend:
                 api.check_status(
                     session.lib,
                     session.lib.ni845xI2cSetPullupEnable(
-                        session.handle, 1 if self._pullup else 0,
+                        session.handle,
+                        1 if self._pullup else 0,
                     ),
                     action="I2cSetPullupEnable",
                 )
@@ -66,11 +67,7 @@ class Ni845xI2cBackend:
 
     def _apply_config(self, session: session845x._Session) -> None:
         lib = session.lib
-        size = (
-            api.kNi845xI2cAddress7Bit
-            if self._address_bits == 7
-            else api.kNi845xI2cAddress10Bit
-        )
+        size = api.kNi845xI2cAddress7Bit if self._address_bits == 7 else api.kNi845xI2cAddress10Bit
         clock_khz = max(1, self._clock_hz // 1000)
         api.check_status(
             lib,
@@ -126,7 +123,8 @@ class Ni845xI2cBackend:
             api.check_status(
                 session.lib,
                 session.lib.ni845xI2cSetPullupEnable(
-                    session.handle, 1 if self._pullup else 0,
+                    session.handle,
+                    1 if self._pullup else 0,
                 ),
                 action="I2cSetPullupEnable",
             )

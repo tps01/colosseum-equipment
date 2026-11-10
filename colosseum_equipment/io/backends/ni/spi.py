@@ -15,16 +15,8 @@ def _mode_polarity_phase(mode: int) -> tuple[int, int]:
     if mode not in (0, 1, 2, 3):
         raise IoConfigError(f"spi mode must be 0..3; got {mode}")
     # Mode: CPOL = mode >> 1, CPHA = mode & 1
-    cpol = (
-        api.kNi845xSpiClockPolarityIdleHigh
-        if mode >> 1
-        else api.kNi845xSpiClockPolarityIdleLow
-    )
-    cpha = (
-        api.kNi845xSpiClockPhaseSecondEdge
-        if mode & 1
-        else api.kNi845xSpiClockPhaseFirstEdge
-    )
+    cpol = api.kNi845xSpiClockPolarityIdleHigh if mode >> 1 else api.kNi845xSpiClockPolarityIdleLow
+    cpha = api.kNi845xSpiClockPhaseSecondEdge if mode & 1 else api.kNi845xSpiClockPhaseFirstEdge
     return cpol, cpha
 
 
@@ -104,7 +96,8 @@ class Ni845xSpiBackend:
         api.check_status(
             lib,
             lib.ni845xSpiConfigurationSetNumBitsPerSample(
-                self._config, self._bits_per_word,
+                self._config,
+                self._bits_per_word,
             ),
             action="SpiConfigurationSetNumBitsPerSample",
         )
