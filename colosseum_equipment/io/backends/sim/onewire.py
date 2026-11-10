@@ -16,6 +16,22 @@ def _state_key(onewire_id: int) -> str:
     return f"onewire:{onewire_id}"
 
 
+def _canonical_roms(raw_roms: object) -> list[str]:
+    if isinstance(raw_roms, str):
+        tokens = [part.strip() for part in raw_roms.split(",") if part.strip()]
+    elif isinstance(raw_roms, (list, tuple)):
+        tokens = [str(item).strip() for item in raw_roms if str(item).strip()]
+    else:
+        tokens = []
+    roms: list[str] = []
+    for token in tokens:
+        raw = hex_to_rom(token)
+        if raw is None:
+            raise IoConfigError(f"invalid 1-Wire ROM {token!r}")
+        roms.append(rom_to_hex(raw))
+    return roms
+
+
 class SimOneWireBackend:
     """Simulated 1-Wire bus with configurable ROMs and read data."""
 
@@ -55,11 +71,7 @@ class SimOneWireBackend:
         ctx = get_context()
         state = ctx.resource_cache.setdefault(_SIM_STATE_KEY, {})
         key = _state_key(onewire_id)
-        raw_roms = config.get("roms") or config.get("devices") or []
-        if isinstance(raw_roms, str):
-            roms = [p.strip() for p in raw_roms.split(",") if p.strip()]
-        else:
-            roms = [str(item).strip() for item in raw_roms]
+        roms = _canonical_roms(config.get("roms") or config.get("devices") or [])
         read_raw = config.get("read_data", b"")
         if isinstance(read_raw, str):
             read_data = bytes.fromhex(read_raw.replace(" ", "")) if read_raw else b""
@@ -78,14 +90,19 @@ class SimOneWireBackend:
             backend._persist()
             return backend
         entry = state[key]
+        cached_roms = _canonical_roms(entry.get("roms") or [])
+        selected = entry.get("selected")
+        if selected is not None:
+            raw_selected = hex_to_rom(selected)
+            selected = rom_to_hex(raw_selected) if raw_selected is not None else None
         backend = cls(
             onewire_id=onewire_id,
             presence=entry["presence"],
-            roms=list(entry["roms"]),
+            roms=cached_roms,
             read_data=entry["read_data"],
             speed=entry["speed"],
         )
-        backend._selected = entry.get("selected")
+        backend._selected = selected
         backend._last_write = entry.get("last_write", b"")
         backend._cursor = int(entry.get("cursor", 0))
         return backend

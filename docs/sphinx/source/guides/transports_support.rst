@@ -17,9 +17,13 @@ Choose a transport
    * - VISA USB, GPIB, or Ethernet
      - Supply the full ``resource`` and install a compatible system VISA backend.
        The Python pyVISA package alone does not install vendor VISA libraries.
+       Linux GPIB needs host **linux-gpib** (see below). USBTMC may also use a
+       kernel ``/dev/usbtmcN`` path when libusb cannot claim the interface.
    * - Serial / COM / ASRL
      - Set the actual port/resource and the instrument's baud/framing settings.
-       COM ports normalize to ASRL. See :doc:`serial_ports`.
+       COM ports normalize to ASRL. USB CDC instruments appear as
+       ``/dev/ttyUSB*`` / ``/dev/ttyACM*`` (or ``COMn``) — use ASRL, not
+       ``USB...::RAW``. See :doc:`serial_ports`.
    * - Simulation
      - ``driver="sim"`` uses fixtures. PyVISA-sim is a separate backend path;
        ``visa_backend="sim"`` also needs ``sim_definition``.
@@ -34,6 +38,45 @@ Choose a transport
 rules in the configuration reference. For several PSUs, use
 ``[[equipment.psu]]`` with distinct ``psu_id`` values; a PSU and a DMM can each
 use ID 1. Select those IDs explicitly in API calls.
+
+USB personalities (CDC, USBTMC, RAW)
+------------------------------------
+
+A USB cable does not imply one VISA class:
+
+* **USB CDC / serial** — the OS creates a TTY (``ttyUSB`` / ``ttyACM`` / ``COM``).
+  Configure that as serial/ASRL. Autoconfig already probes pyserial COM ports.
+* **USBTMC** — prefer ``USB...::INSTR``, or ``resource = "/dev/usbtmcN"`` on Linux
+  when the kernel ``usbtmc`` driver owns the device.
+* **``USB...::RAW``** — raw bulk endpoints, not a generic SCPI pipe. Incomplete
+  udev permissions often show ``USB0::VID::PID::???::RAW``; fix permissions or
+  use the CDC/USBTMC path for the instrument. Do not set ``resource`` to RAW
+  unless a supported model documents that protocol.
+
+Linux GPIB
+----------
+
+GPIB instruments use a controller board plus a primary address. Configure the
+listener, not the board node::
+
+    resource = "GPIB0::4::INSTR"
+
+``/dev/gpib0`` is the **adapter** character device created by linux-gpib. It is
+not a SCPI message pipe like ``/dev/usbtmc0``. Do **not** set
+``resource = "/dev/gpib0"``; Colosseum would treat that as ASRL and fail.
+
+Host prerequisites (not shipped in the wheel):
+
+1. Install linux-gpib kernel and userspace; configure ``/etc/gpib.conf`` and run
+   ``gpib_config`` so ``/dev/gpib0`` exists.
+2. Membership in the ``gpib`` group (or equivalent udev rules).
+3. Python ``gpib`` bindings from that linux-gpib install (what pyvisa-py loads).
+   Do not rely on PyPI ``gpib-ctypes`` in this package (GPL-2.0; not allowlisted).
+4. Confirm with ``pyvisa-info`` that the ``@py`` backend reports GPIB available.
+
+``col.equipment.autoconfig(..., gpib_scan=True)`` probes primary addresses
+``0``–``30`` on board ``0`` when ``list_resources`` returned no ``GPIB`` names
+but a board appears present. Leave ``gpib_scan`` off unless you need that sweep.
 
 Driver selection
 ----------------
@@ -55,8 +98,9 @@ for a working backend or resource. Inspect the resolved-model log entry before
 qualifying a procedure. ``col.equipment.autoconfig`` discovers VISA ``?*INSTR``
 and serial COM (Genesys bare ``IDN?`` with CR on ASRL; opt-in ``qm=True`` /
 ``gnss=True`` for Fluke ``QM`` and GNSS after IDN misses); review
-its generated configuration before enabling outputs. FTDI adapters stay manual.
-See :doc:`/api/autoconfig`.
+its generated configuration before enabling outputs. Opt-in ``gpib_scan=True``
+sweeps GPIB primary addresses when the board is present but enumeration is
+empty. FTDI adapters stay manual. See :doc:`/api/autoconfig`.
 
 What support means
 ------------------

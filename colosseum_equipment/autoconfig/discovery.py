@@ -4,7 +4,9 @@ Serial ASRL/COM ports are probed with bare ``IDN?`` then ``*IDN?`` across a shor
 baud list. VISA ASRL sessions enable CR termination (matching bench tools). Fluke
 handheld ``QM`` and GNSS vendor probes are opt-in (``qm=True`` / ``gnss=True``)
 and run only after IDN fails. Hard serial open errors abort further baud tries.
-FTDI / digital IO adapters are not discovered here.
+Optional ``gpib_scan`` sweeps ``GPIB0`` primary addresses when list_resources is
+empty for GPIB. Linux ``/dev/usbtmcN`` nodes are probed without VISA. FTDI /
+digital IO adapters are not discovered here.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import contextlib
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from colosseum.config.loader import ConfigError
@@ -37,15 +40,17 @@ from colosseum_equipment.autoconfig.network_filter import (
     resolve_blacklist,
 )
 from colosseum_equipment.autoconfig.qm_probe import query_qm_model
-from colosseum_equipment.autoconfig.sort import sort_resources
+from colosseum_equipment.autoconfig.sort import interface_name, sort_resources
 from colosseum_equipment.instruments.identify import probe_identity
-from colosseum_equipment.transports.visa import normalize_visa_resource
+from colosseum_equipment.transports.usbtmc import UsbtmcTransport, list_usbtmc_devices
+from colosseum_equipment.transports.visa import normalize_visa_resource, open_resource_manager
 
 if TYPE_CHECKING:
     from colosseum_equipment.network import IPv4NetworkBinding
 
 _IDN_BAUDS = (9600, 115200, 19200)
 _QM_BAUDS = (9600, 115200)
+_GPIB_PRIMARY_ADDRESSES = range(31)
 _ASRL_NUM = re.compile(r"^ASRL(\d+)", re.IGNORECASE)
 _COM_NUM = re.compile(r"^COM(\d+)$", re.IGNORECASE)
 _HARD_OPEN_MARKERS = (
@@ -368,6 +373,23 @@ def _default_open_serial(port: str, baudrate: int, timeout: float) -> object:
     import serial
 
     return serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+
+
+def _default_gpib_board_present() -> bool:
+    """Return whether linux-gpib board 0 looks usable on this host."""
+    try:
+        import gpib  # noqa: F401
+    except ImportError:
+        return False
+    node = Path("/dev/gpib0")
+    try:
+        return node.exists()
+    except OSError:
+        return False
+
+
+def _listed_gpib_resources(resources: Sequence[str]) -> bool:
+    return any(interface_name(resource) == "GPIB" for resource in resources)
 
 
 def _record_assignment(
@@ -718,6 +740,32 @@ def _probe_visa_instr(
     _assign_classified_idn(state, idn=idn, bare=bare, resource=resource)
 
 
+def _probe_usbtmc_path(state: _DiscoveryState, path: str, timeout: float) -> None:
+    """Identify a Linux ``/dev/usbtmcN`` node without opening it through VISA."""
+    if path in state.seen_resources:
+        _record_skip(state, path, "duplicate_resource")
+        return
+    log_probing(state.logger, path)
+    try:
+        transport = UsbtmcTransport(path, timeout=timeout)
+    except Exception as exc:
+        _record_skip(state, path, f"probe_failed: {exc}")
+        return
+    try:
+        adapter = _VisaProbeAdapter(transport)
+        idn, bare, _addr = probe_identity(adapter, asrl=False, log_kind="autoconfig")
+    except Exception as exc:
+        _record_skip(state, path, f"probe_failed: {exc}")
+        return
+    finally:
+        with contextlib.suppress(Exception):
+            transport.close()
+    if idn is None:
+        _record_skip(state, path, "probe_failed: no identity")
+        return
+    _assign_classified_idn(state, idn=idn, bare=bare, resource=path)
+
+
 def _probe_visa_resource(
     state: _DiscoveryState,
     manager: object,
@@ -833,23 +881,24 @@ def discover_equipment_config(
     open_serial: OpenSerial | None = None,
     qm: bool = False,
     gnss: bool = False,
+    gpib_scan: bool = False,
+    gpib_board_present: Callable[[], bool] | None = None,
 ) -> AutoconfigResult:
     """Scan VISA ``?*INSTR`` and local COM ports; build a raw equipment config dict.
 
     Serial ports use bare ``IDN?`` then ``*IDN?`` across bauds ``9600``, ``115200``,
     ``19200``. With ``qm=True``, Fluke ``QM`` runs after IDN fails (bauds ``9600``,
     ``115200``). With ``gnss=True``, GNSS vendor probes run after IDN (and QM when
-    enabled) miss. FTDI adapters are not discovered.
+    enabled) miss. With ``gpib_scan=True``, primary addresses ``0``–``30`` on
+    ``GPIB0`` are probed when ``list_resources`` returned no GPIB names but a
+    board appears present. Linux ``/dev/usbtmcN`` nodes are probed without VISA.
+    FTDI adapters are not discovered.
     """
-    import pyvisa
-
     resolution = resolve_blacklist(blacklist, bindings=network_bindings)
     blocked = list(resolution.blocked)
     log_scan_start(logger)
     if resource_manager is None:
-        rm: object = (
-            pyvisa.ResourceManager(visa_library) if visa_library else pyvisa.ResourceManager()
-        )
+        rm: object = open_resource_manager(visa_library)
     else:
         rm = resource_manager
     resources = _list_visa_instr(rm)
@@ -858,8 +907,25 @@ def discover_equipment_config(
         log_blacklist(logger, resource, subnet)
 
     state = _DiscoveryState(logger=logger)
-    for resource in sort_resources(allowed):
+    sorted_resources = sort_resources(allowed)
+    for resource in sorted_resources:
         _probe_visa_resource(state, rm, resource, timeout=timeout, qm=qm, gnss=gnss)
+
+    board_present_fn = gpib_board_present or _default_gpib_board_present
+    if gpib_scan and not _listed_gpib_resources(sorted_resources) and board_present_fn():
+        for pad in _GPIB_PRIMARY_ADDRESSES:
+            _probe_visa_resource(
+                state,
+                rm,
+                f"GPIB0::{pad}::INSTR",
+                timeout=timeout,
+                qm=qm,
+                gnss=gnss,
+            )
+
+    for path in list_usbtmc_devices():
+        _probe_usbtmc_path(state, path, timeout)
+
     _probe_leftover_com_ports(
         state,
         timeout=timeout,

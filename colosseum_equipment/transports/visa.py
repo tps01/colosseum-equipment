@@ -74,14 +74,31 @@ def _context_cache() -> dict[str, object] | None:
         return None
 
 
-def _new_resource_manager(visa_library: str | None, sim_path: str | None) -> Any:  # noqa: ANN401
+def open_resource_manager(
+    visa_library: str | None = None,
+    *,
+    sim_path: str | None = None,
+) -> Any:  # noqa: ANN401
+    """Return a PyVISA ``ResourceManager``.
+
+    An explicit ``visa_library`` or sim definition is passed through. With neither,
+    try the host default (NI/IVI when present) and fall back to ``@py`` only when
+    no VISA implementation is installed.
+    """
     import pyvisa
 
     if sim_path is not None:
         return pyvisa.ResourceManager(f"{sim_path}@sim")
     if visa_library:
         return pyvisa.ResourceManager(visa_library)
-    return pyvisa.ResourceManager()
+    try:
+        return pyvisa.ResourceManager()
+    except ValueError:
+        return pyvisa.ResourceManager("@py")
+
+
+def _new_resource_manager(visa_library: str | None, sim_path: str | None) -> Any:  # noqa: ANN401
+    return open_resource_manager(visa_library, sim_path=sim_path)
 
 
 def _enable_tcp_nodelay(session: Any) -> tuple[object | None, object | None]:  # noqa: ANN401
