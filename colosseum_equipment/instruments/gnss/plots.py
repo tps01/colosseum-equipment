@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from matplotlib.axes import Axes
+
 _TRACK_FIELD_NAMES = (
     "host_ts_iso",
     "receiver_utc_iso",
@@ -115,6 +117,52 @@ def write_track_plot(
         plt.close(figure)
 
 
+_SKY_CONSTELLATION_COLORS = {
+    "GPS": "C0",
+    "GLONASS": "C1",
+    "Galileo": "C2",
+    "BeiDou": "C3",
+    "QZSS": "C4",
+}
+
+
+def _skyplot_rows(
+    sats: dict[int, tuple[float, float, float]] | list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if isinstance(sats, dict):
+        return [
+            {"prn": prn, "elev": elev, "az": az, "cn0": cn0, "constellation": "", "used": False}
+            for prn, (elev, az, cn0) in sats.items()
+        ]
+    return list(sats)
+
+
+def _draw_skyplot_sat(axis: Axes, row: dict[str, Any], *, vmax: float) -> None:
+    elev = float(row.get("elev") or 0)
+    az = float(row.get("az") or 0)
+    cn0 = float(row.get("cn0") or 0)
+    used = bool(row.get("used"))
+    constellation = str(row.get("constellation") or "")
+    radius = max(0.0, 90.0 - elev)
+    theta = az * (math.pi / 180.0)
+    size = 20 + 40 * (cn0 / vmax if vmax else 0)
+    axis.scatter(
+        theta,
+        radius,
+        s=size,
+        c=[cn0],
+        cmap="viridis",
+        vmin=0,
+        vmax=max(vmax, 1),
+        edgecolors="black" if used else "0.6",
+        linewidths=1.2 if used else 0.5,
+        alpha=1.0 if used else 0.55,
+    )
+    # Keep constellation hue as a thin ring via annotation color
+    face = _SKY_CONSTELLATION_COLORS.get(constellation, "C5")
+    axis.text(theta, radius, str(row.get("prn")), fontsize=8, color=face)
+
+
 def write_skyplot(
     sats: dict[int, tuple[float, float, float]] | list[dict[str, Any]],
     plot_path: Path,
@@ -129,55 +177,17 @@ def write_skyplot(
     mpl.use("Agg")
     import matplotlib.pyplot as plt
 
-    rows: list[dict[str, Any]]
-    if isinstance(sats, dict):
-        rows = [
-            {"prn": prn, "elev": elev, "az": az, "cn0": cn0, "constellation": "", "used": False}
-            for prn, (elev, az, cn0) in sats.items()
-        ]
-    else:
-        rows = list(sats)
+    rows = _skyplot_rows(sats)
     if not rows:
         raise ValueError("no GSV satellites to plot")
 
-    constellation_colors = {
-        "GPS": "C0",
-        "GLONASS": "C1",
-        "Galileo": "C2",
-        "BeiDou": "C3",
-        "QZSS": "C4",
-    }
     plot_path.parent.mkdir(parents=True, exist_ok=True)
     figure, axis = plt.subplots(figsize=(6, 6), subplot_kw={"projection": "polar"})
     try:
         snrs = [float(r.get("cn0") or 0) for r in rows]
         vmax = max(snrs) if snrs else 1.0
         for row in rows:
-            elev = float(row.get("elev") or 0)
-            az = float(row.get("az") or 0)
-            cn0 = float(row.get("cn0") or 0)
-            prn = row.get("prn")
-            used = bool(row.get("used"))
-            constellation = str(row.get("constellation") or "")
-            radius = max(0.0, 90.0 - elev)
-            theta = az * (math.pi / 180.0)
-            size = 20 + 40 * (cn0 / vmax if vmax else 0)
-            edge = "black" if used else "0.6"
-            face = constellation_colors.get(constellation, "C5")
-            axis.scatter(
-                theta,
-                radius,
-                s=size,
-                c=[cn0],
-                cmap="viridis",
-                vmin=0,
-                vmax=max(vmax, 1),
-                edgecolors=edge,
-                linewidths=1.2 if used else 0.5,
-                alpha=1.0 if used else 0.55,
-            )
-            # Keep constellation hue as a thin ring via annotation color
-            axis.text(theta, radius, str(prn), fontsize=8, color=face)
+            _draw_skyplot_sat(axis, row, vmax=vmax)
         axis.set_theta_zero_location("N")  # type: ignore[attr-defined]
         axis.set_theta_direction(-1)  # type: ignore[attr-defined]
         axis.set_rlim(0, 90)  # type: ignore[attr-defined]
@@ -186,6 +196,116 @@ def write_skyplot(
         figure.savefig(plot_path, dpi=120, bbox_inches="tight")
     finally:
         plt.close(figure)
+
+
+def _quality_series(
+    rows: list[dict[str, float | str]],
+    name: str,
+    fallback: str = "",
+) -> list[float]:
+    out: list[float] = []
+    for row in rows:
+        raw = row.get(name, row.get(fallback, 0))
+        try:
+            out.append(float(raw) if raw != "" else 0.0)
+        except (TypeError, ValueError):
+            out.append(0.0)
+    return out
+
+
+def _quality_fix_ok(rows: list[dict[str, float | str]]) -> list[float]:
+    fix_ok: list[float] = []
+    for row in rows:
+        raw = row.get("fix_ok")
+        if raw in (True, "True", "true", "1", 1):
+            fix_ok.append(1.0)
+        elif raw in (False, "False", "false", "0", 0):
+            fix_ok.append(0.0)
+        else:
+            fix_ok.append(0.0)
+    return fix_ok
+
+
+def _quality_sample_times(rows: list[dict[str, float | str]]) -> list[float]:
+    # Prefer host timestamps when present; else sample index
+    times: list[float] = []
+    for idx, row in enumerate(rows):
+        host = str(row.get("host_ts_iso") or "")
+        if host:
+            times.append(float(idx))
+        else:
+            times.append(float(idx))
+    return times
+
+
+def _plot_quality_dop_panel(
+    axis: Axes,
+    times: list[float],
+    *,
+    hdop: list[float],
+    pdop: list[float],
+    vdop: list[float],
+) -> None:
+    axis.plot(times, hdop, label="HDOP")
+    if any(pdop):
+        axis.plot(times, pdop, label="PDOP", alpha=0.85)
+    if any(vdop):
+        axis.plot(times, vdop, label="VDOP", alpha=0.85)
+    axis.set_ylabel("DOP")
+    axis.legend(loc="upper right", fontsize=8)
+    axis.grid(True, alpha=0.3)
+    axis.set_title("GNSS quality")
+
+
+def _plot_quality_sat_panel(
+    axis: Axes,
+    times: list[float],
+    *,
+    sats: list[float],
+    visible: list[float],
+    cn0: list[float],
+) -> None:
+    axis.plot(times, sats, label="sats used")
+    if any(visible):
+        axis.plot(times, visible, label="sats visible", alpha=0.85)
+    if any(cn0):
+        axis.plot(times, cn0, label="max C/N0", alpha=0.7)
+    axis.set_ylabel("Sats / C/N0")
+    axis.legend(loc="upper right", fontsize=8)
+    axis.grid(True, alpha=0.3)
+
+
+def _plot_quality_fix_panel(
+    axis: Axes,
+    times: list[float],
+    *,
+    h_acc: list[float],
+    fix_ok: list[float],
+) -> None:
+    if any(h_acc):
+        axis.plot(times, h_acc, label="h_acc_m", color="C3")
+    axis.fill_between(times, 0, fix_ok, alpha=0.25, color="C2", label="fix_ok")
+    axis.set_ylabel("h_acc / fix")
+    axis.set_xlabel("Sample index")
+    axis.legend(loc="upper right", fontsize=8)
+    axis.grid(True, alpha=0.3)
+
+
+def _quality_panel_data(
+    rows: list[dict[str, float | str]],
+) -> tuple[list[float], dict[str, list[float]]]:
+    times = _quality_sample_times(rows)
+    series = {
+        "hdop": _quality_series(rows, "hdop"),
+        "pdop": _quality_series(rows, "pdop"),
+        "vdop": _quality_series(rows, "vdop"),
+        "sats": _quality_series(rows, "sats_used", "satellites"),
+        "visible": _quality_series(rows, "sats_visible"),
+        "cn0": _quality_series(rows, "max_cn0_dbhz"),
+        "h_acc": _quality_series(rows, "h_acc_m"),
+        "fix_ok": _quality_fix_ok(rows),
+    }
+    return times, series
 
 
 def write_quality_plot(rows: list[dict[str, float | str]], plot_path: Path) -> None:
@@ -197,70 +317,30 @@ def write_quality_plot(rows: list[dict[str, float | str]], plot_path: Path) -> N
     if not rows:
         raise ValueError("track has no samples to plot")
 
-    def _series(name: str, fallback: str = "") -> list[float]:
-        out: list[float] = []
-        for row in rows:
-            raw = row.get(name, row.get(fallback, 0))
-            try:
-                out.append(float(raw) if raw != "" else 0.0)
-            except (TypeError, ValueError):
-                out.append(0.0)
-        return out
-
-    # Prefer host timestamps when present; else sample index
-    times: list[float] = []
-    for idx, row in enumerate(rows):
-        host = str(row.get("host_ts_iso") or "")
-        if host:
-            times.append(float(idx))
-        else:
-            times.append(float(idx))
-    hdop = _series("hdop")
-    pdop = _series("pdop")
-    vdop = _series("vdop")
-    sats = _series("sats_used", "satellites")
-    visible = _series("sats_visible")
-    cn0 = _series("max_cn0_dbhz")
-    h_acc = _series("h_acc_m")
-    fix_ok = []
-    for row in rows:
-        raw = row.get("fix_ok")
-        if raw in (True, "True", "true", "1", 1):
-            fix_ok.append(1.0)
-        elif raw in (False, "False", "false", "0", 0):
-            fix_ok.append(0.0)
-        else:
-            fix_ok.append(0.0)
-
+    times, series = _quality_panel_data(rows)
     plot_path.parent.mkdir(parents=True, exist_ok=True)
     figure, axes = plt.subplots(3, 1, figsize=(9, 8), sharex=True)
     try:
-        axes[0].plot(times, hdop, label="HDOP")
-        if any(pdop):
-            axes[0].plot(times, pdop, label="PDOP", alpha=0.85)
-        if any(vdop):
-            axes[0].plot(times, vdop, label="VDOP", alpha=0.85)
-        axes[0].set_ylabel("DOP")
-        axes[0].legend(loc="upper right", fontsize=8)
-        axes[0].grid(True, alpha=0.3)
-        axes[0].set_title("GNSS quality")
-
-        axes[1].plot(times, sats, label="sats used")
-        if any(visible):
-            axes[1].plot(times, visible, label="sats visible", alpha=0.85)
-        if any(cn0):
-            axes[1].plot(times, cn0, label="max C/N0", alpha=0.7)
-        axes[1].set_ylabel("Sats / C/N0")
-        axes[1].legend(loc="upper right", fontsize=8)
-        axes[1].grid(True, alpha=0.3)
-
-        if any(h_acc):
-            axes[2].plot(times, h_acc, label="h_acc_m", color="C3")
-        axes[2].fill_between(times, 0, fix_ok, alpha=0.25, color="C2", label="fix_ok")
-        axes[2].set_ylabel("h_acc / fix")
-        axes[2].set_xlabel("Sample index")
-        axes[2].legend(loc="upper right", fontsize=8)
-        axes[2].grid(True, alpha=0.3)
+        _plot_quality_dop_panel(
+            axes[0],
+            times,
+            hdop=series["hdop"],
+            pdop=series["pdop"],
+            vdop=series["vdop"],
+        )
+        _plot_quality_sat_panel(
+            axes[1],
+            times,
+            sats=series["sats"],
+            visible=series["visible"],
+            cn0=series["cn0"],
+        )
+        _plot_quality_fix_panel(
+            axes[2],
+            times,
+            h_acc=series["h_acc"],
+            fix_ok=series["fix_ok"],
+        )
         figure.tight_layout()
         figure.savefig(plot_path, dpi=120, bbox_inches="tight")
     finally:

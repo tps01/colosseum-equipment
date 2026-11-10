@@ -441,6 +441,61 @@ class GenericGnss:
         self._raw_log.write(text if text.endswith("\n") else f"{text}\n")
         self._raw_log.flush()
 
+    def _try_ingest_gsv(self, line: str, now: float) -> bool:
+        sats = parse_gsv_sats(line)
+        if not sats:
+            return False
+        with self._state_lock:
+            for sat in sats:
+                self._gsv[(sat.constellation, sat.prn)] = (sat, now)
+            self._expire_sats(now)
+        self._note_sky_history()
+        return True
+
+    def _try_ingest_gsa(self, line: str, now: float) -> bool:
+        dop = parse_gsa(line)
+        if dop is None:
+            return False
+        with self._state_lock:
+            self._dop = dop
+            self._dop_recv_mono = now
+        return True
+
+    def _try_ingest_vtg(self, line: str, now: float) -> bool:
+        vel = parse_vtg(line)
+        if vel is None:
+            return False
+        with self._state_lock:
+            self._velocity = vel
+            self._velocity_recv_mono = now
+        return True
+
+    def _try_ingest_rmc(self, line: str, now: float) -> bool:
+        """Apply RMC; return True only when UTC stops further handlers (GGA may follow)."""
+        utc_iso, rmc_vel, _status = parse_rmc(line)
+        if utc_iso is None and rmc_vel is None:
+            return False
+        with self._state_lock:
+            if utc_iso:
+                self._utc_iso = utc_iso
+            if rmc_vel is not None:
+                self._velocity = rmc_vel
+                self._velocity_recv_mono = now
+        return utc_iso is not None
+
+    def _try_ingest_gga(self, line: str, now: float) -> bool:
+        fix = parse_gga(line)
+        if fix is None:
+            return False
+        with self._state_lock:
+            self._fix = fix
+            self._fix_recv_mono = now
+            if fix.utc_time and not self._utc_iso:
+                self._utc_iso = fix.utc_time
+        if fix.fix_quality > 0:
+            self._note_first_fix()
+        return True
+
     def _ingest_nmea_line(
         self,
         line: str,
@@ -453,46 +508,16 @@ class GenericGnss:
             self._log_raw_line(line)
         self._note_bytes()
         now = time.monotonic()
-        sats = parse_gsv_sats(line)
-        if sats:
-            with self._state_lock:
-                for sat in sats:
-                    self._gsv[(sat.constellation, sat.prn)] = (sat, now)
-                self._expire_sats(now)
-            self._note_sky_history()
-            return
-        dop = parse_gsa(line)
-        if dop is not None:
-            with self._state_lock:
-                self._dop = dop
-                self._dop_recv_mono = now
-            return
-        vel = parse_vtg(line)
-        if vel is not None:
-            with self._state_lock:
-                self._velocity = vel
-                self._velocity_recv_mono = now
-            return
-        utc_iso, rmc_vel, _status = parse_rmc(line)
-        if utc_iso is not None or rmc_vel is not None:
-            with self._state_lock:
-                if utc_iso:
-                    self._utc_iso = utc_iso
-                if rmc_vel is not None:
-                    self._velocity = rmc_vel
-                    self._velocity_recv_mono = now
-            if utc_iso is not None:
+        # Order matters: RMC may update velocity then fall through to GGA.
+        for handler in (
+            self._try_ingest_gsv,
+            self._try_ingest_gsa,
+            self._try_ingest_vtg,
+            self._try_ingest_rmc,
+            self._try_ingest_gga,
+        ):
+            if handler(line, now):
                 return
-        fix = parse_gga(line)
-        if fix is not None:
-            with self._state_lock:
-                self._fix = fix
-                self._fix_recv_mono = now
-                if fix.utc_time and not self._utc_iso:
-                    self._utc_iso = fix.utc_time
-            if fix.fix_quality > 0:
-                self._note_first_fix()
-            return
 
     def _ingest_line(self, line: str) -> None:
         self._ingest_nmea_line(line, record_raw=False, record_track=True)

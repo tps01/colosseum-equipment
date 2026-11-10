@@ -8,6 +8,7 @@ Manuals / reading list:
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -60,6 +61,16 @@ _logger = get_logger("colosseum.equipment")
 
 _NMEA_TOKENS = frozenset({"GGA", "RMC", "GSV", "GSA", "VTG"})
 _REPLY_WAIT_S = 0.5
+
+# Record-only SBF arms: block → (parse, logical_id, vendor_name).
+_SBF_RECORD_ARMS: dict[int, tuple[Callable[[bytes], dict[str, Any] | None], str, str]] = {
+    BLOCK_PVT_CARTESIAN: (parse_pvt_cartesian, LOGICAL_POSECEF, "PVTCartesian"),
+    BLOCK_RECEIVER_TIME: (parse_receiver_time, LOGICAL_TIME, "ReceiverTime"),
+    BLOCK_RECEIVER_STATUS: (parse_receiver_status, LOGICAL_STATUS, "ReceiverStatus"),
+    BLOCK_SAT_VISIBILITY: (parse_sat_visibility, LOGICAL_SAT, "SatVisibility"),
+    BLOCK_CHANNEL_STATUS: (parse_channel_status, LOGICAL_SAT, "ChannelStatus"),
+    BLOCK_MEAS_EPOCH: (parse_meas_epoch, LOGICAL_MEASX, "MeasEpoch"),
+}
 
 
 def _interval_token(rate_hz: float) -> str:
@@ -317,123 +328,91 @@ class SeptentrioGnss(GenericGnss):
                 self._log_raw_line(f"#SBF {block_number} {body.hex()}")
                 self._handle_sbf(block_number, body)
 
+    def _record_pvt_clock_fields(self, pvt: PvtGeodetic) -> None:
+        # Clock fields from PVT when no separate clock block.
+        if pvt.clock_bias_ms is None and pvt.clock_drift_ppm is None:
+            return
+        clock_fields: dict[str, Any] = {}
+        if pvt.clock_bias_ms is not None:
+            clock_fields["clkBias"] = pvt.clock_bias_ms
+        if pvt.clock_drift_ppm is not None:
+            clock_fields["clkDrift"] = pvt.clock_drift_ppm
+        self._record_message_epoch(
+            logical_id=LOGICAL_CLOCK,
+            vendor_message="PVTGeodetic",
+            fields=clock_fields,
+        )
+
+    def _handle_sbf_pvt(self, body: bytes) -> None:
+        pvt = parse_pvt_geodetic(body)
+        if pvt is None:
+            return
+        self._pvt = pvt
+        hdop = self._fix.hdop if self._fix is not None else 0.0
+        fix = NmeaFix(
+            latitude=pvt.latitude,
+            longitude=pvt.longitude,
+            altitude_m=pvt.altitude_m,
+            fix_quality=pvt.fix_quality,
+            satellites=pvt.satellites,
+            hdop=hdop,
+            utc_time=pvt.utc_time,
+        )
+        now = time.monotonic()
+        with self._state_lock:
+            if pvt.fix_quality > 0:
+                self._fix = fix
+                self._fix_recv_mono = now
+            if pvt.utc_time:
+                self._utc_iso = pvt.utc_time
+        if pvt.fix_quality > 0:
+            self._note_first_fix()
+        self._record_message_epoch(
+            logical_id=LOGICAL_PVT,
+            vendor_message="PVTGeodetic",
+            fields=pvt_geodetic_fields(pvt),
+        )
+        self._record_pvt_clock_fields(pvt)
+
+    def _handle_sbf_dop(self, body: bytes) -> None:
+        fields = parse_dop(body)
+        if fields is None:
+            return
+        now = time.monotonic()
+        with self._state_lock:
+            self._dop = NmeaDop(
+                fix_type="3d" if float(fields.get("pdop", 0)) > 0 else "none",
+                pdop=float(fields.get("pdop", 0)),
+                hdop=float(fields.get("hdop", 0)),
+                vdop=float(fields.get("vdop", 0)),
+                prns=(),
+            )
+            self._dop_recv_mono = now
+            self._gdop = float(fields.get("gdop", 0))
+        self._record_message_epoch(
+            logical_id=LOGICAL_DOP,
+            vendor_message="DOP",
+            fields=fields,
+        )
+
     def _handle_sbf(self, block_number: int, body: bytes) -> None:
         if block_number == BLOCK_PVT_GEODETIC:
-            pvt = parse_pvt_geodetic(body)
-            if pvt is None:
-                return
-            self._pvt = pvt
-            hdop = self._fix.hdop if self._fix is not None else 0.0
-            fix = NmeaFix(
-                latitude=pvt.latitude,
-                longitude=pvt.longitude,
-                altitude_m=pvt.altitude_m,
-                fix_quality=pvt.fix_quality,
-                satellites=pvt.satellites,
-                hdop=hdop,
-                utc_time=pvt.utc_time,
-            )
-            now = time.monotonic()
-            with self._state_lock:
-                if pvt.fix_quality > 0:
-                    self._fix = fix
-                    self._fix_recv_mono = now
-                if pvt.utc_time:
-                    self._utc_iso = pvt.utc_time
-            if pvt.fix_quality > 0:
-                self._note_first_fix()
-            self._record_message_epoch(
-                logical_id=LOGICAL_PVT,
-                vendor_message="PVTGeodetic",
-                fields=pvt_geodetic_fields(pvt),
-            )
-            # Clock fields from PVT when no separate clock block.
-            if pvt.clock_bias_ms is not None or pvt.clock_drift_ppm is not None:
-                clock_fields: dict[str, Any] = {}
-                if pvt.clock_bias_ms is not None:
-                    clock_fields["clkBias"] = pvt.clock_bias_ms
-                if pvt.clock_drift_ppm is not None:
-                    clock_fields["clkDrift"] = pvt.clock_drift_ppm
-                self._record_message_epoch(
-                    logical_id=LOGICAL_CLOCK,
-                    vendor_message="PVTGeodetic",
-                    fields=clock_fields,
-                )
+            self._handle_sbf_pvt(body)
             return
         if block_number == BLOCK_DOP:
-            fields = parse_dop(body)
-            if fields is None:
-                return
-            now = time.monotonic()
-            with self._state_lock:
-                self._dop = NmeaDop(
-                    fix_type="3d" if float(fields.get("pdop", 0)) > 0 else "none",
-                    pdop=float(fields.get("pdop", 0)),
-                    hdop=float(fields.get("hdop", 0)),
-                    vdop=float(fields.get("vdop", 0)),
-                    prns=(),
-                )
-                self._dop_recv_mono = now
-                self._gdop = float(fields.get("gdop", 0))
+            self._handle_sbf_dop(body)
+            return
+        arm = _SBF_RECORD_ARMS.get(block_number)
+        if arm is None:
+            return
+        parse, logical_id, vendor_name = arm
+        fields = parse(body)
+        if fields is not None:
             self._record_message_epoch(
-                logical_id=LOGICAL_DOP,
-                vendor_message="DOP",
+                logical_id=logical_id,
+                vendor_message=vendor_name,
                 fields=fields,
             )
-            return
-        if block_number == BLOCK_PVT_CARTESIAN:
-            fields = parse_pvt_cartesian(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_POSECEF,
-                    vendor_message="PVTCartesian",
-                    fields=fields,
-                )
-            return
-        if block_number == BLOCK_RECEIVER_TIME:
-            fields = parse_receiver_time(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_TIME,
-                    vendor_message="ReceiverTime",
-                    fields=fields,
-                )
-            return
-        if block_number == BLOCK_RECEIVER_STATUS:
-            fields = parse_receiver_status(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_STATUS,
-                    vendor_message="ReceiverStatus",
-                    fields=fields,
-                )
-            return
-        if block_number == BLOCK_SAT_VISIBILITY:
-            fields = parse_sat_visibility(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_SAT,
-                    vendor_message="SatVisibility",
-                    fields=fields,
-                )
-            return
-        if block_number == BLOCK_CHANNEL_STATUS:
-            fields = parse_channel_status(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_SAT,
-                    vendor_message="ChannelStatus",
-                    fields=fields,
-                )
-            return
-        if block_number == BLOCK_MEAS_EPOCH:
-            fields = parse_meas_epoch(body)
-            if fields is not None:
-                self._record_message_epoch(
-                    logical_id=LOGICAL_MEASX,
-                    vendor_message="MeasEpoch",
-                    fields=fields,
-                )
 
     def _on_listener_chunk(self, data: bytes) -> None:
         if data:

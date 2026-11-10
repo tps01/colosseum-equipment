@@ -43,7 +43,64 @@ def load_api(prefix: str) -> Any:  # noqa: ANN401
         ) from exc
 
 
-def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False) -> Session:
+def _configure_aa(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
+    checked(api.aa_configure(handle, api.AA_CONFIG_SPI_I2C), "aa_configure")
+    checked(api.aa_target_power(
+        handle, api.AA_TARGET_POWER_BOTH if power else api.AA_TARGET_POWER_NONE,
+    ), "aa_target_power")
+    checked(api.aa_i2c_bus_timeout(handle, timeout), "aa_i2c_bus_timeout")
+
+
+def _configure_ch(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
+    del timeout
+    checked(api.ch_target_power(handle, int(power)), "ch_target_power")
+
+
+def _configure_bg(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
+    del power
+    checked(api.bg_timeout(handle, timeout), "bg_timeout")
+    checked(api.bg_latency(handle, min(timeout, 50)), "bg_latency")
+
+
+def _power_off_aa(api: Any, handle: int) -> None:  # noqa: ANN401
+    checked(api.aa_target_power(handle, api.AA_TARGET_POWER_NONE), "aa_target_power")
+
+
+def _power_off_ch(api: Any, handle: int) -> None:  # noqa: ANN401
+    checked(api.ch_target_power(handle, 0), "ch_target_power")
+
+
+def _power_off_bg(api: Any, handle: int) -> None:  # noqa: ANN401
+    if checked(api.bg_features(handle), "bg_features") & api.BG_FEATURE_I2C:
+        checked(api.bg_target_power(handle, 0), "bg_target_power")
+
+
+_PREFIX_HOOKS = {
+    "aa": (_configure_aa, _power_off_aa),
+    "ch": (_configure_ch, _power_off_ch),
+    "bg": (_configure_bg, _power_off_bg),
+}
+
+
+def _open_prefixed_handle(prefix: str, resource: str) -> tuple[Any, int]:
+    api = load_api(prefix)
+    found, ports, ids = getattr(api, f"{prefix}_find_devices_ext")(256, 256)
+    checked(found, f"{prefix}_find_devices_ext")
+    if found > 256:
+        raise IoConnectionError("Too many USB adapters to enumerate safely")
+    matches = [int(p) for p, uid in zip(ports, ids, strict=True) if int(uid) == int(resource)]
+    if len(matches) != 1:
+        raise IoConnectionError(f"Total Phase serial {resource} was not uniquely found")
+    port = matches[0]
+    if port & 0x8000:
+        raise IoConnectionError(f"Total Phase serial {resource} is already in use")
+    handle = checked(getattr(api, f"{prefix}_open")(port), f"{prefix}_open")
+    if handle == 0:
+        raise IoConnectionError(f"{prefix}_open returned an invalid handle")
+    return api, handle
+
+
+def _session_params(prefix: str, config: dict[str, Any]) -> tuple[str, bool, int]:
     resource = str(config.get("resource") or "").replace("-", "")
     if not resource.isdecimal() or not 0 < int(resource) <= 0xFFFFFFFF:
         raise IoConfigError("Total Phase resource must be the numeric device serial number")
@@ -58,34 +115,17 @@ def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False
     timeout = int(config.get("timeout_ms", 500))
     if not 1 <= timeout <= 1000:
         raise IoConfigError("timeout_ms must be 1..1000")
+    return resource, power, timeout
+
+
+def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False) -> Session:
+    resource, power, timeout = _session_params(prefix, config)
+    configure, power_off = _PREFIX_HOOKS[prefix]
 
     def _open() -> tuple[Any, int]:
-        api = load_api(prefix)
-        found, ports, ids = getattr(api, f"{prefix}_find_devices_ext")(256, 256)
-        checked(found, f"{prefix}_find_devices_ext")
-        if found > 256:
-            raise IoConnectionError("Too many USB adapters to enumerate safely")
-        matches = [int(p) for p, uid in zip(ports, ids, strict=True) if int(uid) == int(resource)]
-        if len(matches) != 1:
-            raise IoConnectionError(f"Total Phase serial {resource} was not uniquely found")
-        port = matches[0]
-        if port & 0x8000:
-            raise IoConnectionError(f"Total Phase serial {resource} is already in use")
-        handle = checked(getattr(api, f"{prefix}_open")(port), f"{prefix}_open")
-        if handle == 0:
-            raise IoConnectionError(f"{prefix}_open returned an invalid handle")
+        api, handle = _open_prefixed_handle(prefix, resource)
         try:
-            if prefix == "aa":
-                checked(api.aa_configure(handle, api.AA_CONFIG_SPI_I2C), "aa_configure")
-                checked(api.aa_target_power(
-                    handle, api.AA_TARGET_POWER_BOTH if power else api.AA_TARGET_POWER_NONE,
-                ), "aa_target_power")
-                checked(api.aa_i2c_bus_timeout(handle, timeout), "aa_i2c_bus_timeout")
-            elif prefix == "ch":
-                checked(api.ch_target_power(handle, int(power)), "ch_target_power")
-            else:
-                checked(api.bg_timeout(handle, timeout), "bg_timeout")
-                checked(api.bg_latency(handle, min(timeout, 50)), "bg_latency")
+            configure(api, handle, power=power, timeout=timeout)
         except Exception:
             getattr(api, f"{prefix}_close")(handle)
             raise
@@ -93,12 +133,7 @@ def open_session(prefix: str, config: dict[str, Any], *, exclusive: bool = False
 
     def _close(api: Any, handle: int) -> None:  # noqa: ANN401
         try:
-            if prefix == "aa":
-                checked(api.aa_target_power(handle, api.AA_TARGET_POWER_NONE), "aa_target_power")
-            elif prefix == "ch":
-                checked(api.ch_target_power(handle, 0), "ch_target_power")
-            elif checked(api.bg_features(handle), "bg_features") & api.BG_FEATURE_I2C:
-                checked(api.bg_target_power(handle, 0), "bg_target_power")
+            power_off(api, handle)
         finally:
             checked(getattr(api, f"{prefix}_close")(handle), f"{prefix}_close")
 
