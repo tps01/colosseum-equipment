@@ -5,9 +5,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-_EXAMPLE = (
-    Path(__file__).resolve().parents[2] / "examples" / "test_power_rails.py"
-)
+_EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "test_power_rails.py"
 
 
 def test_config_env_selects_filename(monkeypatch) -> None:

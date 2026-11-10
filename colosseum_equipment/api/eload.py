@@ -15,7 +15,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def _inst(eload_id: EquipmentId) -> Any:
-    return get_cached_instrument('eload', require_int_id(eload_id, kind='eload'))
+    return get_cached_instrument("eload", require_int_id(eload_id, kind="eload"))
 
 
 @command

@@ -217,8 +217,7 @@ def voltage_level(voltage: float) -> int:
         if abs(voltage - expected) < 0.05:
             return level
     raise IoConnectionError(
-        f"unsupported NI-845x voltage {voltage}; "
-        f"use one of {sorted(VOLTAGE_TO_LEVEL)}",
+        f"unsupported NI-845x voltage {voltage}; use one of {sorted(VOLTAGE_TO_LEVEL)}",
     )
 
 

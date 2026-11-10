@@ -12,7 +12,7 @@ def check_input(data: bytes) -> None:
         parser = ubx.UbxStreamParser()
         events = []
         for offset in range(0, len(stream), width):
-            events.extend(parser.feed(stream[offset:offset + width]))
+            events.extend(parser.feed(stream[offset : offset + width]))
         return events
 
     width = 1 + (data[0] % 32 if data else 0)
@@ -29,9 +29,15 @@ def check_input(data: bytes) -> None:
 
     # All payload decoders must safely handle short and arbitrary byte strings.
     for decoder in (
-        ubx.parse_nav_pvt, ubx.parse_nav_dop, ubx.parse_nav_posecef,
-        ubx.parse_nav_status, ubx.parse_nav_timegps, ubx.parse_nav_clock,
-        ubx.parse_nav_sat, ubx.parse_rxm_rawx, ubx.parse_rxm_measx,
+        ubx.parse_nav_pvt,
+        ubx.parse_nav_dop,
+        ubx.parse_nav_posecef,
+        ubx.parse_nav_status,
+        ubx.parse_nav_timegps,
+        ubx.parse_nav_clock,
+        ubx.parse_nav_sat,
+        ubx.parse_rxm_rawx,
+        ubx.parse_rxm_measx,
     ):
         decoder(payload)
     nav = ubx.parse_nav_pvt(payload)

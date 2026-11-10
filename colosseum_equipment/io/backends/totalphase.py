@@ -45,9 +45,13 @@ def load_api(prefix: str) -> Any:  # noqa: ANN401
 
 def _configure_aa(api: Any, handle: int, *, power: bool, timeout: int) -> None:  # noqa: ANN401
     checked(api.aa_configure(handle, api.AA_CONFIG_SPI_I2C), "aa_configure")
-    checked(api.aa_target_power(
-        handle, api.AA_TARGET_POWER_BOTH if power else api.AA_TARGET_POWER_NONE,
-    ), "aa_target_power")
+    checked(
+        api.aa_target_power(
+            handle,
+            api.AA_TARGET_POWER_BOTH if power else api.AA_TARGET_POWER_NONE,
+        ),
+        "aa_target_power",
+    )
     checked(api.aa_i2c_bus_timeout(handle, timeout), "aa_i2c_bus_timeout")
 
 
@@ -171,16 +175,27 @@ class AardvarkI2cBackend(UsbBackend):
 
     def _apply(self) -> None:
         s = self.session()
-        self.actual_clock_hz = checked(
-            s.api.aa_i2c_bitrate(s.handle, self._clock // 1000), "aa_i2c_bitrate",
-        ) * 1000
-        checked(s.api.aa_i2c_pullup(
-            s.handle, s.api.AA_I2C_PULLUP_BOTH if self._pullup else s.api.AA_I2C_PULLUP_NONE,
-        ), "aa_i2c_pullup")
+        self.actual_clock_hz = (
+            checked(
+                s.api.aa_i2c_bitrate(s.handle, self._clock // 1000),
+                "aa_i2c_bitrate",
+            )
+            * 1000
+        )
+        checked(
+            s.api.aa_i2c_pullup(
+                s.handle,
+                s.api.AA_I2C_PULLUP_BOTH if self._pullup else s.api.AA_I2C_PULLUP_NONE,
+            ),
+            "aa_i2c_pullup",
+        )
         _logger.debug("Aardvark I2C actual clock %s Hz", self.actual_clock_hz)
 
     def configure(
-        self, *, address: int | None = None, address_bits: int | None = None,
+        self,
+        *,
+        address: int | None = None,
+        address_bits: int | None = None,
         clock_hz: int | None = None,
     ) -> dict[str, Any]:
         addr = self._address if address is None else address
@@ -213,7 +228,10 @@ class AardvarkI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             status, written = s.api.aa_i2c_write_ext(
-                s.handle, self._address, self._flags(), array("B", data),
+                s.handle,
+                self._address,
+                self._flags(),
+                array("B", data),
             )
             _i2c_status(status)
             count(written, len(data), "aa_i2c_write_ext")
@@ -224,7 +242,10 @@ class AardvarkI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             status, data, received = s.api.aa_i2c_read_ext(
-                s.handle, self._address, self._flags(), nbytes,
+                s.handle,
+                self._address,
+                self._flags(),
+                nbytes,
             )
             _i2c_status(status)
             count(received, nbytes, "aa_i2c_read_ext")
@@ -238,7 +259,11 @@ class AardvarkI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             status, written, data, received = s.api.aa_i2c_write_read(
-                s.handle, self._address, self._flags(), array("B", write_data), read_nbytes,
+                s.handle,
+                self._address,
+                self._flags(),
+                array("B", write_data),
+                read_nbytes,
             )
             _i2c_status(status)
             count(written, len(write_data), "aa_i2c_write_read write")
@@ -271,21 +296,38 @@ class TotalPhaseSpiBackend(UsbBackend):
     def _apply(self) -> None:
         s = self.session()
         if self._cheetah:
-            checked(s.api.ch_spi_configure(
-                s.handle, self._mode >> 1, self._mode & 1, s.api.CH_SPI_BITORDER_MSB, 0,
-            ), "ch_spi_configure")
+            checked(
+                s.api.ch_spi_configure(
+                    s.handle,
+                    self._mode >> 1,
+                    self._mode & 1,
+                    s.api.CH_SPI_BITORDER_MSB,
+                    0,
+                ),
+                "ch_spi_configure",
+            )
             rate = s.api.ch_spi_bitrate(s.handle, self._clock // 1000)
         else:
-            checked(s.api.aa_spi_configure(
-                s.handle, self._mode >> 1, self._mode & 1, s.api.AA_SPI_BITORDER_MSB,
-            ), "aa_spi_configure")
+            checked(
+                s.api.aa_spi_configure(
+                    s.handle,
+                    self._mode >> 1,
+                    self._mode & 1,
+                    s.api.AA_SPI_BITORDER_MSB,
+                ),
+                "aa_spi_configure",
+            )
             rate = s.api.aa_spi_bitrate(s.handle, self._clock // 1000)
         self.actual_clock_hz = checked(rate, "SPI bitrate") * 1000
         _logger.debug("Total Phase SPI actual clock %s Hz", self.actual_clock_hz)
 
     def configure(
-        self, *, clock_hz: int | None = None, mode: int | None = None,
-        chip_select: int | None = None, bits_per_word: int | None = None,
+        self,
+        *,
+        clock_hz: int | None = None,
+        mode: int | None = None,
+        chip_select: int | None = None,
+        bits_per_word: int | None = None,
     ) -> dict[str, Any]:
         clock = self._clock if clock_hz is None else clock_hz
         selected_mode = self._mode if mode is None else mode
@@ -319,8 +361,7 @@ class TotalPhaseSpiBackend(UsbBackend):
                 try:
                     checked(s.api.ch_spi_queue_oe(s.handle, 1), "ch_spi_queue_oe")
                     checked(s.api.ch_spi_queue_ss(s.handle, 1 << self._cs), "ch_spi_queue_ss")
-                    count(s.api.ch_spi_queue_array(s.handle, array("B", data)),
-                          len(data), "ch_spi_queue_array")
+                    count(s.api.ch_spi_queue_array(s.handle, array("B", data)), len(data), "ch_spi_queue_array")
                     checked(s.api.ch_spi_queue_ss(s.handle, 0), "ch_spi_queue_ss")
                     checked(s.api.ch_spi_queue_oe(s.handle, 0), "ch_spi_queue_oe")
                     received, reply = s.api.ch_spi_batch_shift(s.handle, len(data))

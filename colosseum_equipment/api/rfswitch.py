@@ -29,7 +29,9 @@ def set_path(*, rfswitch_id: EquipmentId, path: str, wait_settle_s: float | None
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting path on RF switch %s to %s", rfswitch_id, path)
-    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).set_path(path, wait_settle_s=wait_settle_s)
+    get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).set_path(
+        path, wait_settle_s=wait_settle_s,
+    )
 
 
 @command
@@ -58,7 +60,7 @@ def set_switch(
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting switch %s on RF switch %s to %s", switch, rfswitch_id, state)
-    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).set_switch(
+    get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).set_switch(
         switch,
         state,
         wait_settle_s=wait_settle_s,
@@ -80,7 +82,7 @@ def wait_settle(*, rfswitch_id: int, settle_s: float | None = None) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Waiting for RF switch %s to settle", rfswitch_id)
-    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).wait_settle(settle_s=settle_s)
+    get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).wait_settle(settle_s=settle_s)
 
 
 @command
@@ -97,7 +99,7 @@ def preset(*, rfswitch_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Presetting RF switch %s", rfswitch_id)
-    get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).preset()
+    get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).preset()
 
 
 @measurement
@@ -118,4 +120,4 @@ def measure_path(*, rfswitch_id: int, key: str) -> str:
     """
     _logger.info("Reading path from RF switch %s", rfswitch_id)
     _ = key
-    return str(get_cached_instrument('rfswitch', require_int_id(rfswitch_id, kind='rfswitch')).measure_path())
+    return str(get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).measure_path())

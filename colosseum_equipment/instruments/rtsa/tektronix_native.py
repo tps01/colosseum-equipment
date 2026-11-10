@@ -4,6 +4,7 @@
 RSA6100A/5100A programmer manual: shared spectrum subset only for RSA6114A.
 https://device.report/m/768f72f644270bfba95235a6ebec01ffc4c9b48f1a5d831974c45f533cdae63b
 """
+
 from __future__ import annotations
 
 import csv
@@ -27,8 +28,15 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _SPECTRUM = (
-    "set_center_freq", "set_span", "set_bandwidth", "set_continuous_run", "run", "wait_complete",
-    "abort", "acquire", "save_spectrum_trace_data",
+    "set_center_freq",
+    "set_span",
+    "set_bandwidth",
+    "set_continuous_run",
+    "run",
+    "wait_complete",
+    "abort",
+    "acquire",
+    "save_spectrum_trace_data",
 )
 
 
@@ -73,13 +81,22 @@ class TekNativeRtsa(GenericRtsa):
         values = list(struct.unpack(f"<{len(raw) // 4}f", raw))
         start = self._scpi.query_float("SENS:SPEC:FREQ:STAR?")
         stop = self._scpi.query_float("SENS:SPEC:FREQ:STOP?")
-        if any(not math.isfinite(v) for v in values) or not math.isfinite(start) or not math.isfinite(stop) or stop <= start:
+        if (
+            any(not math.isfinite(v) for v in values)
+            or not math.isfinite(start)
+            or not math.isfinite(stop)
+            or stop <= start
+        ):
             raise EquipmentResponseError("invalid spectrum values or frequency axis")
         artifact = resolve_artifact_path(path)
-        write_trace_csv(artifact, values, center_hz=(start + stop) / 2, span_hz=stop - start,
-                        include_frequency=True)
-        record_artifact(domain="equipment", command="save_spectrum_trace_data", key=f"rtsa_spec_trace_{trace}",
-                        path=artifact, value={"points": len(values), "units": "dBm", "run_id": self._run_id})
+        write_trace_csv(artifact, values, center_hz=(start + stop) / 2, span_hz=stop - start, include_frequency=True)
+        record_artifact(
+            domain="equipment",
+            command="save_spectrum_trace_data",
+            key=f"rtsa_spec_trace_{trace}",
+            path=artifact,
+            value={"points": len(values), "units": "dBm", "run_id": self._run_id},
+        )
         return artifact
 
     def _iq_header(self) -> tuple[int, list[str]]:
@@ -94,7 +111,12 @@ class TekNativeRtsa(GenericRtsa):
             if len(fields) != 9:
                 raise ValueError("expected nine IQ header fields")
             numeric = [float(v) for v in fields[:7]]
-            if not all(math.isfinite(v) for v in numeric) or numeric[1] <= 0 or numeric[2] < 1 or not numeric[2].is_integer():
+            if (
+                not all(math.isfinite(v) for v in numeric)
+                or numeric[1] <= 0
+                or numeric[2] < 1
+                or not numeric[2].is_integer()
+            ):
                 raise ValueError("invalid IQ sampling metadata")
             if int(fields[8]) >= 0:
                 raise EquipmentCapabilityError("FastFrame records require a separate segmented workflow")
@@ -121,11 +143,21 @@ class TekNativeRtsa(GenericRtsa):
         # Do not multiply by the Option 05 digital-output scaling factor: this
         # fetch returns floating-point IQ, not the external digital ADC stream.
         payload = struct.pack(f"<{count * 2}d", *values)
-        metadata = {"sample_rate_hz": float(fields[1]), "num_samples": count,
-                    "center_freq_hz": float(fields[3]), "acquisition_bandwidth_hz": float(fields[4]),
-                    "trigger_position_s": float(fields[6]), "time_stamp": fields[7], "record_id": record_id,
-                    "iq_dtype": "float64", "iq_byte_order": "little", "iq_units": "native floating IQ",
-                    "native_header": fields, "run_id": self._run_id, "format": export_format}
+        metadata = {
+            "sample_rate_hz": float(fields[1]),
+            "num_samples": count,
+            "center_freq_hz": float(fields[3]),
+            "acquisition_bandwidth_hz": float(fields[4]),
+            "trigger_position_s": float(fields[6]),
+            "time_stamp": fields[7],
+            "record_id": record_id,
+            "iq_dtype": "float64",
+            "iq_byte_order": "little",
+            "iq_units": "native floating IQ",
+            "native_header": fields,
+            "run_id": self._run_id,
+            "format": export_format,
+        }
         artifact = resolve_artifact_path(path)
         if export_format == "mat":
             write_iq_mat(artifact, payload, metadata=metadata)
@@ -133,8 +165,9 @@ class TekNativeRtsa(GenericRtsa):
             write_iq_tar(artifact, payload, metadata=metadata)
         else:
             write_iq_bin(artifact, payload)
-        record_artifact(domain="equipment", command="save_IQ_data", key=key or f"rtsa_iq_{record_id}",
-                        path=artifact, value=metadata)
+        record_artifact(
+            domain="equipment", command="save_IQ_data", key=key or f"rtsa_iq_{record_id}", path=artifact, value=metadata,
+        )
         return artifact
 
 

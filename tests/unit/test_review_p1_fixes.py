@@ -99,7 +99,10 @@ def test_serial_read_bytes_measurement_stores_hex(unit_runtime_context, tmp_path
     assert result == b"\x00\xffABC"
     unit_runtime_context.db.drain()
     row = unit_runtime_context.db.get_measurement(
-        "equipment", "serial.read_bytes", "raw_chunk", row_index=0,
+        "equipment",
+        "serial.read_bytes",
+        "raw_chunk",
+        row_index=0,
     )
     assert row is not None
     assert isinstance(row.value, dict)
@@ -135,7 +138,10 @@ def test_record_artifact_is_immediately_visible(unit_runtime_context, tmp_path: 
     )
     # No drain — synchronous insert must already be readable.
     row = unit_runtime_context.db.get_measurement(
-        "equipment", "save_trace_data", "visible", row_index=0,
+        "equipment",
+        "save_trace_data",
+        "visible",
+        row_index=0,
     )
     assert row is not None
     assert row.artifact_path == "trace.csv"

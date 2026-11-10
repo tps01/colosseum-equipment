@@ -118,9 +118,7 @@ def parse_pvt_geodetic(payload: bytes) -> PvtGeodetic | None:
         undulation_m=float(undulation) if undulation is not None and math.isfinite(undulation) else None,
         cog_deg=float(cog) if cog is not None and math.isfinite(cog) else None,
         clock_bias_ms=float(clock_bias) if clock_bias is not None and math.isfinite(clock_bias) else None,
-        clock_drift_ppm=(
-            float(clock_drift) if clock_drift is not None and math.isfinite(clock_drift) else None
-        ),
+        clock_drift_ppm=(float(clock_drift) if clock_drift is not None and math.isfinite(clock_drift) else None),
     )
 
 

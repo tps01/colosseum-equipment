@@ -3,6 +3,7 @@
 Manual: Keysight 53150-90014 Programming Guide, Measure subsystem table 4-2.
 Gate time, period and timing operations from universal counters do not apply.
 """
+
 from __future__ import annotations
 
 import math

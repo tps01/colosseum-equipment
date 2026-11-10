@@ -34,7 +34,9 @@ def configure(
     _logger.info("Configuring I2C %s address %s clock %s Hz", i2c_id, address, clock_hz)
     return dict(
         get_backend("i2c", i2c_id).configure(
-            address=address, address_bits=address_bits, clock_hz=clock_hz,
+            address=address,
+            address_bits=address_bits,
+            clock_hz=clock_hz,
         ),
     )
 

@@ -38,7 +38,9 @@ class FtdiFt232hDioBackend:
         self._mask = _line_mask(port_lines)
         self._direction = require_mask_value(direction, self._mask, what="direction")
         self._output = require_output_value(
-            initial_output, direction=self._direction, mask=self._mask,
+            initial_output,
+            direction=self._direction,
+            mask=self._mask,
         )
         self._gpio: Any = GpioMpsseController()
         try:
@@ -53,7 +55,9 @@ class FtdiFt232hDioBackend:
         self._direction = require_mask_value(direction, self._mask, what="direction")
         if initial is not None:
             self._output = require_output_value(
-                initial, direction=self._direction, mask=self._mask,
+                initial,
+                direction=self._direction,
+                mask=self._mask,
             )
         else:
             self._output &= self._direction

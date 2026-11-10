@@ -19,10 +19,9 @@ from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import (
     EquipmentCapabilityError,
     EquipmentResponseError,
-    EquipmentTimeoutError,
     StaleDataError,
 )
-from colosseum_equipment.instruments.gnss.generic import GenericGnss
+from colosseum_equipment.instruments.gnss.generic import _BinaryGnss
 from colosseum_equipment.instruments.gnss.nmea import NmeaDop, NmeaFix, NmeaVelocity
 from colosseum_equipment.instruments.gnss.messages import (
     LOGICAL_CLOCK,
@@ -123,7 +122,7 @@ def _series_from_model(model: str) -> str | None:
     "ublox-f9",
     "ublox-f10",
 )
-class UbloxGnss(GenericGnss):
+class UbloxGnss(_BinaryGnss):
     """Shared u-blox driver; series share NMEA + UBX NAV-PVT / NAV-DOP."""
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
@@ -135,17 +134,6 @@ class UbloxGnss(GenericGnss):
 
     def _wire_suffix(self) -> str:
         return ".ubx"
-
-    def _write_bytes(self, payload: bytes) -> None:
-        write_bytes = getattr(self._transport, "write_bytes", None)
-        if callable(write_bytes):
-            write_bytes(payload)
-            return
-        write_raw = getattr(self._transport, "write_raw", None)
-        if callable(write_raw):
-            write_raw(payload)
-            return
-        self._transport.write(payload.decode("latin-1"))
 
     def _enable_messages(self) -> None:
         """Enable messages for the active profile (default if unset)."""
@@ -272,12 +260,6 @@ class UbloxGnss(GenericGnss):
                 fields=fields,
             )
 
-    def _on_listener_chunk(self, data: bytes) -> None:
-        if data:
-            self._write_wire(data)
-            self._note_bytes()
-        self._apply_events(self._parser.feed(data))
-
     def _collect_ubx(
         self,
         *,
@@ -289,8 +271,7 @@ class UbloxGnss(GenericGnss):
         """Read transport for a short window and collect matching UBX messages."""
         if self._logging_active():
             raise RuntimeError(
-                "gnss save_config/load_config should not run while logging; "
-                "call stop_logging first",
+                "gnss save_config/load_config should not run while logging; call stop_logging first",
             )
         deadline = time.monotonic() + timeout_s
         found: list[tuple[int, int, bytes]] = []
@@ -328,13 +309,7 @@ class UbloxGnss(GenericGnss):
         return acks, naks
 
     def load_config(self, path: str) -> None:
-        resolved = Path(path)
-        if not resolved.is_file():
-            # Allow paths relative to CWD; also try resolve_artifact for run-dir files
-            alt = resolve_artifact_path(path)
-            resolved = alt if alt.is_file() else resolved
-        if not resolved.is_file():
-            raise FileNotFoundError(f"GNSS config not found: {path}")
+        resolved = self._resolve_config_path(path)
         frames, info = load_config_path(resolved)
         if not frames:
             raise EquipmentResponseError(f"no CFG messages found in {path}")
@@ -436,10 +411,7 @@ class UbloxGnss(GenericGnss):
         out_path = resolve_artifact_path(path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         mon_line = self._save_config_mon_ver()
-        if self._is_m8_family():
-            entries = self._save_config_poll_legacy()
-        else:
-            entries = self._save_config_poll_valget()
+        entries = self._save_config_poll_legacy() if self._is_m8_family() else self._save_config_poll_valget()
         return self._save_config_write(out_path, mon_line=mon_line, entries=entries)
 
     def set_message_rate(self, message: str, rate_hz: float) -> None:
@@ -459,19 +431,6 @@ class UbloxGnss(GenericGnss):
         if self._nav is not None and self._nav.fix_ok:
             return True
         return self._fix is not None and self._fix.fix_quality > 0
-
-    def _poll_transport(self, timeout_s: float) -> NmeaFix:
-        deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            chunk = self._read_bytes(512)
-            if chunk:
-                self._note_bytes()
-                self._apply_events(self._parser.feed(chunk))
-            if self._has_fix() and self._fix is not None:
-                return self._fix
-        raise EquipmentTimeoutError(
-            f"gnss model `{self._model}` did not report a fix within {timeout_s}s",
-        )
 
     def measure_h_acc_m(self, max_age_s: float = 5.0) -> float:
         self._ensure_stream(max_age_s)

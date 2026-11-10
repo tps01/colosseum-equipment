@@ -63,8 +63,7 @@ def _parse_ascii_waveform(raw: str, *, points_expected: int) -> list[float]:
         # accept a truncated block that lost the first sample to header stripping.
         if len(values) < points_expected:
             raise EquipmentResponseError(
-                f"waveform truncated: got {len(values)} points, preamble expected "
-                f"{points_expected}",
+                f"waveform truncated: got {len(values)} points, preamble expected {points_expected}",
             )
     return values
 
@@ -95,8 +94,7 @@ class GenericOscope(ScpiInstrumentMixin):
         ch = int(channel)
         if ch < 1 or ch > self._channel_count:
             raise EquipmentCapabilityError(
-                f"oscope model `{self._model}` does not support channel {ch} "
-                f"(valid 1..{self._channel_count})",
+                f"oscope model `{self._model}` does not support channel {ch} (valid 1..{self._channel_count})",
             )
         return ch
 

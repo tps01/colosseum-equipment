@@ -5,6 +5,7 @@ as separately addressable instruments. Envelope peak/gating is not implemented.
 Manuals: E4416/E4417 programming guide; N1911A/12A 9018-05085;
 U8480 Series programming guide; R&S NRPxxS(N) operating manual.
 """
+
 from __future__ import annotations
 
 import math
@@ -20,8 +21,13 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _AVERAGE = (
-    "set_frequency", "set_averaging_count", "acquire", "measure_power", "measure_power_dbm",
-    "measure_power_w", "measure_power_avg_dbm",
+    "set_frequency",
+    "set_averaging_count",
+    "acquire",
+    "measure_power",
+    "measure_power_dbm",
+    "measure_power_w",
+    "measure_power_avg_dbm",
 )
 
 
@@ -148,14 +154,6 @@ class RohdeNrpAverage(KeysightU848x):
         AveragePowerMeter.__init__(self, transport, config)
         self._scpi.write("SENS:FUNC 'POW:AVG'")
 
-    def set_averaging_count(self, count: int, *, channel: int = 1) -> None:
-        self._require_channel(channel)
-        if count < 1:
-            raise ValueError("averaging count must be positive")
-        self._scpi.write("SENS:AVER:COUN:AUTO OFF")
-        self._scpi.write(f"SENS:AVER:COUN {count}")
-        self._scpi.write("SENS:AVER:STAT ON")
-
     def acquire(self, *, channel: int = 1) -> None:
         self._require_channel(channel)
         self._scpi.write("INIT:CONT OFF")
@@ -174,8 +172,12 @@ class RohdeNrpAverage(KeysightU848x):
 
 @instrument_model("pwrmeter", "anritsu-ml2495a")
 @supported_commands(
-    "set_frequency", "set_averaging_count", "measure_power", "measure_power_dbm",
-    "measure_power_w", "measure_power_avg_dbm",
+    "set_frequency",
+    "set_averaging_count",
+    "measure_power",
+    "measure_power_dbm",
+    "measure_power_w",
+    "measure_power_avg_dbm",
 )
 class AnritsuMl2495a(GenericPwrMeter):
     """13000-00239J, ch.6/11: CW readout from physical input A.

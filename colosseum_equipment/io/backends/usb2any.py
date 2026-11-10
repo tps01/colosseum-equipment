@@ -53,7 +53,12 @@ def load_api(library: str) -> Any:  # noqa: ANN401
             "u2aI2C_RawWrite": [integer, ctypes.c_uint16, byte, buffer],
             "u2aI2C_RawRead": [integer, ctypes.c_uint16, byte, buffer],
             "u2aI2C_BlockWriteBlockRead": [
-                integer, ctypes.c_uint16, byte, buffer, byte, buffer,
+                integer,
+                ctypes.c_uint16,
+                byte,
+                buffer,
+                byte,
+                buffer,
             ],
             "u2aSPI_Control": [integer] * 7 + [byte, byte],
             "u2aSPI_WriteAndRead": [integer, byte, buffer],
@@ -135,13 +140,22 @@ class Usb2AnyI2cBackend(UsbBackend):
     def _apply(self) -> None:
         s = self.session()
         checked(s.api.u2aSetReceiveTimeout(self._timeout), "u2aSetReceiveTimeout")
-        checked(s.api.u2aI2C_Control(
-            s.handle, _I2C_SPEEDS[self._clock], int(self._bits == 10), int(self._pullup),
-        ), "u2aI2C_Control")
+        checked(
+            s.api.u2aI2C_Control(
+                s.handle,
+                _I2C_SPEEDS[self._clock],
+                int(self._bits == 10),
+                int(self._pullup),
+            ),
+            "u2aI2C_Control",
+        )
         self.actual_clock_hz = self._clock
 
     def configure(
-        self, *, address: int | None = None, address_bits: int | None = None,
+        self,
+        *,
+        address: int | None = None,
+        address_bits: int | None = None,
         clock_hz: int | None = None,
     ) -> dict[str, Any]:
         addr = self._address if address is None else address
@@ -172,8 +186,7 @@ class Usb2AnyI2cBackend(UsbBackend):
         with self.session().lock:
             self._apply()
             s = self.session()
-            checked(s.api.u2aI2C_RawWrite(s.handle, self._address, len(data), buf),
-                    "u2aI2C_RawWrite")
+            checked(s.api.u2aI2C_RawWrite(s.handle, self._address, len(data), buf), "u2aI2C_RawWrite")
 
     def read(self, nbytes: int) -> bytes:
         size(nbytes, 255)
@@ -181,8 +194,7 @@ class Usb2AnyI2cBackend(UsbBackend):
         with self.session().lock:
             self._apply()
             s = self.session()
-            count(s.api.u2aI2C_RawRead(s.handle, self._address, nbytes, buf),
-                  nbytes, "u2aI2C_RawRead")
+            count(s.api.u2aI2C_RawRead(s.handle, self._address, nbytes, buf), nbytes, "u2aI2C_RawRead")
         return bytes(buf[:nbytes])
 
     def write_read(self, write_data: bytes, read_nbytes: int) -> bytes:
@@ -194,9 +206,17 @@ class Usb2AnyI2cBackend(UsbBackend):
             self._apply()
             s = self.session()
             # SDK returns status zero, not a byte count, for this atomic operation.
-            checked(s.api.u2aI2C_BlockWriteBlockRead(
-                s.handle, self._address, len(write_data), wbuf, read_nbytes, rbuf,
-            ), "u2aI2C_BlockWriteBlockRead")
+            checked(
+                s.api.u2aI2C_BlockWriteBlockRead(
+                    s.handle,
+                    self._address,
+                    len(write_data),
+                    wbuf,
+                    read_nbytes,
+                    rbuf,
+                ),
+                "u2aI2C_BlockWriteBlockRead",
+            )
         return bytes(rbuf[:read_nbytes])
 
 
@@ -204,8 +224,7 @@ class Usb2AnySpiBackend(UsbBackend):
     def __init__(self, config: dict[str, Any]) -> None:
         self._clock = int(config.get("clock_hz", 1_000_000))
         self._mode = int(config.get("mode", 0))
-        self._validate(self._clock, self._mode, int(config.get("chip_select", 0)),
-                       int(config.get("bits_per_word", 8)))
+        self._validate(self._clock, self._mode, int(config.get("chip_select", 0)), int(config.get("bits_per_word", 8)))
         self._timeout = int(config.get("timeout_ms", 25))
         self._session = open_session(config)
         try:
@@ -227,21 +246,39 @@ class Usb2AnySpiBackend(UsbBackend):
         checked(s.api.u2aSetReceiveTimeout(self._timeout), "u2aSetReceiveTimeout")
         # TI's phase enum is inverted relative to conventional CPHA. Packet CS,
         # active low, MSB first, 8-bit words; only the dedicated CS is exposed.
-        checked(s.api.u2aSPI_Control(
-            s.handle, 1 - (self._mode & 1), self._mode >> 1, 1, 0, 1, 1,
-            divider >> 8, divider & 0xFF,
-        ), "u2aSPI_Control")
+        checked(
+            s.api.u2aSPI_Control(
+                s.handle,
+                1 - (self._mode & 1),
+                self._mode >> 1,
+                1,
+                0,
+                1,
+                1,
+                divider >> 8,
+                divider & 0xFF,
+            ),
+            "u2aSPI_Control",
+        )
         self.actual_clock_hz = _SPI_SOURCE_HZ / divider
         _logger.debug("USB2ANY SPI actual clock %s Hz", self.actual_clock_hz)
 
     def configure(
-        self, *, clock_hz: int | None = None, mode: int | None = None,
-        chip_select: int | None = None, bits_per_word: int | None = None,
+        self,
+        *,
+        clock_hz: int | None = None,
+        mode: int | None = None,
+        chip_select: int | None = None,
+        bits_per_word: int | None = None,
     ) -> dict[str, Any]:
         clock = self._clock if clock_hz is None else clock_hz
         selected_mode = self._mode if mode is None else mode
-        self._validate(clock, selected_mode, 0 if chip_select is None else chip_select,
-                       8 if bits_per_word is None else bits_per_word)
+        self._validate(
+            clock,
+            selected_mode,
+            0 if chip_select is None else chip_select,
+            8 if bits_per_word is None else bits_per_word,
+        )
         with self.session().lock:
             self._clock, self._mode = clock, selected_mode
             self._apply()
@@ -262,6 +299,5 @@ class Usb2AnySpiBackend(UsbBackend):
             self._apply()
             s = self.session()
             if data:
-                count(s.api.u2aSPI_WriteAndRead(s.handle, len(data), buf),
-                      len(data), "u2aSPI_WriteAndRead")
-        return bytes(buf[:len(data)])
+                count(s.api.u2aSPI_WriteAndRead(s.handle, len(data), buf), len(data), "u2aSPI_WriteAndRead")
+        return bytes(buf[: len(data)])

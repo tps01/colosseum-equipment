@@ -312,10 +312,7 @@ VENDOR_PROFILE_SPECS: dict[str, dict[str, tuple[MessageEnableSpec, ...]]] = {
 
 # Backward-compatible name-only sketch (derived from specs).
 VENDOR_PROFILE_SKETCH: dict[str, dict[str, tuple[str, ...]]] = {
-    vendor: {
-        profile: tuple(spec.name for spec in specs)
-        for profile, specs in profiles.items()
-    }
+    vendor: {profile: tuple(spec.name for spec in specs) for profile, specs in profiles.items()}
     for vendor, profiles in VENDOR_PROFILE_SPECS.items()
 }
 

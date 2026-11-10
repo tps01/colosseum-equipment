@@ -47,7 +47,11 @@ class AnalyzerBackend:
                 raise
 
     def _validate_configure(
-        self, config: dict[str, Any], model: str, selected: str, rate: int,
+        self,
+        config: dict[str, Any],
+        model: str,
+        selected: str,
+        rate: int,
     ) -> None:
         duration = float(config.get("max_duration_s", 60))
         rules: list[tuple[bool, str]] = [
@@ -91,7 +95,10 @@ class AnalyzerBackend:
                 raise IoConfigError(message)
 
     def configure(
-        self, *, protocol: str | None = None, mode: int | None = None,
+        self,
+        *,
+        protocol: str | None = None,
+        mode: int | None = None,
         sample_rate_hz: int | None = None,
     ) -> dict[str, Any]:
         with self._lock:
@@ -100,8 +107,7 @@ class AnalyzerBackend:
             if self._thread is not None and self._thread.is_alive():
                 raise IoConfigError("stop the capture before configuring the analyzer")
             config = dict(self._config)
-            for name, value in (("protocol", protocol), ("mode", mode),
-                                ("sample_rate_hz", sample_rate_hz)):
+            for name, value in (("protocol", protocol), ("mode", mode), ("sample_rate_hz", sample_rate_hz)):
                 if value is not None:
                     config[name] = value
             model = str(config.get("model") or "")
@@ -121,6 +127,7 @@ class AnalyzerBackend:
                 "resource": str(self._config.get("resource") or ""),
                 "driver": "sim" if self._sim else "totalphase-beagle",
             }
+
     def _validate_hardware(self) -> None:
         assert self._session is not None
         s = self._session
@@ -128,16 +135,18 @@ class AnalyzerBackend:
         usb = bool(features & s.api.BG_FEATURE_USB)
         hs = bool(features & s.api.BG_FEATURE_USB_HS)
         ss = bool(features & s.api.BG_FEATURE_USB_SS)
-        if ((self._model == "usb-12" and (not usb or hs or ss))
-                or (self._model == "usb-480" and (not usb or not hs or ss))
-                or (self._model == "i2c-spi" and (usb or not features & s.api.BG_FEATURE_I2C
-                                                   or not features & s.api.BG_FEATURE_SPI))):
+        if (
+            (self._model == "usb-12" and (not usb or hs or ss))
+            or (self._model == "usb-480" and (not usb or not hs or ss))
+            or (
+                self._model == "i2c-spi"
+                and (usb or not features & s.api.BG_FEATURE_I2C or not features & s.api.BG_FEATURE_SPI)
+            )
+        ):
             raise IoConfigError("connected Beagle features do not match configured model")
         if self._model == "i2c-spi":
-            checked(s.api.bg_target_power(s.handle, int(bool(self._config.get("target_power")))),
-                    "bg_target_power")
-            checked(s.api.bg_i2c_pullup(s.handle, int(bool(self._config.get("pullup", False)))),
-                    "bg_i2c_pullup")
+            checked(s.api.bg_target_power(s.handle, int(bool(self._config.get("target_power")))), "bg_target_power")
+            checked(s.api.bg_i2c_pullup(s.handle, int(bool(self._config.get("pullup", False)))), "bg_i2c_pullup")
         elif self._model == "usb-480":
             usb_features = checked(s.api.bg_usb_features(s.handle), "bg_usb_features")
             if usb_features & s.api.BG_USB_FEATURE_IV_MON_LITE:
@@ -150,11 +159,20 @@ class AnalyzerBackend:
         s = self._session
         if self._protocol == "spi":
             mode = int(self._config.get("mode", 0))
-            edge = (s.api.BG_SPI_SCK_SAMPLING_EDGE_FALLING
-                    if (mode >> 1) ^ (mode & 1) else s.api.BG_SPI_SCK_SAMPLING_EDGE_RISING)
-            checked(s.api.bg_spi_configure(
-                s.handle, s.api.BG_SPI_SS_ACTIVE_LOW, edge, s.api.BG_SPI_BITORDER_MSB,
-            ), "bg_spi_configure")
+            edge = (
+                s.api.BG_SPI_SCK_SAMPLING_EDGE_FALLING
+                if (mode >> 1) ^ (mode & 1)
+                else s.api.BG_SPI_SCK_SAMPLING_EDGE_RISING
+            )
+            checked(
+                s.api.bg_spi_configure(
+                    s.handle,
+                    s.api.BG_SPI_SS_ACTIVE_LOW,
+                    edge,
+                    s.api.BG_SPI_BITORDER_MSB,
+                ),
+                "bg_spi_configure",
+            )
         rate = checked(s.api.bg_samplerate(s.handle, self._rate // 1000), "bg_samplerate")
         if rate <= 0:
             raise IoConnectionError("bg_samplerate returned an invalid sample rate")
@@ -201,8 +219,7 @@ class AnalyzerBackend:
             try:
                 handle.write(json.dumps({"type": "metadata", **self._summary}) + "\n")
                 handle.flush()
-                self._thread = Thread(target=self._capture, args=(handle,), daemon=True,
-                                      name="colosseum-beagle")
+                self._thread = Thread(target=self._capture, args=(handle,), daemon=True, name="colosseum-beagle")
                 self._thread.start()
             except Exception as exc:
                 self._thread = None
@@ -223,15 +240,14 @@ class AnalyzerBackend:
         limit = 65535
         if self._protocol == "usb":
             n, status, events, sop, duration, offset, data = s.api.bg_usb2_read(s.handle, limit)
-            payload: dict[str, Any] = {"data": bytes(data[:min(n, limit)]).hex(), "events": events}
+            payload: dict[str, Any] = {"data": bytes(data[: min(n, limit)]).hex(), "events": events}
         elif self._protocol == "spi":
             n, status, sop, duration, offset, mosi, miso = s.api.bg_spi_read(s.handle, limit, limit)
-            payload = {"mosi": bytes(mosi[:min(n, limit)]).hex(),
-                       "miso": bytes(miso[:min(n, limit)]).hex()}
+            payload = {"mosi": bytes(mosi[: min(n, limit)]).hex(), "miso": bytes(miso[: min(n, limit)]).hex()}
         else:
             n, status, sop, duration, offset, data = s.api.bg_i2c_read(s.handle, limit)
             # Preserve the ninth ACK/NACK bit rather than coercing u16 words to bytes.
-            payload = {"words": list(data[:min(n, limit)])}
+            payload = {"words": list(data[: min(n, limit)])}
         checked(n, "Beagle read")
         if n == 0 and (status & ~s.api.BG_READ_TIMEOUT) == 0 and not payload.get("events"):
             return None
@@ -241,10 +257,18 @@ class AnalyzerBackend:
                 part in name for part in ("OVERFLOW", "LOST", "SHORT_BUFFER", "MIDDLE", "PARTIAL")
             ):
                 loss_mask |= int(getattr(s.api, name))
-        return {"type": "packet", "protocol": self._protocol, "count": n,
-                "status": int(status), "time_sop_ticks": sop, "duration_ticks": duration,
-                "data_offset_ticks": offset, "loss": bool(status & loss_mask) or n > limit,
-                "flagged": bool(status & ~s.api.BG_READ_TIMEOUT), **payload}
+        return {
+            "type": "packet",
+            "protocol": self._protocol,
+            "count": n,
+            "status": int(status),
+            "time_sop_ticks": sop,
+            "duration_ticks": duration,
+            "data_offset_ticks": offset,
+            "loss": bool(status & loss_mask) or n > limit,
+            "flagged": bool(status & ~s.api.BG_READ_TIMEOUT),
+            **payload,
+        }
 
     def _capture_pre_read_stop(self, *, started: float, max_duration: float) -> str | None:
         if monotonic() - started >= max_duration:
@@ -274,7 +298,12 @@ class AnalyzerBackend:
         return None
 
     def _capture_write_packet(
-        self, handle: TextIO, packet: dict[str, Any], *, max_bytes: int, max_records: int,
+        self,
+        handle: TextIO,
+        packet: dict[str, Any],
+        *,
+        max_bytes: int,
+        max_records: int,
     ) -> str | None:
         encoded = json.dumps(packet) + "\n"
         encoded_size = len(encoded.encode("utf-8"))
@@ -333,7 +362,10 @@ class AnalyzerBackend:
                         break
                     continue
                 if self._capture_write_packet(
-                    handle, packet, max_bytes=max_bytes, max_records=max_records,
+                    handle,
+                    packet,
+                    max_bytes=max_bytes,
+                    max_records=max_records,
                 ):
                     break
         except Exception as exc:  # noqa: BLE001 -- propagate worker failures through stop()
@@ -381,9 +413,7 @@ class AnalyzerBackend:
         with self._lock:
             summary = dict(self._summary)
             summary["running"] = self.is_running()
-            summary["path"] = summary.get("path") or (
-                str(self._path) if self._path is not None else ""
-            )
+            summary["path"] = summary.get("path") or (str(self._path) if self._path is not None else "")
             return summary
 
     def close(self) -> None:

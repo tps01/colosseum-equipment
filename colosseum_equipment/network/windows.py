@@ -80,7 +80,9 @@ def _adapter_interface_name(adapter: _IP_ADAPTER_ADDRESSES) -> str:
 
 
 def _unicast_ipv4_binding(
-    addr_struct: _IP_ADAPTER_UNICAST_ADDRESS, *, interface: str,
+    addr_struct: _IP_ADAPTER_UNICAST_ADDRESS,
+    *,
+    interface: str,
 ) -> IPv4NetworkBinding | None:
     sa = addr_struct.Address
     if sa.iSockaddrLength < 28 or not sa.lpSockaddr:
@@ -104,7 +106,9 @@ def _unicast_ipv4_binding(
 
 
 def _walk_unicast_bindings(
-    adapter: _IP_ADAPTER_ADDRESSES, *, interface: str,
+    adapter: _IP_ADAPTER_ADDRESSES,
+    *,
+    interface: str,
 ) -> list[IPv4NetworkBinding]:
     bindings: list[IPv4NetworkBinding] = []
     unicast_ptr = adapter.FirstUnicastAddress

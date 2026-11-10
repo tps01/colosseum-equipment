@@ -112,9 +112,12 @@ def _is_hard_serial_open_error(exc: BaseException) -> bool:
     text = f"{type(exc).__name__}: {exc}".upper()
     if "TMO" in text or "TIMEOUT" in text:
         return False
-    return any(marker in text for marker in _HARD_OPEN_MARKERS) or (
-        "PARITY" in text and "ASRL" in text
-    ) or ("FRAMING" in text and "ASRL" in text) or ("OVERRUN" in text and "ASRL" in text)
+    return (
+        any(marker in text for marker in _HARD_OPEN_MARKERS)
+        or ("PARITY" in text and "ASRL" in text)
+        or ("FRAMING" in text and "ASRL" in text)
+        or ("OVERRUN" in text and "ASRL" in text)
+    )
 
 
 def _configure_asrl_cr_termchar(inst: object) -> None:
@@ -407,7 +410,10 @@ def _record_assignment(
     item_id = state.next_id.get(kind, 0) + 1
     state.next_id[kind] = item_id
     port_out, driver, baud_out = _serial_row_fields(
-        model=model, resource=resource, port=port, baudrate=baudrate,
+        model=model,
+        resource=resource,
+        port=port,
+        baudrate=baudrate,
     )
     if kind == "gnss":
         port_out = port_out or _port_from_asrl(resource)
@@ -503,7 +509,10 @@ def _open_visa_resource(manager: object, resource: str, timeout: float) -> _Visa
 
 
 def _open_visa_asrl_probe(
-    manager: object, resource: str, baud: int, seconds: float,
+    manager: object,
+    resource: str,
+    baud: int,
+    seconds: float,
 ) -> _VisaProbeAdapter:
     open_timeout_ms = max(1, int(seconds * 1000))
     inst = _open_visa_resource(manager, resource, seconds)
@@ -522,7 +531,10 @@ def _open_visa_asrl_probe(
 
 
 def _open_com_probe(
-    open_serial_fn: OpenSerial, com_port: str, baud: int, timeout: float,
+    open_serial_fn: OpenSerial,
+    com_port: str,
+    baud: int,
+    timeout: float,
 ) -> _PyserialProbeAdapter:
     ser = open_serial_fn(com_port, baud, timeout)
     adapter = _PyserialProbeAdapter(ser)
@@ -559,11 +571,15 @@ def _open_serial_baud(
 
 
 def _probe_idn_on_serial(
-    probe: object, baud: int, last_errors: list[str],
+    probe: object,
+    baud: int,
+    last_errors: list[str],
 ) -> _SerialHit | None:
     try:
         idn, bare, device_address = probe_identity(
-            probe, asrl=True, log_kind="autoconfig",
+            probe,
+            asrl=True,
+            log_kind="autoconfig",
         )
     except Exception as exc:
         last_errors.append(f"baud={baud} idn:{exc}")
@@ -578,12 +594,17 @@ def _probe_idn_on_serial(
     if kind not in KIND_SECTIONS:
         return None
     return _SerialHit(
-        kind=kind, model=model, idn=idn_label, device_address=device_address,
+        kind=kind,
+        model=model,
+        idn=idn_label,
+        device_address=device_address,
     )
 
 
 def _probe_qm_on_serial(
-    probe: object, baud: int, last_errors: list[str],
+    probe: object,
+    baud: int,
+    last_errors: list[str],
 ) -> _SerialHit | None:
     try:
         qm_model = query_qm_model(probe)
@@ -596,7 +617,9 @@ def _probe_qm_on_serial(
 
 
 def _probe_gnss_on_serial(
-    probe: object, baud: int, last_errors: list[str],
+    probe: object,
+    baud: int,
+    last_errors: list[str],
 ) -> _SerialHit | None:
     from colosseum_equipment.instruments.gnss.probe import probe_gnss_model
 
@@ -698,7 +721,9 @@ def _probe_serial_candidate(
 
 
 def _identify_visa_instr(
-    manager: object, resource: str, timeout: float,
+    manager: object,
+    resource: str,
+    timeout: float,
 ) -> tuple[str | None, bool] | str:
     """Open → identify a non-ASRL VISA resource.
 
@@ -828,7 +853,10 @@ def _probe_leftover_com_ports(
             continue
 
         def _open_for_port(
-            baud: int, *, p: str = port, opener: OpenSerial = open_serial_fn,
+            baud: int,
+            *,
+            p: str = port,
+            opener: OpenSerial = open_serial_fn,
         ) -> _PyserialProbeAdapter:
             return _open_com_probe(opener, p, baud, timeout)
 
@@ -852,9 +880,7 @@ def _finalize_discovery(
     unresolved: Sequence[str],
 ) -> AutoconfigResult:
     if not state.assignments:
-        summary = (
-            ", ".join(f"{skip.resource} ({skip.reason})" for skip in state.skipped) or "none"
-        )
+        summary = ", ".join(f"{skip.resource} ({skip.reason})" for skip in state.skipped) or "none"
         raise ConfigError(f"no classifiable instruments found; skipped: {summary}")
     result = AutoconfigResult(
         raw=_build_raw_config(state.assignments),

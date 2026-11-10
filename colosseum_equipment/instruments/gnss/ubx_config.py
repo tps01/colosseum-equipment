@@ -62,9 +62,7 @@ def parse_ucenter_txt(text: str) -> UcenterFileInfo:
         msg_id = body[1]
         length = body[2] | (body[3] << 8)
         payload = body[4 : 4 + length]
-        if name.upper() in {"MON-VER", "MONVER"} or (
-            msg_class == CLS_MON and msg_id == ID_MON_VER
-        ):
+        if name.upper() in {"MON-VER", "MONVER"} or (msg_class == CLS_MON and msg_id == ID_MON_VER):
             mon_ver_hex = body.hex(" ").upper()
             continue
         if msg_class != CLS_CFG:

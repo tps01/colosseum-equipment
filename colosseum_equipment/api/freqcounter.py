@@ -15,7 +15,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def _inst(freqcounter_id: EquipmentId) -> Any:
-    return get_cached_instrument('freqcounter', require_int_id(freqcounter_id, kind='freqcounter'))
+    return get_cached_instrument("freqcounter", require_int_id(freqcounter_id, kind="freqcounter"))
 
 
 @command

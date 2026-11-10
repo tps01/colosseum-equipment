@@ -49,9 +49,15 @@ def test_io_onewire_sim_search_select_read(
     roms = col.io.onewire.search(onewire_id=1, key="roms")
     assert roms == ["28001122334455CE"]
     col.io.onewire.select(onewire_id=1, rom=roms[0])
-    assert col.io.onewire.write_read(
-        onewire_id=1, write_data=b"\xBE", read_nbytes=2, key="scratch",
-    ) == b"\xaa\xbb"
+    assert (
+        col.io.onewire.write_read(
+            onewire_id=1,
+            write_data=b"\xbe",
+            read_nbytes=2,
+            key="scratch",
+        )
+        == b"\xaa\xbb"
+    )
 
 
 def test_io_onewire_sim_required_presence_raises(

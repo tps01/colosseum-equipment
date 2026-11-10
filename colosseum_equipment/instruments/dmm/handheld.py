@@ -5,6 +5,7 @@ https://sigrok.org/wiki/Agilent_U12xxx_series
 https://mjoldfield.com/atelier/2011/06/agilent-macos.html
 Requires the optical USB cable and explicit serial baudrate in configuration.
 """
+
 from __future__ import annotations
 
 import math
@@ -18,9 +19,9 @@ from colosseum_equipment.instruments._capabilities import supported_commands
 from colosseum_equipment.instruments.dmm.bench import BenchDmm
 from colosseum_equipment.instruments.registry import instrument_model
 
-
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
+
 
 @instrument_model("dmm", "keysight-u1252a", "keysight-u1272a")
 @supported_commands("fetch", "get_function")
@@ -34,17 +35,28 @@ class KeysightHandheld(BenchDmm):
 
     def get_function(self, *, channel: int = 1) -> str:
         self._require_channel(channel)
-        return self._scpi.query("CONF?").strip('\"')
+        return self._scpi.query("CONF?").strip('"')
 
 
 # Native 189 display units from RemoteSpec89_18X; QM is not in base units.
 _LEGACY_UNITS = {
-    "OHMS": (1.0, "OHM"), "KOHMS": (1e3, "OHM"), "MOHMS": (1e6, "OHM"),
-    "NS": (1e-9, "SIE"), "FARADS": (1.0, "F"), "NFARADS": (1e-9, "F"),
-    "UFARADS": (1e-6, "F"), "MFARADS": (1e-3, "F"),
-    "HZ": (1.0, "HZ"), "KHZ": (1e3, "HZ"), "MHZ": (1e6, "HZ"),
-    "DEGC": (1.0, "CEL"), "DEGF": (1.0, "FAR"), "DBM": (1.0, "DBM"),
-    "DBV": (1.0, "DBV"), "%": (1.0, "PCT"), "MS": (1e-3, "S"),
+    "OHMS": (1.0, "OHM"),
+    "KOHMS": (1e3, "OHM"),
+    "MOHMS": (1e6, "OHM"),
+    "NS": (1e-9, "SIE"),
+    "FARADS": (1.0, "F"),
+    "NFARADS": (1e-9, "F"),
+    "UFARADS": (1e-6, "F"),
+    "MFARADS": (1e-3, "F"),
+    "HZ": (1.0, "HZ"),
+    "KHZ": (1e3, "HZ"),
+    "MHZ": (1e6, "HZ"),
+    "DEGC": (1.0, "CEL"),
+    "DEGF": (1.0, "FAR"),
+    "DBM": (1.0, "DBM"),
+    "DBV": (1.0, "DBV"),
+    "%": (1.0, "PCT"),
+    "MS": (1e-3, "S"),
 }
 for _suffix in ("AC", "DC", "AC+DC"):
     for _prefix, _factor in (("", 1.0), ("M", 1e-3), ("U", 1e-6)):
@@ -71,7 +83,9 @@ class FlukeHandheld(GenericDMM):
             raise EquipmentCapabilityError(f"use driver=serial and baudrate={expected} with the IR adapter")
         if int(config.get("channels") or config.get("channel_count") or 1) != 1:
             raise EquipmentCapabilityError("Fluke handheld exposes one primary display")
-        if not callable(getattr(transport, "write_bytes", None)) or not callable(getattr(transport, "read_until", None)):
+        if not callable(getattr(transport, "write_bytes", None)) or not callable(
+            getattr(transport, "read_until", None),
+        ):
             raise EquipmentCapabilityError("Fluke QM requires a raw serial transport")
         super().__init__(transport, config)
 

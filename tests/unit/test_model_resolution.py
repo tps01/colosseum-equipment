@@ -134,9 +134,14 @@ def test_serial_visa_non_lambda_idn_falls_back_to_star() -> None:
 def test_sim_http_and_relay_skip_the_probe() -> None:
     probe = _Probe("LAMBDA,GEN30-50")
     assert resolve_instrument_model("psu", {"driver": "sim"}, probe) == "generic"
-    assert resolve_instrument_model(
-        "relay", {"resource": "http://192.168.1.2"}, probe,
-    ) == "generic"
+    assert (
+        resolve_instrument_model(
+            "relay",
+            {"resource": "http://192.168.1.2"},
+            probe,
+        )
+        == "generic"
+    )
     assert probe.queries == []
 
 

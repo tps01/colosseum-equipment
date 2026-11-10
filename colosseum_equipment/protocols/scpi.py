@@ -41,7 +41,7 @@ def parse_definite_length_block(data: bytes) -> bytes:
         raise EquipmentResponseError(
             f"truncated SCPI block: expected {length} payload bytes, got {len(data) - start}",
         )
-    if data[start + length:].strip(b"\r\n"):
+    if data[start + length :].strip(b"\r\n"):
         raise EquipmentResponseError("unexpected trailing data after SCPI block")
     return data[start : start + length]
 
@@ -56,8 +56,7 @@ def _raise_empty_binary_block(buffer: bytearray) -> None:
                 payload_len = int(digits)
                 got = max(0, len(buffer) - header_len)
                 raise EquipmentResponseError(
-                    "truncated SCPI block: expected "
-                    f"{payload_len} payload bytes, got {got}",
+                    f"truncated SCPI block: expected {payload_len} payload bytes, got {got}",
                 )
         raise EquipmentResponseError("truncated or invalid SCPI block length")
     raise EquipmentResponseError("malformed or indefinite SCPI block header")
@@ -72,9 +71,7 @@ def _extend_binary_block(buffer: bytearray, read_raw: object) -> None:
 
 def _binary_block_header_step(buffer: bytearray) -> str:
     """Return ``done`` or ``need_more`` for the definite-length header FSM."""
-    if not buffer.startswith(b"#") or (
-        len(buffer) >= 2 and buffer[1:2] not in b"123456789"
-    ):
+    if not buffer.startswith(b"#") or (len(buffer) >= 2 and buffer[1:2] not in b"123456789"):
         return "done"
     if len(buffer) < 2:
         return "need_more"

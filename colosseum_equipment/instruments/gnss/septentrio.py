@@ -16,8 +16,7 @@ from colosseum.logging import get_logger
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
-from colosseum_equipment.exceptions import EquipmentTimeoutError
-from colosseum_equipment.instruments.gnss.generic import GenericGnss
+from colosseum_equipment.instruments.gnss.generic import _BinaryGnss
 from colosseum_equipment.instruments.gnss.messages import (
     LOGICAL_CLOCK,
     LOGICAL_DOP,
@@ -105,7 +104,7 @@ def _interval_token(rate_hz: float) -> str:
     "septentrio-mosaic-x5",
     "septentrio-mosaic-h",
 )
-class SeptentrioGnss(GenericGnss):
+class SeptentrioGnss(_BinaryGnss):
     """Shared Septentrio driver; RxTools ASCII + SBF evidence epochs."""
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
@@ -133,17 +132,6 @@ class SeptentrioGnss(GenericGnss):
 
     def _wire_suffix(self) -> str:
         return ".sbf"
-
-    def _write_bytes(self, payload: bytes) -> None:
-        write_bytes = getattr(self._transport, "write_bytes", None)
-        if callable(write_bytes):
-            write_bytes(payload)
-            return
-        write_raw = getattr(self._transport, "write_raw", None)
-        if callable(write_raw):
-            write_raw(payload)
-            return
-        self._transport.write(payload.decode("latin-1"))
 
     def _send_command(self, command: str) -> None:
         text = command if command.endswith("\n") else f"{command}\n"
@@ -198,12 +186,7 @@ class SeptentrioGnss(GenericGnss):
         self._enable_streams()
 
     def load_config(self, path: str) -> None:
-        resolved = Path(path)
-        if not resolved.is_file():
-            alt = resolve_artifact_path(path)
-            resolved = alt if alt.is_file() else resolved
-        if not resolved.is_file():
-            raise FileNotFoundError(f"GNSS config not found: {path}")
+        resolved = self._resolve_config_path(path)
         for raw_line in resolved.read_text(encoding="utf-8").splitlines():
             line = raw_line.split("#", 1)[0].strip()
             if not line:
@@ -414,29 +397,10 @@ class SeptentrioGnss(GenericGnss):
                 fields=fields,
             )
 
-    def _on_listener_chunk(self, data: bytes) -> None:
-        if data:
-            self._write_wire(data)
-            self._note_bytes()
-        self._apply_events(self._parser.feed(data))
-
     def _has_fix(self) -> bool:
         if self._pvt is not None and self._pvt.fix_quality > 0:
             return True
         return self._fix is not None and self._fix.fix_quality > 0
-
-    def _poll_transport(self, timeout_s: float) -> NmeaFix:
-        deadline = time.monotonic() + timeout_s
-        while time.monotonic() < deadline:
-            chunk = self._read_bytes(512)
-            if chunk:
-                self._note_bytes()
-                self._apply_events(self._parser.feed(chunk))
-            if self._has_fix() and self._fix is not None:
-                return self._fix
-        raise EquipmentTimeoutError(
-            f"gnss model `{self._model}` did not report a fix within {timeout_s}s",
-        )
 
     def cold_start(self) -> None:
         self._send_command("exeResetReceiver,Cold,none")

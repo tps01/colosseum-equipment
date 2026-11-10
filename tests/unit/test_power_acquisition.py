@@ -1,4 +1,5 @@
 """Fresh power capture and explicit refusal of an average-only sensor."""
+
 from __future__ import annotations
 
 import pytest

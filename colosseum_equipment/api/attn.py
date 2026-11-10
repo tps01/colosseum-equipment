@@ -43,7 +43,7 @@ def set_attenuation_db(
         channel,
         attenuation_db,
     )
-    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).set_attenuation_db(
+    get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).set_attenuation_db(
         attenuation_db,
         channel=channel,
         settle_s=settle_s,
@@ -65,7 +65,7 @@ def wait_settle(*, attn_id: int, settle_s: float | None = None) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Waiting for attenuator %s to settle", attn_id)
-    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).wait_settle(settle_s=settle_s)
+    get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).wait_settle(settle_s=settle_s)
 
 
 @command
@@ -82,7 +82,7 @@ def preset(*, attn_id: EquipmentId) -> None:
     :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Presetting attenuator %s", attn_id)
-    get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).preset()
+    get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).preset()
 
 
 @measurement
@@ -106,12 +106,14 @@ def measure_attenuation_db(*, attn_id: int, key: str, channel: int | None = None
     _logger.info("Reading attenuation from attenuator %s channel %s", attn_id, channel)
     _ = key
     return float(
-        get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_attenuation_db(channel=channel),
+        get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_attenuation_db(channel=channel),
     )
 
 
 verify_attenuation_db = tolerance_verifier(
-    "measure_attenuation_db", name="verify_attenuation_db", unit="dB",
+    "measure_attenuation_db",
+    name="verify_attenuation_db",
+    unit="dB",
 )
 
 
@@ -132,7 +134,7 @@ def measure_min_attenuation_db(*, attn_id: int, key: str) -> float:
     """
     _logger.info("Reading minimum attenuation from attenuator %s", attn_id)
     _ = key
-    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_min_attenuation_db())
+    return float(get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_min_attenuation_db())
 
 
 @measurement
@@ -152,7 +154,7 @@ def measure_max_attenuation_db(*, attn_id: int, key: str) -> float:
     """
     _logger.info("Reading maximum attenuation from attenuator %s", attn_id)
     _ = key
-    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_max_attenuation_db())
+    return float(get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_max_attenuation_db())
 
 
 @measurement
@@ -172,4 +174,4 @@ def measure_step_db(*, attn_id: int, key: str) -> float:
     """
     _logger.info("Reading attenuation step from attenuator %s", attn_id)
     _ = key
-    return float(get_cached_instrument('attn', require_int_id(attn_id, kind='attn')).measure_step_db())
+    return float(get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).measure_step_db())

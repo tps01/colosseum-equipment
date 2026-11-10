@@ -3,6 +3,7 @@
 Manual: https://helpfiles.keysight.com/csg/e5052b/welcome.htm
 Uses PN1 measurement; PDAT is phase-noise data independent of display math.
 """
+
 from __future__ import annotations
 
 import bisect
@@ -24,8 +25,17 @@ if TYPE_CHECKING:
 
 @instrument_model("phasenoiseanalyzer", "keysight-e5052b")
 @supported_commands(
-    "preset", "set_offset_start_hz", "set_offset_stop_hz", "set_averaging_count", "set_xcorr_count",
-    "initiate", "wait_opc", "wait_complete", "abort", "save_trace_data", "measure_spot_noise_dbc_hz",
+    "preset",
+    "set_offset_start_hz",
+    "set_offset_stop_hz",
+    "set_averaging_count",
+    "set_xcorr_count",
+    "initiate",
+    "wait_opc",
+    "wait_complete",
+    "abort",
+    "save_trace_data",
+    "measure_spot_noise_dbc_hz",
 )
 class KeysightE5052B(GenericPhaseNoiseAnalyzer):
     """Carrier detection is instrument-managed; spot interpolation is linear in log(offset)."""
@@ -95,8 +105,16 @@ class KeysightE5052B(GenericPhaseNoiseAnalyzer):
         artifact = resolve_artifact_path(path)
         write_phase_noise_trace_csv(artifact, axis, values)
         record_artifact(
-            domain="equipment", command="save_trace_data", key="phasenoise_trace_1", path=artifact,
-            value={"trace": 1, "points": len(values), "sweep_id": self._sweep_id,
-                   "offset_start_hz": axis[0], "offset_stop_hz": axis[-1]},
+            domain="equipment",
+            command="save_trace_data",
+            key="phasenoise_trace_1",
+            path=artifact,
+            value={
+                "trace": 1,
+                "points": len(values),
+                "sweep_id": self._sweep_id,
+                "offset_start_hz": axis[0],
+                "offset_stop_hz": axis[-1],
+            },
         )
         return artifact

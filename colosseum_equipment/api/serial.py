@@ -14,7 +14,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def _channel(serial_id: EquipmentId) -> SerialChannel:
-    return SerialChannel(get_transport('serial', require_int_id(serial_id, kind='serial')))
+    return SerialChannel(get_transport("serial", require_int_id(serial_id, kind="serial")))
 
 
 @command

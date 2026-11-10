@@ -20,7 +20,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def _inst(asg_id: EquipmentId) -> Any:
-    return get_cached_instrument('asg', require_int_id(asg_id, kind='asg'))
+    return get_cached_instrument("asg", require_int_id(asg_id, kind="asg"))
 
 
 @command

@@ -11,7 +11,10 @@ if TYPE_CHECKING:
 
 
 def build_instrument(
-    kind: str, equipment_id: int, config: dict[str, Any], transport: Transport,
+    kind: str,
+    equipment_id: int,
+    config: dict[str, Any],
+    transport: Transport,
 ) -> object:
     model = str(config.get("model", "generic")).lower()
     try:

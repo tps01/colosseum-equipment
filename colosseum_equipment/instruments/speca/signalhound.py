@@ -3,6 +3,7 @@
 Manual: https://signalhound.com/sigdownloads/Spike/docs/html/scpi_programming.html
 The resource is the Spike SCPI TCP socket, not a direct USB/device session.
 """
+
 from __future__ import annotations
 
 import math
@@ -20,9 +21,21 @@ if TYPE_CHECKING:
 
 @instrument_model("speca", "signalhound-bb60c-spike", "signalhound-sm200c-spike")
 @supported_commands(
-    "set_center_frequency", "set_start_frequency", "set_stop_frequency", "set_span", "set_rbw",
-    "set_vbw", "set_sweep_time", "set_reference_level", "set_continuous_sweep", "arm_sweep", "single_sweep", "wait_complete",
-    "save_trace_data", "measure_bw", "measure_trace_power_at_frequency",
+    "set_center_frequency",
+    "set_start_frequency",
+    "set_stop_frequency",
+    "set_span",
+    "set_rbw",
+    "set_vbw",
+    "set_sweep_time",
+    "set_reference_level",
+    "set_continuous_sweep",
+    "arm_sweep",
+    "single_sweep",
+    "wait_complete",
+    "save_trace_data",
+    "measure_bw",
+    "measure_trace_power_at_frequency",
 )
 class SignalHoundSpike(GenericSpecA):
     """Swept SA mode and write traces only; no min/max-pair ambiguity."""
@@ -39,7 +52,10 @@ class SignalHoundSpike(GenericSpecA):
         self._scpi.write(f"SENS:POW:RF:RLEV {level_dbm}DBM")
 
     def _fetch_trace(
-        self, trace: int, *, include_frequency: bool = True,
+        self,
+        trace: int,
+        *,
+        include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
         if not 1 <= trace <= 6:
             raise ValueError("Spike trace index must be 1..6")

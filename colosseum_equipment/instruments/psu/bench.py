@@ -3,6 +3,7 @@
 Manuals: E364xA 9018-01165; HMP Series 1178.6833.02;
 N6705A User's Guide N6705-90001 (SCPI channel lists).
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -16,9 +17,18 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _BASIC = (
-    "set_voltage", "set_current_limit", "set_output", "get_voltage", "get_current_limit",
-    "get_output", "measure_voltage", "measure_current", "measure_power_w", "measure_output_state",
-    "wait_for_voltage", "wait_for_current",
+    "set_voltage",
+    "set_current_limit",
+    "set_output",
+    "get_voltage",
+    "get_current_limit",
+    "get_output",
+    "measure_voltage",
+    "measure_current",
+    "measure_power_w",
+    "measure_output_state",
+    "wait_for_voltage",
+    "wait_for_current",
 )
 
 
@@ -70,7 +80,12 @@ class RohdeHmp4040(GenericPSU):
 
 @instrument_model("psu", "keysight-n6705a")
 @supported_commands(
-    *_BASIC, "set_ovp_v", "get_ovp_v", "toggle_ocp", "get_ocp_enabled", "clear_protection",
+    *_BASIC,
+    "set_ovp_v",
+    "get_ovp_v",
+    "toggle_ocp",
+    "get_ocp_enabled",
+    "clear_protection",
     "set_slew_voltage",
 )
 class KeysightN6705A(GenericPSU):

@@ -23,7 +23,8 @@ def supported_commands(*names: str) -> Callable[[_ModelT], _ModelT]:
             @wraps(method)
             def call(self: object, *_args: object, **_kwargs: object) -> NoReturn:
                 unsupported(
-                    str(getattr(self, "_model", cls.__name__)), method.__name__,
+                    str(getattr(self, "_model", cls.__name__)),
+                    method.__name__,
                     detail="outside documented command subset",
                 )
 

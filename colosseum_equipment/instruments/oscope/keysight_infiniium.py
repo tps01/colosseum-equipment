@@ -3,6 +3,7 @@
 Manuals: Keysight Infiniium Programmer's Guide 9018-07141 / 90000 series
 9018-06975. Basic analog voltage acquisition; segmented acquisition excluded.
 """
+
 from __future__ import annotations
 
 import math
@@ -18,12 +19,35 @@ from colosseum_equipment.instruments.registry import instrument_model
 
 @instrument_model("oscope", "keysight-dsaz204a", "keysight-dsa71254")
 @supported_commands(
-    "set_channel_display", "get_channel_display", "set_channel_scale_v", "get_channel_scale_v",
-    "set_channel_offset_v", "get_channel_offset_v", "set_timebase_scale", "set_timebase_position_s",
-    "set_trigger_mode", "set_trigger_source", "set_trigger_level_v", "set_trigger_slope",
-    "run", "stop", "abort", "arm_single", "single_acquire", "get_acquire_state", "wait_complete",
-    "acquire", "measure_vpp", "measure_vmax", "measure_vmin", "measure_vrms", "measure_frequency_hz",
-    "measure_period_s", "measure_rise_time_s", "measure_fall_time_s", "save_waveform",
+    "set_channel_display",
+    "get_channel_display",
+    "set_channel_scale_v",
+    "get_channel_scale_v",
+    "set_channel_offset_v",
+    "get_channel_offset_v",
+    "set_timebase_scale",
+    "set_timebase_position_s",
+    "set_trigger_mode",
+    "set_trigger_source",
+    "set_trigger_level_v",
+    "set_trigger_slope",
+    "run",
+    "stop",
+    "abort",
+    "arm_single",
+    "single_acquire",
+    "get_acquire_state",
+    "wait_complete",
+    "acquire",
+    "measure_vpp",
+    "measure_vmax",
+    "measure_vmin",
+    "measure_vrms",
+    "measure_frequency_hz",
+    "measure_period_s",
+    "measure_rise_time_s",
+    "measure_fall_time_s",
+    "save_waveform",
 )
 class KeysightInfiniium(GenericOscope):
     """ADER is read-to-clear, so completion is latched for repeated fetches."""
@@ -154,5 +178,12 @@ class KeysightInfiniium(GenericOscope):
         if not all(math.isfinite(v) for v in (xinc, xorigin, yinc, yorigin)) or xinc <= 0:
             raise EquipmentResponseError("invalid waveform scaling or time axis")
         values = [value * yinc + yorigin for value in struct.unpack(f"<{count}h", raw)]
-        return values, {"channel": ch, "points": count, "xinc_s": xinc, "xorigin_s": xorigin,
-                        "capture_id": self._capture_id, "vertical_units": "V", "encoding": "WORD LSBF"}
+        return values, {
+            "channel": ch,
+            "points": count,
+            "xinc_s": xinc,
+            "xorigin_s": xorigin,
+            "capture_id": self._capture_id,
+            "vertical_units": "V",
+            "encoding": "WORD LSBF",
+        }

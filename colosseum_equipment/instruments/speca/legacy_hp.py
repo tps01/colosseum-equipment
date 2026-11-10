@@ -3,6 +3,7 @@
 https://xdevs.com/doc/HP_Agilent_Keysight/08590-90235%208590E%2090L%2091C%20Prog%20Guide%20Jun95.pdf
 https://device.report/m/c5c95d946588cdeb3355d41046c5b04816a1471e37ed488e5cf27039a500b320
 """
+
 from __future__ import annotations
 
 import math
@@ -14,8 +15,15 @@ from colosseum_equipment.instruments.speca.generic import GenericSpecA
 from colosseum_equipment.instruments.speca.trace_csv import parse_trace_amplitudes
 
 _CONTROLS = (
-    "set_center_frequency", "set_start_frequency", "set_stop_frequency", "set_span", "set_rbw",
-    "set_vbw", "set_reference_level", "set_marker_frequency", "peak_search",
+    "set_center_frequency",
+    "set_start_frequency",
+    "set_stop_frequency",
+    "set_span",
+    "set_rbw",
+    "set_vbw",
+    "set_reference_level",
+    "set_marker_frequency",
+    "peak_search",
     "measure_marker_frequency",
 )
 
@@ -80,7 +88,10 @@ class Hp8563ec(HpLegacySpectrum):
     """
 
     def _fetch_trace(
-        self, trace: int, *, include_frequency: bool = True,
+        self,
+        trace: int,
+        *,
+        include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
         if trace != 1:
             raise EquipmentCapabilityError("only trace A (trace 1) is implemented")
@@ -97,4 +108,3 @@ class Hp8563ec(HpLegacySpectrum):
             raise EquipmentResponseError("frequency export requires a positive span")
         axis = [start + i * (stop - start) / 600 for i in range(601)]
         return (axis if include_frequency else [float(i) for i in range(601)]), values
-

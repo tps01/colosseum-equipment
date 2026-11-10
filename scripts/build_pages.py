@@ -23,50 +23,50 @@ TITLE = "Colosseum Equipment"
 SLUG = "equipment"
 # (rst_stem, import_module, displayed col.* path)
 API_MODULES: tuple[tuple[str, str, str], ...] = (
-    ('asg', 'colosseum_equipment.api.asg', 'col.equipment.asg'),
-    ('attn', 'colosseum_equipment.api.attn', 'col.equipment.attn'),
-    ('dmm', 'colosseum_equipment.api.dmm', 'col.equipment.dmm'),
-    ('eload', 'colosseum_equipment.api.eload', 'col.equipment.eload'),
-    ('freqcounter', 'colosseum_equipment.api.freqcounter', 'col.equipment.freqcounter'),
-    ('gnss', 'colosseum_equipment.api.gnss', 'col.equipment.gnss'),
-    ('oscope', 'colosseum_equipment.api.oscope', 'col.equipment.oscope'),
-    ('phasenoiseanalyzer', 'colosseum_equipment.api.phasenoiseanalyzer', 'col.equipment.phasenoiseanalyzer'),
-    ('psu', 'colosseum_equipment.api.psu', 'col.equipment.psu'),
-    ('pwrmeter', 'colosseum_equipment.api.pwrmeter', 'col.equipment.pwrmeter'),
-    ('relay', 'colosseum_equipment.api.relay', 'col.equipment.relay'),
-    ('rfswitch', 'colosseum_equipment.api.rfswitch', 'col.equipment.rfswitch'),
-    ('rtsa', 'colosseum_equipment.api.rtsa', 'col.equipment.rtsa'),
-    ('scpi', 'colosseum_equipment.api.scpi', 'col.equipment.scpi'),
-    ('serial', 'colosseum_equipment.api.serial', 'col.equipment.serial'),
-    ('tools', 'colosseum_equipment.api.tools', 'col.equipment.tools'),
-    ('speca', 'colosseum_equipment.api.speca', 'col.equipment.speca'),
-    ('vna', 'colosseum_equipment.api.vna', 'col.equipment.vna'),
-    ('vsg', 'colosseum_equipment.api.vsg', 'col.equipment.vsg'),
-    ('analyzer', 'colosseum_equipment.io.api.analyzer', 'col.io.analyzer'),
-    ('dio', 'colosseum_equipment.io.api.dio', 'col.io.dio'),
-    ('i2c', 'colosseum_equipment.io.api.i2c', 'col.io.i2c'),
-    ('spi', 'colosseum_equipment.io.api.spi', 'col.io.spi'),
+    ("asg", "colosseum_equipment.api.asg", "col.equipment.asg"),
+    ("attn", "colosseum_equipment.api.attn", "col.equipment.attn"),
+    ("dmm", "colosseum_equipment.api.dmm", "col.equipment.dmm"),
+    ("eload", "colosseum_equipment.api.eload", "col.equipment.eload"),
+    ("freqcounter", "colosseum_equipment.api.freqcounter", "col.equipment.freqcounter"),
+    ("gnss", "colosseum_equipment.api.gnss", "col.equipment.gnss"),
+    ("oscope", "colosseum_equipment.api.oscope", "col.equipment.oscope"),
+    ("phasenoiseanalyzer", "colosseum_equipment.api.phasenoiseanalyzer", "col.equipment.phasenoiseanalyzer"),
+    ("psu", "colosseum_equipment.api.psu", "col.equipment.psu"),
+    ("pwrmeter", "colosseum_equipment.api.pwrmeter", "col.equipment.pwrmeter"),
+    ("relay", "colosseum_equipment.api.relay", "col.equipment.relay"),
+    ("rfswitch", "colosseum_equipment.api.rfswitch", "col.equipment.rfswitch"),
+    ("rtsa", "colosseum_equipment.api.rtsa", "col.equipment.rtsa"),
+    ("scpi", "colosseum_equipment.api.scpi", "col.equipment.scpi"),
+    ("serial", "colosseum_equipment.api.serial", "col.equipment.serial"),
+    ("tools", "colosseum_equipment.api.tools", "col.equipment.tools"),
+    ("speca", "colosseum_equipment.api.speca", "col.equipment.speca"),
+    ("vna", "colosseum_equipment.api.vna", "col.equipment.vna"),
+    ("vsg", "colosseum_equipment.api.vsg", "col.equipment.vsg"),
+    ("analyzer", "colosseum_equipment.io.api.analyzer", "col.io.analyzer"),
+    ("dio", "colosseum_equipment.io.api.dio", "col.io.dio"),
+    ("i2c", "colosseum_equipment.io.api.i2c", "col.io.i2c"),
+    ("spi", "colosseum_equipment.io.api.spi", "col.io.spi"),
 )
 # Optional single-function pages: (rst_stem, "module:qualname", displayed name)
 API_FUNCTIONS: tuple[tuple[str, str, str], ...] = (
-    ('autoconfig', 'colosseum_equipment.api._autoconfig.autoconfig', 'col.equipment.autoconfig'),
+    ("autoconfig", "colosseum_equipment.api._autoconfig.autoconfig", "col.equipment.autoconfig"),
     (
-        'load_calibration',
-        'colosseum_equipment.api.calibration.load_calibration',
-        'col.equipment.load_calibration',
+        "load_calibration",
+        "colosseum_equipment.api.calibration.load_calibration",
+        "col.equipment.load_calibration",
     ),
 )
 GUIDES: tuple[str, ...] = (
     "docs/documentation-history.md",
     "docs/sphinx/source/guides/api_conventions.rst",
-    'docs/sphinx/source/guides/getting_started.rst',
-    'docs/sphinx/source/guides/transports_support.rst',
-    'docs/sphinx/source/guides/rf_equipment.rst',
-    'docs/sphinx/source/guides/io_digital.rst',
-    'docs/sphinx/source/guides/serial_ports.rst',
-    'docs/sphinx/source/guides/instrument_workflows.rst',
-    'docs/equipment/masks.md',
-    'docs/equipment/driver-documentation-requests.md',
+    "docs/sphinx/source/guides/getting_started.rst",
+    "docs/sphinx/source/guides/transports_support.rst",
+    "docs/sphinx/source/guides/rf_equipment.rst",
+    "docs/sphinx/source/guides/io_digital.rst",
+    "docs/sphinx/source/guides/serial_ports.rst",
+    "docs/sphinx/source/guides/instrument_workflows.rst",
+    "docs/equipment/masks.md",
+    "docs/equipment/driver-documentation-requests.md",
 )
 CONFIG_REFERENCE: tuple[str, ...] = (
     "docs/sphinx/source/config_reference.rst",
@@ -233,14 +233,21 @@ def _write_index(
     config_names: list[str],
 ) -> None:
     lines = [
-        TITLE, "=" * len(TITLE), "",
-        'Control bench instruments and serial/SCPI connections with ``col.equipment.*``, and bus adapters with ``col.io.*``.', "",
-        f"`Colosseum core documentation hub <{HUB_URL}>`__", "",
+        TITLE,
+        "=" * len(TITLE),
+        "",
+        "Control bench instruments and serial/SCPI connections with ``col.equipment.*``, and bus adapters with ``col.io.*``.",
+        "",
+        f"`Colosseum core documentation hub <{HUB_URL}>`__",
+        "",
     ]
-    development = [name for name in guide_names if name.endswith(("/development", "/driver-documentation-requests", "/documentation-history"))]
+    development = [
+        name
+        for name in guide_names
+        if name.endswith(("/development", "/driver-documentation-requests", "/documentation-history"))
+    ]
     learning = [name for name in guide_names if name not in development]
-    learning.sort(key=lambda name: (not name.endswith("/getting_started"),
-                                    name.endswith("/api_conventions")))
+    learning.sort(key=lambda name: (not name.endswith("/getting_started"), name.endswith("/api_conventions")))
     sections = (
         ("Overview", ["readme"]),
         ("Getting started and workflows", learning),
@@ -250,8 +257,7 @@ def _write_index(
     )
     for caption, names in sections:
         if names:
-            lines.extend([".. toctree::", "   :maxdepth: 1", "   :titlesonly:",
-                          f"   :caption: {caption}", ""])
+            lines.extend([".. toctree::", "   :maxdepth: 1", "   :titlesonly:", f"   :caption: {caption}", ""])
             lines.extend(f"   {name}" for name in names)
             lines.append("")
     (SITE_SOURCE / "index.rst").write_text("\n".join(lines), encoding="utf-8")
@@ -324,8 +330,12 @@ def _stage_config_reference() -> list[str]:
 def stage() -> None:
     # Fail when a root API export has no reference/navigation entry.
     api_source = REPO_ROOT / "colosseum_equipment" / "api" / "__init__.py"
-    exported = next(ast.literal_eval(node.value) for node in ast.parse(api_source.read_text(encoding="utf-8-sig")).body
-                    if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets))
+    exported = next(
+        ast.literal_eval(node.value)
+        for node in ast.parse(api_source.read_text(encoding="utf-8-sig")).body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets)
+    )
     documented = {path.rsplit(".", 1)[-1] for _, _, path in (*API_MODULES, *API_FUNCTIONS)}
     missing = set(exported) - documented
     if missing:
@@ -357,7 +367,9 @@ def stage() -> None:
         text = src.read_text(encoding="utf-8")
         if src.suffix == ".md":
             text = subprocess.check_output(
-                ["pandoc", "-f", "markdown", "-t", "rst"], input=text, text=True,
+                ["pandoc", "-f", "markdown", "-t", "rst"],
+                input=text,
+                text=True,
                 encoding="utf-8",
             )
         text = _sanitize_guide(text)

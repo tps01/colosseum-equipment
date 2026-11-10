@@ -24,7 +24,8 @@ if TYPE_CHECKING:
 
 
 @instrument_model(
-    "rtsa", "generic",
+    "rtsa",
+    "generic",
     extra_optional=("center_freq", "span", "rbw", "sample_rate_hz", "reference_level_dbm"),
 )
 @best_effort_commands

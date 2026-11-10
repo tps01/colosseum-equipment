@@ -39,7 +39,10 @@ def get_backend(kind: str, resource_id: int) -> Any:  # noqa: ANN401
         _open,
         on_reuse=lambda: _logger.debug("Reusing cached io backend io.%s id=%s", kind, resource_id),
         on_open=lambda: _logger.debug(
-            "Opening io backend io.%s id=%s driver=%s", kind, resource_id, driver,
+            "Opening io backend io.%s id=%s driver=%s",
+            kind,
+            resource_id,
+            driver,
         ),
     )
 

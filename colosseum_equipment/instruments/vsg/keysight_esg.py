@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments._capabilities import unsupported
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 from colosseum_equipment.instruments.vsg.waveform_upload import upload_waveform_file
 from colosseum_equipment.protocols.scpi import wait_opc
@@ -13,6 +13,18 @@ if TYPE_CHECKING:
 
 
 @instrument_model("vsg", "keysight-esg")
+@_confirmed_generic_commands(
+    "preset",
+    "set_pulse_period",
+    "set_pulse_width",
+    "pulse_source",
+    "step_power",
+    "freq_sweep",
+    "amplitude_sweep",
+    "configure_list",
+    "measure_frequency",
+    "measure_power_dbm",
+)
 class KeysightESGVSG(GenericVSG):
     """Keysight / Agilent E4428C and E4438C ESG signal generators."""
 
@@ -25,10 +37,6 @@ class KeysightESGVSG(GenericVSG):
     def _require_vector(self, operation: str) -> None:
         if not self._is_vector:
             unsupported(self._model, operation, detail="requires E4438C vector arb")
-
-    def preset(self) -> None:
-        self._scpi.write("*RST")
-        wait_opc(self._scpi)
 
     def set_alc(self, enabled: bool) -> None:
         self._scpi.write(f"POW:ALC {1 if enabled else 0}")
@@ -102,73 +110,6 @@ class KeysightESGVSG(GenericVSG):
     def set_pulsemod_output(self, enabled: bool) -> None:
         self._scpi.write(f"PULM:STAT {1 if enabled else 0}")
 
-    def set_pulse_period(self, period_s: float) -> None:
-        self._scpi.write(f"PULM:INT:PER {period_s:.9f}")
-
-    def set_pulse_width(self, width_s: float) -> None:
-        self._scpi.write(f"PULM:INT:PWID {width_s:.9f}")
-
-    def pulse_source(self, source: str) -> None:
-        normalized = source.upper()
-        if normalized == "PULSE":
-            self._scpi.write("PULM:SOUR INT")
-            self._scpi.write("PULM:INT:FUNC SHAP PULS")
-        elif normalized == "SQUARE":
-            self._scpi.write("PULM:SOUR INT")
-            self._scpi.write("PULM:INT:FUNC SHAP SQU")
-        elif normalized == "EXT1":
-            self._scpi.write("PULM:SOUR EXT1")
-        elif normalized == "EXT2":
-            self._scpi.write("PULM:SOUR EXT2")
-        else:
-            raise ValueError(f"unsupported pulse source: {source}")
-
-    def step_power(
-        self,
-        start_dbm: float,
-        stop_dbm: float,
-        step_db: float,
-        interval_s: float,
-    ) -> None:
-        if step_db <= 0:
-            raise ValueError("step_db must be positive")
-        points = max(2, int(abs(stop_dbm - start_dbm) / step_db) + 1)
-        self._scpi.write("LIST:TYPE STEP")
-        self._scpi.write(f"POW:STAR {start_dbm:.3f}")
-        self._scpi.write(f"POW:STOP {stop_dbm:.3f}")
-        self._scpi.write(f"SWE:POIN {points}")
-        self._scpi.write(f"SWE:DWEL {interval_s:.9f}")
-        self._scpi.write("LIST:TRIG:SOUR IMM")
-        self._scpi.write("INIT:CONT ON")
-
-    def freq_sweep(
-        self,
-        start_hz: float,
-        stop_hz: float,
-        points: int,
-        dwell_s: float,
-    ) -> None:
-        self._scpi.write("LIST:TYPE STEP")
-        self._scpi.write(f"FREQ:STAR {start_hz:.6f}")
-        self._scpi.write(f"FREQ:STOP {stop_hz:.6f}")
-        self._scpi.write(f"SWE:POIN {int(points)}")
-        self._scpi.write(f"SWE:DWEL {dwell_s:.9f}")
-        self._scpi.write("INIT:CONT ON")
-
-    def amplitude_sweep(
-        self,
-        start_dbm: float,
-        stop_dbm: float,
-        points: int,
-        dwell_s: float,
-    ) -> None:
-        self._scpi.write("LIST:TYPE STEP")
-        self._scpi.write(f"POW:STAR {start_dbm:.3f}")
-        self._scpi.write(f"POW:STOP {stop_dbm:.3f}")
-        self._scpi.write(f"SWE:POIN {int(points)}")
-        self._scpi.write(f"SWE:DWEL {dwell_s:.9f}")
-        self._scpi.write("INIT:CONT ON")
-
     def select_waveform(self, remote_name: str) -> None:
         self._require_vector("select_waveform")
         self._scpi.write(f'RAD:ARB:WAV "{remote_name}"')
@@ -177,22 +118,8 @@ class KeysightESGVSG(GenericVSG):
         self._require_vector("set_arb_state")
         self._scpi.write(f"RAD:ARB:STAT {1 if enabled else 0}")
 
-    def configure_list(self, frequencies: list[float], powers: list[float] | None = None) -> None:
-        self._scpi.write("LIST:MODE LIST")
-        freq_values = ",".join(str(value) for value in frequencies)
-        self._scpi.write(f"LIST:FREQ {freq_values}")
-        if powers is not None:
-            power_values = ",".join(str(value) for value in powers)
-            self._scpi.write(f"LIST:POW {power_values}")
-
     def set_output(self, enabled: bool) -> None:
         self._scpi.write(f"OUTP:STAT {1 if enabled else 0}")
-
-    def measure_frequency(self) -> float:
-        return self._scpi.query_float("FREQ:CW?")
-
-    def measure_power_dbm(self) -> float:
-        return self._scpi.query_float("POW:AMPL?")
 
     def set_modulation(self, enabled: bool, modulation_type: str = "none") -> None:
         if self._is_vector:
@@ -203,8 +130,7 @@ class KeysightESGVSG(GenericVSG):
                     self._model,
                     "set_modulation",
                     detail=(
-                        f"modulation type {modulation_type!r} is not programmed; "
-                        "vector path only toggles DM:STAT"
+                        f"modulation type {modulation_type!r} is not programmed; vector path only toggles DM:STAT"
                     ),
                 )
             self._scpi.write(f"DM:STAT {1 if enabled else 0}")

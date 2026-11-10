@@ -32,23 +32,38 @@ class TotalPhaseApi:
         if name.endswith("_find_devices_ext"):
             return lambda *args: (1, [0x8000 if self.busy else 2], [1234567890])
         if name.endswith("_open"):
+
             def open_device(port):
                 self.opened += 1
                 return 7
+
             return open_device
         if name.endswith("_close"):
+
             def close_device(handle):
                 self.closed += 1
                 return 1
+
             return close_device
         if name in ("aa_i2c_bitrate", "aa_spi_bitrate", "ch_spi_bitrate"):
             return lambda handle, rate: rate - 1
-        if name in ("aa_configure", "aa_target_power", "aa_i2c_bus_timeout", "aa_i2c_pullup",
-                    "ch_target_power", "aa_spi_configure", "ch_spi_configure",
-                    "ch_spi_queue_clear", "ch_spi_queue_oe", "ch_spi_queue_ss"):
+        if name in (
+            "aa_configure",
+            "aa_target_power",
+            "aa_i2c_bus_timeout",
+            "aa_i2c_pullup",
+            "ch_target_power",
+            "aa_spi_configure",
+            "ch_spi_configure",
+            "ch_spi_queue_clear",
+            "ch_spi_queue_oe",
+            "ch_spi_queue_ss",
+        ):
+
             def configure(*args):
                 self.calls.append((name, *args))
                 return 0
+
             return configure
         raise AttributeError(name)
 
@@ -157,17 +172,20 @@ def test_aardvark_nack_and_invalid_reconfigure(tp):
 
 
 def test_cheetah_queue_and_release_after_failed_shift(tp):
-    backend = open_backend("spi", 1, {"driver": "totalphase-cheetah", "resource": "1234567890",
-                                      "chip_select": 2})
+    backend = open_backend("spi", 1, {"driver": "totalphase-cheetah", "resource": "1234567890", "chip_select": 2})
     try:
         assert backend.transfer(b"\x23\x45") == b"\x12\x12"
         assert ("ch_spi_queue_ss", 7, 4) in tp.calls
         tp.fail_shift = True
         with pytest.raises(IoConnectionError, match="vendor status -6"):
             backend.transfer(b"\x23")
-        assert tp.calls[-5:] == [("ch_spi_queue_clear", 7), ("ch_spi_queue_ss", 7, 0),
-                                 ("ch_spi_queue_oe", 7, 0), ("shift", 0),
-                                 ("ch_spi_queue_clear", 7)]
+        assert tp.calls[-5:] == [
+            ("ch_spi_queue_clear", 7),
+            ("ch_spi_queue_ss", 7, 0),
+            ("ch_spi_queue_oe", 7, 0),
+            ("shift", 0),
+            ("ch_spi_queue_clear", 7),
+        ]
         with pytest.raises(IoConfigError, match="chip_select"):
             backend.configure(chip_select=3)
     finally:
@@ -207,11 +225,19 @@ class Usb2AnyApi:
         return 0
 
     def __getattr__(self, name):
-        if name in ("u2aSuppressSplash", "u2aPower_Enable", "u2aSetReceiveTimeout",
-                    "u2aI2C_Control", "u2aSPI_Control", "u2aI2C_RawWrite"):
+        if name in (
+            "u2aSuppressSplash",
+            "u2aPower_Enable",
+            "u2aSetReceiveTimeout",
+            "u2aI2C_Control",
+            "u2aSPI_Control",
+            "u2aI2C_RawWrite",
+        ):
+
             def call(*args):
                 self.calls.append((name, *args))
                 return 0
+
             return call
         raise AttributeError(name)
 
