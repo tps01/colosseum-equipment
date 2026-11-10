@@ -13,7 +13,7 @@ import contextlib
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from colosseum.config.loader import ConfigError
 
@@ -128,6 +128,17 @@ def _configure_asrl_cr_termchar(inst: object) -> None:
         set_attr(visa_constants.VI_ATTR_TERMCHAR_EN, visa_constants.VI_TRUE)
     except Exception:
         return
+
+
+class _VisaResource(Protocol):
+    """Minimal pyVISA instrument surface used by discovery open/probe helpers."""
+
+    timeout: float
+    baud_rate: int
+
+    def close(self) -> None: ...
+
+    def query(self, command: str) -> object: ...
 
 
 class _VisaProbeAdapter:
@@ -451,16 +462,22 @@ def _close_probe(probe: object) -> None:
             close()
 
 
-def _open_visa_resource(manager: object, resource: str, timeout: float) -> object:
+def _open_visa_resource(manager: object, resource: str, timeout: float) -> _VisaResource:
     """Open a VISA resource, preferring ``open_timeout`` when the backend supports it."""
     open_timeout_ms = max(1, int(timeout * 1000))
     try:
-        return manager.open_resource(  # type: ignore[attr-defined]
-            resource,
-            open_timeout=open_timeout_ms,
+        return cast(
+            "_VisaResource",
+            manager.open_resource(  # type: ignore[attr-defined]
+                resource,
+                open_timeout=open_timeout_ms,
+            ),
         )
     except TypeError:
-        return manager.open_resource(resource)  # type: ignore[attr-defined]
+        return cast(
+            "_VisaResource",
+            manager.open_resource(resource),  # type: ignore[attr-defined]
+        )
 
 
 def _open_visa_asrl_probe(

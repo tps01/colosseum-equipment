@@ -192,10 +192,10 @@ def _nav_pvt_utc(payload: bytes) -> str:
 
 def _nav_pvt_speed_m_s(payload: bytes) -> float:
     vel_n, vel_e, vel_d = struct.unpack_from("<iii", payload, 48)
-    g_speed = struct.unpack_from("<ii", payload, 60)[0]
+    g_speed = int(struct.unpack_from("<ii", payload, 60)[0])
     if g_speed:
         return g_speed / 1000.0
-    return (vel_n**2 + vel_e**2 + vel_d**2) ** 0.5 / 1000.0
+    return float((vel_n**2 + vel_e**2 + vel_d**2) ** 0.5) / 1000.0
 
 
 def parse_nav_pvt(payload: bytes) -> NavPvt | None:
