@@ -229,7 +229,7 @@ class RohdeRteRtp(GenericOscope):
             time.sleep(0.05)
         raise EquipmentTimeoutError("RTE/RTP single acquisition did not complete")
 
-    def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
+    def _waveform_export_preflight(self, channel: int) -> tuple[int, str]:
         ch = self._require_channel(channel)
         if not self._single_complete:
             raise EquipmentCapabilityError("complete a driver-armed single acquisition before export")
@@ -244,6 +244,9 @@ class RohdeRteRtp(GenericOscope):
         # These export switches also affect DATA? replies, not just saved files.
         for command in ("EXP:WAV:MULT OFF", "EXP:WAV:INCX OFF", "EXP:WAV:RAW OFF", "EXP:WAV:SCOP WFM", "FORM ASC"):
             self._scpi.write(command)
+        return ch, prefix
+
+    def _parse_waveform_header(self, prefix: str) -> tuple[float, float, int]:
         fields = self._scpi.query(f"{prefix}:DATA:HEAD?").split(",")
         try:
             start, stop, size, values_per_sample = (float(v) for v in fields)
@@ -255,7 +258,11 @@ class RohdeRteRtp(GenericOscope):
             raise EquipmentResponseError("expected valid four-field waveform header") from exc
         if values_per_sample != 1:
             raise EquipmentCapabilityError("peak/envelope sample pairs are not scalar waveform data")
-        count = int(size)
+        return start, stop, int(size)
+
+    def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
+        ch, prefix = self._waveform_export_preflight(channel)
+        start, stop, count = self._parse_waveform_header(prefix)
         values = _parse_ascii_waveform(self._scpi.query(f"{prefix}:DATA?"), points_expected=count)
         if len(values) != count or not all(math.isfinite(v) for v in values):
             raise EquipmentResponseError("invalid waveform values or count")

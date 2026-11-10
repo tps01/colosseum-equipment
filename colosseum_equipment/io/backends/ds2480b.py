@@ -253,6 +253,32 @@ class Ds2480bOneWireBackend:
         reply = self._read(1)[0]
         return 1 if (reply & 0x01) else 0
 
+    def _search_bit_step(
+        self, rom: bytearray, bit_index: int, last_discrepancy: int,
+    ) -> tuple[int | None, int]:
+        """Return ``(direction, last_zero_update)`` or ``(None, 0)`` on bus error."""
+        id_bit = self._touch_bit(1)
+        cmp_bit = self._touch_bit(1)
+        if id_bit and cmp_bit:
+            return None, 0
+        if id_bit != cmp_bit:
+            direction = id_bit
+        elif bit_index == last_discrepancy:
+            direction = 1
+        elif bit_index > last_discrepancy:
+            direction = 0
+        else:
+            direction = (rom[(bit_index - 1) // 8] >> ((bit_index - 1) % 8)) & 1
+        last_zero = bit_index if direction == 0 else 0
+        byte_index = (bit_index - 1) // 8
+        bit_mask = 1 << ((bit_index - 1) % 8)
+        if direction:
+            rom[byte_index] |= bit_mask
+        else:
+            rom[byte_index] &= (~bit_mask) & 0xFF
+        self._touch_bit(direction)
+        return direction, last_zero
+
     def search(self) -> list[str]:
         """Classic ROM search via single-bit slots (no accelerator dependency)."""
         found: list[str] = []
@@ -264,39 +290,24 @@ class Ds2480bOneWireBackend:
                 break
             self.write(b"\xF0")  # SEARCH ROM
             last_zero = 0
+            bus_error = False
             for bit_index in range(1, 65):
-                id_bit = self._touch_bit(1)
-                cmp_bit = self._touch_bit(1)
-                if id_bit and cmp_bit:
-                    done = True
+                direction, zero_update = self._search_bit_step(rom, bit_index, last_discrepancy)
+                if direction is None:
+                    bus_error = True
                     rom = bytearray(8)
                     break
-                if id_bit != cmp_bit:
-                    direction = id_bit
-                elif bit_index == last_discrepancy:
-                    direction = 1
-                elif bit_index > last_discrepancy:
-                    direction = 0
-                else:
-                    direction = (rom[(bit_index - 1) // 8] >> ((bit_index - 1) % 8)) & 1
-                if direction == 0:
-                    last_zero = bit_index
-                byte_index = (bit_index - 1) // 8
-                bit_mask = 1 << ((bit_index - 1) % 8)
-                if direction:
-                    rom[byte_index] |= bit_mask
-                else:
-                    rom[byte_index] &= (~bit_mask) & 0xFF
-                self._touch_bit(direction)
-            else:
-                if _crc8(bytes(rom[:7])) != rom[7]:
-                    raise IoConnectionError(f"1-Wire ROM CRC mismatch: {bytes(rom).hex()}")
-                hex_rom = rom_to_hex(bytes(rom))
-                if hex_rom not in found:
-                    found.append(hex_rom)
-                last_discrepancy = last_zero
-                if last_discrepancy == 0:
-                    done = True
-                continue
-            break
+                if zero_update:
+                    last_zero = zero_update
+            if bus_error:
+                done = True
+                break
+            if _crc8(bytes(rom[:7])) != rom[7]:
+                raise IoConnectionError(f"1-Wire ROM CRC mismatch: {bytes(rom).hex()}")
+            hex_rom = rom_to_hex(bytes(rom))
+            if hex_rom not in found:
+                found.append(hex_rom)
+            last_discrepancy = last_zero
+            if last_discrepancy == 0:
+                done = True
         return found

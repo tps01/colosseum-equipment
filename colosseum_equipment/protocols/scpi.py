@@ -46,6 +46,51 @@ def parse_definite_length_block(data: bytes) -> bytes:
     return data[start : start + length]
 
 
+def _raise_empty_binary_block(buffer: bytearray) -> None:
+    if len(buffer) >= 2 and buffer[0:1] == b"#" and buffer[1:2] in b"123456789":
+        digit_count = int(chr(buffer[1]))
+        header_len = 2 + digit_count
+        if len(buffer) >= header_len:
+            digits = bytes(buffer[2:header_len])
+            if digits.isdigit():
+                payload_len = int(digits)
+                got = max(0, len(buffer) - header_len)
+                raise EquipmentResponseError(
+                    "truncated SCPI block: expected "
+                    f"{payload_len} payload bytes, got {got}",
+                )
+        raise EquipmentResponseError("truncated or invalid SCPI block length")
+    raise EquipmentResponseError("malformed or indefinite SCPI block header")
+
+
+def _extend_binary_block(buffer: bytearray, read_raw: object) -> None:
+    chunk = read_raw()  # type: ignore[operator]
+    if not chunk:
+        _raise_empty_binary_block(buffer)
+    buffer.extend(chunk)
+
+
+def _binary_block_header_step(buffer: bytearray) -> str:
+    """Return ``done`` or ``need_more`` for the definite-length header FSM."""
+    if not buffer.startswith(b"#") or (
+        len(buffer) >= 2 and buffer[1:2] not in b"123456789"
+    ):
+        return "done"
+    if len(buffer) < 2:
+        return "need_more"
+    digit_count = int(chr(buffer[1]))
+    header_len = 2 + digit_count
+    if len(buffer) < header_len:
+        return "need_more"
+    digits = bytes(buffer[2:header_len])
+    if not digits.isdigit():
+        return "done"
+    total = header_len + int(digits)
+    if len(buffer) >= total:
+        return "done"
+    return "need_more"
+
+
 class SCPIHelper:
     def __init__(self, transport: Transport) -> None:
         self._transport = transport
@@ -83,48 +128,16 @@ class SCPIHelper:
         if not callable(read_raw):
             raise EquipmentResponseError("Transport does not support binary block reads")
         self.write(command)
-
-        def _extend(buffer: bytearray) -> None:
-            chunk = read_raw()
-            if not chunk:
-                if len(buffer) >= 2 and buffer[0:1] == b"#" and buffer[1:2] in b"123456789":
-                    digit_count = int(chr(buffer[1]))
-                    header_len = 2 + digit_count
-                    if len(buffer) >= header_len:
-                        digits = bytes(buffer[2:header_len])
-                        if digits.isdigit():
-                            payload_len = int(digits)
-                            got = max(0, len(buffer) - header_len)
-                            raise EquipmentResponseError(
-                                "truncated SCPI block: expected "
-                                f"{payload_len} payload bytes, got {got}",
-                            )
-                    raise EquipmentResponseError("truncated or invalid SCPI block length")
-                raise EquipmentResponseError("malformed or indefinite SCPI block header")
-            buffer.extend(chunk)
-
         buffer = bytearray()
-        _extend(buffer)
+        _extend_binary_block(buffer, read_raw)
         while True:
-            if not buffer.startswith(b"#") or (
-                len(buffer) >= 2 and buffer[1:2] not in b"123456789"
-            ):
+            step = _binary_block_header_step(buffer)
+            if step == "done":
                 return parse_definite_length_block(bytes(buffer))
-            if len(buffer) < 2:
-                _extend(buffer)
+            if step == "need_more":
+                _extend_binary_block(buffer, read_raw)
                 continue
-            digit_count = int(chr(buffer[1]))
-            header_len = 2 + digit_count
-            if len(buffer) < header_len:
-                _extend(buffer)
-                continue
-            digits = bytes(buffer[2:header_len])
-            if not digits.isdigit():
-                return parse_definite_length_block(bytes(buffer))
-            total = header_len + int(digits)
-            if len(buffer) >= total:
-                return parse_definite_length_block(bytes(buffer))
-            _extend(buffer)
+            raise AssertionError(f"unexpected binary-block step {step!r}")
 
     def status_byte(self) -> int:
         """Read the IEEE 488.2 status byte (``*STB?``)."""

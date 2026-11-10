@@ -72,13 +72,66 @@ _IP_ADAPTER_UNICAST_ADDRESS._fields_ = [
 ]
 
 
-def list_ipv4_network_bindings() -> list[IPv4NetworkBinding]:
-    bindings: list[IPv4NetworkBinding] = []
+def _adapter_interface_name(adapter: _IP_ADAPTER_ADDRESSES) -> str:
+    name = adapter.FriendlyName or adapter.Description or adapter.AdapterName or ""
+    if isinstance(name, bytes):
+        return name.decode("utf-8", errors="replace")
+    return str(name)
+
+
+def _unicast_ipv4_binding(
+    addr_struct: _IP_ADAPTER_UNICAST_ADDRESS, *, interface: str,
+) -> IPv4NetworkBinding | None:
+    sa = addr_struct.Address
+    if sa.iSockaddrLength < 28 or not sa.lpSockaddr:
+        return None
+    sockaddr = (ctypes.c_ubyte * sa.iSockaddrLength).from_address(sa.lpSockaddr)
+    family_value = int.from_bytes(sockaddr[0:2], "little")
+    if family_value != socket.AF_INET:
+        return None
+    address = socket.inet_ntoa(bytes(sockaddr[4:8]))
+    prefix = int(addr_struct.OnLinkPrefixLength) or 24
     try:
-        size = wintypes.ULONG(15000)
+        iface = ipaddress.IPv4Interface(f"{address}/{prefix}")
+    except ValueError:
+        return None
+    return IPv4NetworkBinding(
+        interface=interface,
+        address=str(iface.ip),
+        network=str(iface.network.network_address),
+        prefix=iface.network.prefixlen,
+    )
+
+
+def _walk_unicast_bindings(
+    adapter: _IP_ADAPTER_ADDRESSES, *, interface: str,
+) -> list[IPv4NetworkBinding]:
+    bindings: list[IPv4NetworkBinding] = []
+    unicast_ptr = adapter.FirstUnicastAddress
+    while unicast_ptr:
+        addr_struct = _IP_ADAPTER_UNICAST_ADDRESS.from_address(unicast_ptr)
+        binding = _unicast_ipv4_binding(addr_struct, interface=interface)
+        if binding is not None:
+            bindings.append(binding)
+        next_unicast = addr_struct.Next
+        unicast_ptr = next_unicast if next_unicast else None
+    return bindings
+
+
+def _fetch_adapter_addresses_buffer() -> ctypes.Array[ctypes.c_char] | None:
+    size = wintypes.ULONG(15000)
+    buffer = ctypes.create_string_buffer(size.value)
+    flags = 0
+    family = socket.AF_INET
+    result = _iphlpapi().GetAdaptersAddresses(
+        family,
+        flags,
+        None,
+        ctypes.byref(_IP_ADAPTER_ADDRESSES.from_buffer(buffer)),
+        ctypes.byref(size),
+    )
+    if result == 111:
         buffer = ctypes.create_string_buffer(size.value)
-        flags = 0
-        family = socket.AF_INET
         result = _iphlpapi().GetAdaptersAddresses(
             family,
             flags,
@@ -86,53 +139,21 @@ def list_ipv4_network_bindings() -> list[IPv4NetworkBinding]:
             ctypes.byref(_IP_ADAPTER_ADDRESSES.from_buffer(buffer)),
             ctypes.byref(size),
         )
-        if result == 111:
-            buffer = ctypes.create_string_buffer(size.value)
-            result = _iphlpapi().GetAdaptersAddresses(
-                family,
-                flags,
-                None,
-                ctypes.byref(_IP_ADAPTER_ADDRESSES.from_buffer(buffer)),
-                ctypes.byref(size),
-            )
-        if result != 0:
-            return bindings
+    if result != 0:
+        return None
+    return buffer
 
+
+def list_ipv4_network_bindings() -> list[IPv4NetworkBinding]:
+    bindings: list[IPv4NetworkBinding] = []
+    try:
+        buffer = _fetch_adapter_addresses_buffer()
+        if buffer is None:
+            return bindings
         adapter = _IP_ADAPTER_ADDRESSES.from_buffer(buffer)
         while True:
-            name = adapter.FriendlyName or adapter.Description or adapter.AdapterName or ""
-            if isinstance(name, bytes):
-                interface = name.decode("utf-8", errors="replace")
-            else:
-                interface = str(name)
-            unicast_ptr = adapter.FirstUnicastAddress
-            while unicast_ptr:
-                addr_struct = _IP_ADAPTER_UNICAST_ADDRESS.from_address(unicast_ptr)
-                sa = addr_struct.Address
-                if sa.iSockaddrLength >= 28 and sa.lpSockaddr:
-                    sockaddr = (ctypes.c_ubyte * sa.iSockaddrLength).from_address(sa.lpSockaddr)
-                    family_value = int.from_bytes(sockaddr[0:2], "little")
-                    if family_value == socket.AF_INET:
-                        ip_bytes = bytes(sockaddr[4:8])
-                        address = socket.inet_ntoa(ip_bytes)
-                        prefix = int(addr_struct.OnLinkPrefixLength)
-                        if prefix == 0:
-                            prefix = 24
-                        try:
-                            iface = ipaddress.IPv4Interface(f"{address}/{prefix}")
-                        except ValueError:
-                            unicast_ptr = addr_struct.Next or None
-                            continue
-                        bindings.append(
-                            IPv4NetworkBinding(
-                                interface=interface,
-                                address=str(iface.ip),
-                                network=str(iface.network.network_address),
-                                prefix=iface.network.prefixlen,
-                            ),
-                        )
-                next_unicast = addr_struct.Next
-                unicast_ptr = next_unicast if next_unicast else None
+            interface = _adapter_interface_name(adapter)
+            bindings.extend(_walk_unicast_bindings(adapter, interface=interface))
             next_adapter = adapter.Next
             if not next_adapter:
                 break
