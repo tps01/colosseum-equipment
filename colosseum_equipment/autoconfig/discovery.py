@@ -37,15 +37,17 @@ from colosseum_equipment.autoconfig.network_filter import (
     resolve_blacklist,
 )
 from colosseum_equipment.autoconfig.qm_probe import query_qm_model
-from colosseum_equipment.autoconfig.sort import sort_resources
+from colosseum_equipment.autoconfig.sort import interface_name, sort_resources
 from colosseum_equipment.instruments.identify import probe_identity
-from colosseum_equipment.transports.visa import normalize_visa_resource
+from colosseum_equipment.transports.usbtmc import UsbtmcTransport, list_usbtmc_devices
+from colosseum_equipment.transports.visa import normalize_visa_resource, open_resource_manager
 
 if TYPE_CHECKING:
     from colosseum_equipment.network import IPv4NetworkBinding
 
 _IDN_BAUDS = (9600, 115200, 19200)
 _QM_BAUDS = (9600, 115200)
+_GPIB_PRIMARY_ADDRESSES = range(31)
 _ASRL_NUM = re.compile(r"^ASRL(\d+)", re.IGNORECASE)
 _COM_NUM = re.compile(r"^COM(\d+)$", re.IGNORECASE)
 _HARD_OPEN_MARKERS = (
@@ -334,6 +336,25 @@ def _default_open_serial(port: str, baudrate: int, timeout: float) -> object:
     return serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
 
 
+def _default_gpib_board_present() -> bool:
+    """Return whether linux-gpib board 0 looks usable on this host."""
+    try:
+        import gpib  # noqa: F401
+    except ImportError:
+        return False
+    from pathlib import Path
+
+    node = Path("/dev/gpib0")
+    try:
+        return node.exists()
+    except OSError:
+        return False
+
+
+def _listed_gpib_resources(resources: Sequence[str]) -> bool:
+    return any(interface_name(resource) == "GPIB" for resource in resources)
+
+
 def discover_equipment_config(
     *,
     timeout: float = 1.0,
@@ -346,24 +367,24 @@ def discover_equipment_config(
     open_serial: OpenSerial | None = None,
     qm: bool = False,
     gnss: bool = False,
+    gpib_scan: bool = False,
+    gpib_board_present: Callable[[], bool] | None = None,
 ) -> AutoconfigResult:
     """Scan VISA ``?*INSTR`` and local COM ports; build a raw equipment config dict.
 
     Serial ports use bare ``IDN?`` then ``*IDN?`` across bauds ``9600``, ``115200``,
     ``19200``. With ``qm=True``, Fluke ``QM`` runs after IDN fails (bauds ``9600``,
     ``115200``). With ``gnss=True``, GNSS vendor probes run after IDN (and QM when
-    enabled) miss. FTDI adapters are not discovered.
+    enabled) miss. With ``gpib_scan=True``, primary addresses ``0``–``30`` on
+    ``GPIB0`` are probed when ``list_resources`` returned no GPIB names but a
+    board appears present. FTDI adapters are not discovered.
     """
-    import pyvisa
-
     blacklist_resolution = resolve_blacklist(blacklist, bindings=network_bindings)
     blocked = list(blacklist_resolution.blocked)
     log_scan_start(logger)
 
     if resource_manager is None:
-        rm: object = (
-            pyvisa.ResourceManager(visa_library) if visa_library else pyvisa.ResourceManager()
-        )
+        rm: object = open_resource_manager(visa_library)
     else:
         rm = resource_manager
 
@@ -384,6 +405,7 @@ def discover_equipment_config(
     covered_ports: set[str] = set()
     next_id: dict[str, int] = {}
     open_serial_fn = open_serial or _default_open_serial
+    board_present_fn = gpib_board_present or _default_gpib_board_present
 
     def _assign(
         *,
@@ -650,6 +672,49 @@ def discover_equipment_config(
 
     for resource in sorted_resources:
         _probe_visa(resource)
+
+    if (
+        gpib_scan
+        and not _listed_gpib_resources(sorted_resources)
+        and board_present_fn()
+    ):
+        for pad in _GPIB_PRIMARY_ADDRESSES:
+            _probe_visa(f"GPIB0::{pad}::INSTR")
+
+    def _probe_usbtmc(path: str) -> None:
+        if path in seen_resources:
+            _skip(path, "duplicate_resource")
+            return
+        log_probing(logger, path)
+        try:
+            transport = UsbtmcTransport(path, timeout=timeout)
+        except Exception as exc:
+            _skip(path, f"probe_failed: {exc}")
+            return
+        try:
+            adapter = _VisaProbeAdapter(transport)
+            idn, bare, _addr = probe_identity(adapter, asrl=False, log_kind="autoconfig")
+        except Exception as exc:
+            _skip(path, f"probe_failed: {exc}")
+            return
+        finally:
+            with contextlib.suppress(Exception):
+                transport.close()
+        if idn is None:
+            _skip(path, "probe_failed: no identity")
+            return
+        hit = _classify_idn_hit(idn, bare=bare)
+        if hit is None:
+            _skip(path, "no_kind_match", idn=idn)
+            return
+        kind, model, idn_label = hit
+        if kind not in KIND_SECTIONS:
+            _skip(path, "no_kind_match", idn=idn)
+            return
+        _assign(kind=kind, model=model, idn=idn_label, resource=path, port=None, baudrate=None)
+
+    for path in list_usbtmc_devices():
+        _probe_usbtmc(path)
 
     comport_list: Sequence[Any]
     if list_comports is not None:

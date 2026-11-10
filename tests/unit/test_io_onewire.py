@@ -73,6 +73,27 @@ def test_io_onewire_sim_required_presence_raises(
         col.io.onewire.reset(onewire_id=1, required=True)
 
 
+def test_io_onewire_sim_selects_lowercase_search_rom(
+    io_runtime_context: RuntimeContext,
+    io_bench,
+) -> None:
+    _ = io_runtime_context
+    load_config(
+        io_bench(
+            """
+            [io.onewire]
+            onewire_id = 1
+            driver = sim
+            presence = true
+            roms = ["28aabbccddeeff00"]
+            """,
+        ),
+    )
+    roms = col.io.onewire.search(onewire_id=1, key="roms")
+    assert roms == ["28AABBCCDDEEFF00"]
+    col.io.onewire.select(onewire_id=1, rom=roms[0])
+
+
 def test_ds2480b_requires_port() -> None:
     with pytest.raises(IoConfigError, match="requires port="):
         open_onewire_backend(1, {"driver": "maxim-ds9481r"})

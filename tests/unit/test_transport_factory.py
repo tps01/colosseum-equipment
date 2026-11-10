@@ -128,3 +128,25 @@ def test_open_transport_both_fields_uses_visa_and_warns(caplog: pytest.LogCaptur
     visa_cls.assert_called_once()
     assert visa_cls.call_args.args[0] == "GPIB::1::INSTR"
     assert "ignoring port" in caplog.text
+
+
+def test_open_transport_usbtmc_path_bypasses_visa() -> None:
+    with (
+        patch("colosseum_equipment.transports.visa.VISATransport") as visa_cls,
+        patch("colosseum_equipment.transports.usbtmc.UsbtmcTransport") as usbtmc_cls,
+    ):
+        usbtmc_cls.return_value = object()
+        open_transport("psu", 1, {"resource": "/dev/usbtmc0"})
+    usbtmc_cls.assert_called_once_with("/dev/usbtmc0", timeout=5.0)
+    visa_cls.assert_not_called()
+
+
+def test_open_transport_asrl_wrapped_usbtmc_bypasses_visa() -> None:
+    with (
+        patch("colosseum_equipment.transports.visa.VISATransport") as visa_cls,
+        patch("colosseum_equipment.transports.usbtmc.UsbtmcTransport") as usbtmc_cls,
+    ):
+        usbtmc_cls.return_value = object()
+        open_transport("psu", 1, {"resource": "ASRL/dev/usbtmc1::INSTR"})
+    usbtmc_cls.assert_called_once_with("/dev/usbtmc1", timeout=5.0)
+    visa_cls.assert_not_called()

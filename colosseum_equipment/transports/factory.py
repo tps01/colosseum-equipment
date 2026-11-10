@@ -12,7 +12,6 @@ from colosseum_equipment.transports.sim import SimTransport
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
-    from colosseum_equipment.transports.visa import VISATransport
 
 _logger = get_logger("colosseum.equipment")
 _COM_PORT = re.compile(r"COM(\d+):?", re.IGNORECASE)
@@ -90,11 +89,15 @@ def _open_visa(
     line_mode: bool,
     timeout: float,
     missing_field: str,
-) -> VISATransport:
+) -> Transport:
+    from colosseum_equipment.transports.usbtmc import UsbtmcTransport, usbtmc_device_path
     from colosseum_equipment.transports.visa import VISATransport, normalize_visa_resource
 
     if not raw_address:
         raise _open_failed(f"equipment.{kind} id {equipment_id} missing `{missing_field}`")
+    usbtmc_path = usbtmc_device_path(raw_address)
+    if usbtmc_path is not None:
+        return UsbtmcTransport(usbtmc_path, timeout=timeout)
     resource = normalize_visa_resource(raw_address)
     serial_line = line_mode or _COM_PORT.fullmatch(raw_address) is not None
     visa_backend = config.get("visa_backend")

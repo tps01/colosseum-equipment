@@ -99,10 +99,16 @@ def resolve_instrument_model(kind: str, config: dict[str, Any], transport: objec
 
 
 def _uses_asrl(kind: str, config: dict[str, Any]) -> bool:
+    from colosseum_equipment.transports.usbtmc import usbtmc_device_path
+
     driver, address = resolve_connection(kind, config)
     if driver == "serial":
-        return True
-    resource = normalize_visa_resource(str(config.get("resource") or address or ""))
+        raw = str(config.get("port") or address or "")
+        return usbtmc_device_path(raw) is None
+    raw = str(config.get("resource") or address or "")
+    if usbtmc_device_path(raw) is not None:
+        return False
+    resource = normalize_visa_resource(raw)
     return resource.upper().startswith("ASRL")
 
 
