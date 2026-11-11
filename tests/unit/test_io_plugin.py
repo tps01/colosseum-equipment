@@ -48,7 +48,7 @@ def test_io_dio_sim_read_write_port(io_runtime_context: RuntimeContext, io_bench
             """
             [io.dio]
             dio_id = 1
-            driver = sim
+            driver = "sim"
             port_lines = 8
             direction = 0xFF
             initial_output = 0x01
@@ -71,7 +71,7 @@ def test_io_dio_sim_rejects_out_of_range_masks(io_runtime_context: RuntimeContex
             """
             [io.dio]
             dio_id = 1
-            driver = sim
+            driver = "sim"
             port_lines = 8
             direction = 0x0F
             """,
@@ -92,7 +92,7 @@ def test_io_dio_sim_measurement_domain_equipment(io_runtime_context: RuntimeCont
             """
             [io.dio]
             dio_id = 1
-            driver = sim
+            driver = "sim"
             port_lines = 8
             direction = 0xFF
             """,
@@ -112,7 +112,7 @@ def test_io_connections_close_all(io_runtime_context: RuntimeContext, io_bench) 
             """
             [io.dio]
             dio_id = 1
-            driver = sim
+            driver = "sim"
             port_lines = 8
             direction = 0xFF
             """,
