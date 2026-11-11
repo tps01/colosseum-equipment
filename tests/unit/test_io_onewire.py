@@ -35,7 +35,7 @@ def test_io_onewire_sim_search_select_read(
             """
             [io.onewire]
             onewire_id = 1
-            driver = sim
+            driver = "sim"
             presence = true
             roms = ["28001122334455CE"]
             read_data = "aabb"
@@ -69,7 +69,7 @@ def test_io_onewire_sim_required_presence_raises(
             """
             [io.onewire]
             onewire_id = 1
-            driver = sim
+            driver = "sim"
             presence = false
             """,
         ),
@@ -89,7 +89,7 @@ def test_io_onewire_sim_selects_lowercase_search_rom(
             """
             [io.onewire]
             onewire_id = 1
-            driver = sim
+            driver = "sim"
             presence = true
             roms = ["28aabbccddeeff00"]
             """,
