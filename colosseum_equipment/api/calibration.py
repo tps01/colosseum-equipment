@@ -1,4 +1,11 @@
-"""Path-loss calibration APIs exposed as ``col.equipment.load_calibration``."""
+"""Path-loss calibration APIs exposed as ``col.equipment.load_calibration``.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+"""
 
 from __future__ import annotations
 
@@ -21,11 +28,8 @@ def load_calibration(*, filename: str, key: str) -> None:
     nearest-bin path-loss offsets.
 
     :param filename: Path to a previously captured sweep file.
-    :type filename: str
-    :param key: Name used with ``calibration=`` on later equipment calls.
-    :type key: str
 
-    :returns: None
+    :param key: Name used with ``calibration=`` on later equipment calls.
 
     :raises CalibrationError: File missing, unreadable, or empty.
     """

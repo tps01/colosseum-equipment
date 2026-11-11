@@ -156,6 +156,9 @@ class _VisaProbeAdapter:
         self._inst = inst
         self._cr_termchar = cr_termchar
 
+    def close(self) -> None:
+        _close_probe(self._inst)
+
     def query(self, command: str) -> str:
         return str(self._inst.query(command))  # type: ignore[attr-defined]
 
@@ -238,6 +241,9 @@ class _PyserialProbeAdapter:
 
     def __init__(self, port: object) -> None:
         self._port = port
+
+    def close(self) -> None:
+        _close_probe(self._port)
 
     def flush(self) -> None:
         reset = getattr(self._port, "reset_input_buffer", None)
@@ -520,14 +526,7 @@ def _open_visa_asrl_probe(
     with contextlib.suppress(Exception):
         inst.baud_rate = int(baud)
     _configure_asrl_cr_termchar(inst)
-    adapter = _VisaProbeAdapter(inst, cr_termchar=True)
-
-    def _close() -> None:
-        with contextlib.suppress(Exception):
-            inst.close()
-
-    adapter.close = _close  # type: ignore[attr-defined]
-    return adapter
+    return _VisaProbeAdapter(inst, cr_termchar=True)
 
 
 def _open_com_probe(
@@ -537,16 +536,7 @@ def _open_com_probe(
     timeout: float,
 ) -> _PyserialProbeAdapter:
     ser = open_serial_fn(com_port, baud, timeout)
-    adapter = _PyserialProbeAdapter(ser)
-
-    def _close() -> None:
-        close = getattr(ser, "close", None)
-        if callable(close):
-            with contextlib.suppress(Exception):
-                close()
-
-    adapter.close = _close  # type: ignore[attr-defined]
-    return adapter
+    return _PyserialProbeAdapter(ser)
 
 
 def _open_serial_baud(

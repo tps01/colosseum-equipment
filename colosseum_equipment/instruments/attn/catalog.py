@@ -9,6 +9,7 @@ from __future__ import annotations
 from colosseum_equipment.instruments.attn.generic import GenericAttn
 from colosseum_equipment.instruments.registry import instrument_model
 
+# TODO: Validate minicircuits-rcm-ztm inherited commands against its vendor manual and hardware.
 
 @instrument_model("attn", "minicircuits-rcm-ztm")
 class MinicircuitsRcmZtm(GenericAttn):

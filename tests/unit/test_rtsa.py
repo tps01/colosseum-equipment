@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tarfile
+import builtins
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -20,6 +21,27 @@ from colosseum_equipment.protocols.scpi import format_definite_length_block
 from scipy.io import loadmat
 
 from tests.support.stubs import RfStubTransport
+
+
+@pytest.mark.parametrize("file_format", ["bin", "iq.tar"])
+def test_capture_non_mat_does_not_import_scipy(tmp_path, monkeypatch, file_format):
+    original_import = builtins.__import__
+
+    def import_without_scipy(name, *args, **kwargs):
+        if name == "scipy" or name.startswith("scipy."):
+            raise AssertionError("Non-MAT export must not import SciPy")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_without_scipy)
+    samples = np.array([0.5 + 0.25j, -0.5 + 0j], dtype=np.complex64)
+    path = tmp_path / f"capture.{file_format}"
+    write_capture_iq(path, samples, file_format=file_format, sample_format="f32")
+    expected = np.array([0.5, 0.25, -0.5, 0.0], dtype="<f4").tobytes()
+    if file_format == "bin":
+        assert path.read_bytes() == expected
+    else:
+        with tarfile.open(path) as archive:
+            assert archive.extractfile("iq.bin").read() == expected
 
 if TYPE_CHECKING:
     from pathlib import Path

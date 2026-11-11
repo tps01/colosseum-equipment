@@ -4,6 +4,15 @@ Configure instruments with ``[equipment.vsg]`` in bench TOML (``vsg_id``,
 ``resource``, optional ``model`` and ``driver``; default driver is VISA/SCPI).
 Unsupported operations on a given ``model`` raise
 :class:`~colosseum_equipment.exceptions.EquipmentCapabilityError`.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
 """
 
 from __future__ import annotations
@@ -28,18 +37,12 @@ def set_frequency(*, vsg_id: EquipmentId, frequency: float, calibration: str | N
     (desired) output level from the last ``set_power(..., calibration=)`` or
     ``play_iq`` is held at the new frequency.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param frequency: Output frequency in hertz. A number is hertz; a string may
         use a ``Hz``, ``kHz``, ``MHz``, or ``GHz`` suffix (``1GHz``, ``10 MHz``).
-    :type frequency: float
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting frequency on VSG %s to %s Hz", vsg_id, frequency)
     inst = get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg"))
@@ -60,17 +63,11 @@ def set_power(*, vsg_id: EquipmentId, power_dbm: float, calibration: str | None 
     With ``calibration``, ``power_dbm`` is the desired post-path level; the
     instrument is programmed to ``power_dbm - loss_db`` at the last-set frequency.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param power_dbm: Output power in dBm (post-cal desired when ``calibration`` is set).
-    :type power_dbm: float
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting output power on VSG %s to %s dBm", vsg_id, power_dbm)
     inst = get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg"))
@@ -89,15 +86,9 @@ def set_power(*, vsg_id: EquipmentId, power_dbm: float, calibration: str | None 
 def set_output(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable RF output.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable RF output, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s RF output on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_output(enabled)
@@ -108,13 +99,7 @@ def set_output(*, vsg_id: EquipmentId, enabled: bool) -> None:
 def preset(*, vsg_id: EquipmentId) -> None:
     """Return the instrument to a default preset state.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vsg_id: Configured ``equipment.vsg`` ID.
     """
     _logger.info("Presetting VSG %s", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).preset()
@@ -124,13 +109,7 @@ def preset(*, vsg_id: EquipmentId) -> None:
 def wait_complete(*, vsg_id: int) -> None:
     """Block until pending instrument operations complete (*OPC?*).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vsg_id: Configured ``equipment.vsg`` ID.
     """
     _logger.info("Waiting for VSG %s operation to complete", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).wait_complete()
@@ -141,15 +120,9 @@ def wait_complete(*, vsg_id: int) -> None:
 def set_alc(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable automatic level control (ALC).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable ALC, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s ALC on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_alc(enabled)
@@ -160,15 +133,9 @@ def set_alc(*, vsg_id: EquipmentId, enabled: bool) -> None:
 def set_attenuation(*, vsg_id: EquipmentId, attenuation_db: float) -> None:
     """Set output attenuation in dB.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param attenuation_db: Output attenuation in dB.
-    :type attenuation_db: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting attenuation on VSG %s to %s dB", vsg_id, attenuation_db)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_attenuation(attenuation_db)
@@ -179,15 +146,9 @@ def set_attenuation(*, vsg_id: EquipmentId, attenuation_db: float) -> None:
 def set_phase(*, vsg_id: EquipmentId, phase_deg: float) -> None:
     """Set RF phase in degrees (vector models).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param phase_deg: RF phase in degrees.
-    :type phase_deg: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting phase on VSG %s to %s degrees", vsg_id, phase_deg)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_phase(phase_deg)
@@ -198,15 +159,9 @@ def set_phase(*, vsg_id: EquipmentId, phase_deg: float) -> None:
 def set_output_blanking(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable output blanking.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable output blanking, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s output blanking on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_output_blanking(enabled)
@@ -239,21 +194,16 @@ def upload_waveform(
 
     Requires a capable ``model`` (for example ``keysight-esg`` with E4438C IDN).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param local_path: Path to local ``.bin`` / ``.mat`` / ``.iq.tar`` waveform.
-    :type local_path: str
+
     :param remote_name: Destination filename on the instrument.
-    :type remote_name: str
+
     :param first_last_blanking: When True, configure first/last-sample RF blanking for IQ playback.
-    :type first_last_blanking: bool, optional
+
     :param method: ``auto``, ``ftp``, or ``tcpip``. Call value wins over config ``upload_method``.
-    :type method: str, optional
 
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     :raises EquipmentResponseError: Unknown method, or TCPIP selected without ``write_raw``.
     """
     _logger.info("Uploading %s to VSG %s as %s", local_path, vsg_id, remote_name)
@@ -270,15 +220,9 @@ def upload_waveform(
 def delete_waveform(*, vsg_id: EquipmentId, remote_name: str) -> None:
     """Delete a waveform and its associated marker/header files from instrument memory.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param remote_name: Waveform filename on the instrument to delete.
-    :type remote_name: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Deleting waveform %s from VSG %s", remote_name, vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).delete_waveform(remote_name)
@@ -289,13 +233,7 @@ def delete_waveform(*, vsg_id: EquipmentId, remote_name: str) -> None:
 def delete_all_waveforms(*, vsg_id: EquipmentId) -> None:
     """Delete all waveforms from volatile arb memory on the instrument.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vsg_id: Configured ``equipment.vsg`` ID.
     """
     _logger.info("Deleting all waveforms from VSG %s", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).delete_all_waveforms()
@@ -306,17 +244,11 @@ def delete_all_waveforms(*, vsg_id: EquipmentId) -> None:
 def set_multicarrier(*, vsg_id: EquipmentId, num_tones: int, spacing_hz: float) -> None:
     """Configure multicarrier tone count and frequency spacing in hertz.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param num_tones: Number of carrier tones.
-    :type num_tones: int
+
     :param spacing_hz: Frequency spacing between tones in hertz.
-    :type spacing_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting multicarrier on VSG %s to %s tones spaced %s Hz",
@@ -332,15 +264,9 @@ def set_multicarrier(*, vsg_id: EquipmentId, num_tones: int, spacing_hz: float) 
 def toggle_multitone(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable multitone arbitrary waveform playback.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable multitone playback, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s multitone on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).toggle_multitone(enabled)
@@ -364,23 +290,17 @@ def play_iq(
     ``amplitude_dbm`` is the desired post-path level and the instrument is
     programmed to ``amplitude_dbm - loss_db``, the same offset ``set_power`` uses.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param filename: Uploaded waveform filename on the instrument.
-    :type filename: str
+
     :param center_freq_hz: Carrier center frequency in hertz.
-    :type center_freq_hz: float
+
     :param amplitude_dbm: Output amplitude in dBm (post-cal desired when ``calibration`` is set).
-    :type amplitude_dbm: float
+
     :param sample_clock_hz: IQ sample clock rate in hertz.
-    :type sample_clock_hz: float
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Playing %s on VSG %s at %s Hz and %s dBm",
@@ -407,15 +327,9 @@ def play_iq(
 def set_pulsegen_output(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable the internal pulse generator path (Keysight ``PULM:STAT``).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable the pulse generator, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s pulse generator on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_pulsegen_output(enabled)
@@ -426,15 +340,9 @@ def set_pulsegen_output(*, vsg_id: EquipmentId, enabled: bool) -> None:
 def set_pulsemod_output(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable pulse modulation.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable pulse modulation, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s pulse modulation on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_pulsemod_output(enabled)
@@ -445,15 +353,9 @@ def set_pulsemod_output(*, vsg_id: EquipmentId, enabled: bool) -> None:
 def set_pulse_period(*, vsg_id: EquipmentId, period_s: float) -> None:
     """Set pulse period in seconds.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param period_s: Pulse period in seconds.
-    :type period_s: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting pulse period on VSG %s to %s s", vsg_id, period_s)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_pulse_period(period_s)
@@ -464,15 +366,9 @@ def set_pulse_period(*, vsg_id: EquipmentId, period_s: float) -> None:
 def set_pulse_width(*, vsg_id: EquipmentId, width_s: float) -> None:
     """Set pulse width in seconds.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param width_s: Pulse width in seconds.
-    :type width_s: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting pulse width on VSG %s to %s s", vsg_id, width_s)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_pulse_width(width_s)
@@ -483,15 +379,9 @@ def set_pulse_width(*, vsg_id: EquipmentId, width_s: float) -> None:
 def pulse_source(*, vsg_id: EquipmentId, source: str) -> None:
     """Set pulse source to ``PULSE``, ``SQUARE``, ``EXT1``, or ``EXT2``.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param source: Pulse source string accepted by the configured model.
-    :type source: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting pulse source on VSG %s to %s", vsg_id, source)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).pulse_source(source)
@@ -509,21 +399,15 @@ def step_power(
 ) -> None:
     """Run a stepped power sweep with the given start, stop, step size, and dwell interval.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param start_dbm: Starting power in dBm.
-    :type start_dbm: float
+
     :param stop_dbm: Stopping power in dBm.
-    :type stop_dbm: float
+
     :param step_db: Power step size in dB.
-    :type step_db: float
+
     :param interval_s: Dwell time at each step in seconds.
-    :type interval_s: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Stepping power on VSG %s from %s dBm to %s dBm by %s dB",
@@ -549,21 +433,15 @@ def freq_sweep(
 ) -> None:
     """Run a stepped frequency sweep.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param start_hz: Starting frequency in hertz.
-    :type start_hz: float
+
     :param stop_hz: Stopping frequency in hertz.
-    :type stop_hz: float
+
     :param points: Number of frequency steps.
-    :type points: int
+
     :param dwell_s: Dwell time at each step in seconds.
-    :type dwell_s: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Sweeping frequency on VSG %s from %s Hz to %s Hz (%s points)",
@@ -587,21 +465,15 @@ def amplitude_sweep(
 ) -> None:
     """Run a stepped amplitude sweep.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param start_dbm: Starting amplitude in dBm.
-    :type start_dbm: float
+
     :param stop_dbm: Stopping amplitude in dBm.
-    :type stop_dbm: float
+
     :param points: Number of amplitude steps.
-    :type points: int
+
     :param dwell_s: Dwell time at each step in seconds.
-    :type dwell_s: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Sweeping amplitude on VSG %s from %s dBm to %s dBm (%s points)",
@@ -620,15 +492,9 @@ def amplitude_sweep(
 def select_waveform(*, vsg_id: EquipmentId, remote_name: str) -> None:
     """Select a waveform previously stored on the instrument.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param remote_name: Waveform filename on the instrument to select.
-    :type remote_name: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Selecting waveform %s on VSG %s", remote_name, vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).select_waveform(remote_name)
@@ -639,15 +505,9 @@ def select_waveform(*, vsg_id: EquipmentId, remote_name: str) -> None:
 def set_arb_state(*, vsg_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable arbitrary waveform generator playback.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable arb playback, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s arb playback on VSG %s", "Enabling" if enabled else "Disabling", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_arb_state(enabled)
@@ -663,17 +523,11 @@ def configure_list(
 ) -> None:
     """Program a frequency (and optional power) list sweep.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param frequencies: List of sweep frequencies in hertz.
-    :type frequencies: list[float]
+
     :param powers: Optional list of output powers in dBm, one per frequency.
-    :type powers: list[float] | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Configuring list sweep on VSG %s with %s frequencies", vsg_id, len(frequencies))
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).configure_list(frequencies, powers)
@@ -684,17 +538,11 @@ def configure_list(
 def set_modulation(*, vsg_id: EquipmentId, enabled: bool, modulation_type: str = "none") -> None:
     """Enable modulation and set modulation type (model-specific strings).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param enabled: ``True`` to enable modulation, ``False`` to disable.
-    :type enabled: bool
+
     :param modulation_type: Modulation type string accepted by the configured model.
-    :type modulation_type: str, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "%s %s modulation on VSG %s",
@@ -709,17 +557,13 @@ def set_modulation(*, vsg_id: EquipmentId, enabled: bool, modulation_type: str =
 def measure_output_state(*, vsg_id: int, key: str) -> float:
     """Read whether RF output is enabled.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured state as ``1.0`` (on) or ``0.0`` (off).
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading RF output state from VSG %s", vsg_id)
     _ = key
@@ -728,7 +572,7 @@ def measure_output_state(*, vsg_id: int, key: str) -> float:
 
 
 verify_output_state = tolerance_verifier(
-    "measure_output_state",
+    "measure_output_state", module=__name__,
     name="verify_output_state",
     default_tolerance=0.0,
 )
@@ -738,17 +582,13 @@ verify_output_state = tolerance_verifier(
 def measure_frequency(*, vsg_id: int, key: str) -> float:
     """Read CW output frequency.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured frequency in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading frequency from VSG %s", vsg_id)
     _ = key
@@ -756,7 +596,7 @@ def measure_frequency(*, vsg_id: int, key: str) -> float:
 
 
 verify_frequency = tolerance_verifier(
-    "measure_frequency",
+    "measure_frequency", module=__name__,
     name="verify_frequency",
     default_tolerance=1.0,
 )
@@ -769,19 +609,15 @@ def measure_power_dbm(*, vsg_id: int, key: str, calibration: str | None = None) 
     With ``calibration``, subtracts nearest-bin path loss at the last-set frequency
     so the returned value is the post-path level.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Measured power in dBm.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading output power from VSG %s", vsg_id)
     _ = key
@@ -794,7 +630,7 @@ def measure_power_dbm(*, vsg_id: int, key: str, calibration: str | None = None) 
 
 
 verify_power_dbm = tolerance_verifier(
-    "measure_power_dbm",
+    "measure_power_dbm", module=__name__,
     name="verify_power_dbm",
     default_tolerance=0.5,
 )
@@ -805,12 +641,9 @@ verify_power_dbm = tolerance_verifier(
 def set_arb_sample_clock(*, vsg_id: EquipmentId, sample_clock_hz: float) -> None:
     """Set arbitrary waveform sample clock rate in hertz.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-    :param sample_clock_hz: Sample clock in hertz.
-    :type sample_clock_hz: float
+    :param vsg_id: Configured ``equipment.vsg`` ID.
 
-    :returns: None
+    :param sample_clock_hz: Sample clock in hertz.
     """
     _logger.info("Setting arb sample clock on VSG %s to %s Hz", vsg_id, sample_clock_hz)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_arb_sample_clock(sample_clock_hz)
@@ -821,12 +654,9 @@ def set_arb_sample_clock(*, vsg_id: EquipmentId, sample_clock_hz: float) -> None
 def set_arb_trigger_source(*, vsg_id: EquipmentId, source: str) -> None:
     """Set ARB playback trigger source.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-    :param source: Trigger source string accepted by the configured model.
-    :type source: str
+    :param vsg_id: Configured ``equipment.vsg`` ID.
 
-    :returns: None
+    :param source: Trigger source string accepted by the configured model.
     """
     _logger.info("Setting arb trigger source on VSG %s to %s", vsg_id, source)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_arb_trigger_source(source)
@@ -837,10 +667,7 @@ def set_arb_trigger_source(*, vsg_id: EquipmentId, source: str) -> None:
 def arm_arb_trigger(*, vsg_id: EquipmentId) -> None:
     """Arm or force an immediate ARB trigger.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-
-    :returns: None
+    :param vsg_id: Configured ``equipment.vsg`` ID.
     """
     _logger.info("Arming arb trigger on VSG %s", vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).arm_arb_trigger()
@@ -851,14 +678,11 @@ def arm_arb_trigger(*, vsg_id: EquipmentId) -> None:
 def set_arb_marker_enable(*, vsg_id: EquipmentId, marker: int, enabled: bool) -> None:
     """Enable or disable an ARB marker.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-    :param marker: Marker index (1-based on most models).
-    :type marker: int
-    :param enabled: ``True`` to enable the marker.
-    :type enabled: bool
+    :param vsg_id: Configured ``equipment.vsg`` ID.
 
-    :returns: None
+    :param marker: Marker index (1-based on most models).
+
+    :param enabled: ``True`` to enable the marker.
     """
     _logger.info(
         "%s arb marker %s on VSG %s",
@@ -874,14 +698,11 @@ def set_arb_marker_enable(*, vsg_id: EquipmentId, marker: int, enabled: bool) ->
 def set_arb_marker_position(*, vsg_id: EquipmentId, marker: int, sample_index: int) -> None:
     """Set ARB marker position in sample indices.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-    :param marker: Marker index.
-    :type marker: int
-    :param sample_index: Sample index within the waveform.
-    :type sample_index: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
 
-    :returns: None
+    :param marker: Marker index.
+
+    :param sample_index: Sample index within the waveform.
     """
     _logger.info("Setting arb marker %s on VSG %s to sample %s", marker, vsg_id, sample_index)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_arb_marker_position(marker, sample_index)
@@ -892,12 +713,9 @@ def set_arb_marker_position(*, vsg_id: EquipmentId, marker: int, sample_index: i
 def set_ref_source(*, vsg_id: EquipmentId, source: str) -> None:
     """Set reference oscillator source (for example ``INT`` or ``EXT``).
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
-    :param source: Reference source string accepted by the configured model.
-    :type source: str
+    :param vsg_id: Configured ``equipment.vsg`` ID.
 
-    :returns: None
+    :param source: Reference source string accepted by the configured model.
     """
     _logger.info("Setting reference source on VSG %s to %s", vsg_id, source)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_ref_source(source)
@@ -907,10 +725,9 @@ def set_ref_source(*, vsg_id: EquipmentId, source: str) -> None:
 def get_ref_locked(*, vsg_id: int, key: str) -> float:
     """Read whether the reference oscillator is locked.
 
-    :param vsg_id: Configured ``equipment.vsg`` id from bench TOML.
-    :type vsg_id: int
+    :param vsg_id: Configured ``equipment.vsg`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: ``1.0`` when locked, ``0.0`` otherwise.
     :rtype: float

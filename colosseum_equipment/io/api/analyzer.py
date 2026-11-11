@@ -1,4 +1,11 @@
-"""Passive protocol captures (``col.io.analyzer``)."""
+"""Passive protocol captures (``col.io.analyzer``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+"""
 
 from __future__ import annotations
 
@@ -36,7 +43,7 @@ def configure(
 ) -> dict[str, Any]:
     """Configure an idle analyzer. SPI modes use active-low CS and MSB first.
 
-    :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
+    :param analyzer_id: Configured ``io.analyzer`` ID.
     :param protocol: Optional protocol override (``i2c``, ``spi``, or ``usb``).
     :param mode: Optional SPI mode 0..3.
     :param sample_rate_hz: Optional I2C/SPI sample rate in hertz.
@@ -56,7 +63,7 @@ def configure(
 def start(*, analyzer_id: int, path: str | None = None) -> str:
     """Enable capture before returning, then stream packets to JSON Lines.
 
-    :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
+    :param analyzer_id: Configured ``io.analyzer`` ID.
     :param path: New capture file relative to run output. Defaults to a unique name.
     :returns: Relative capture path used for this session.
     """
@@ -73,7 +80,7 @@ def start(*, analyzer_id: int, path: str | None = None) -> str:
 def stop(*, analyzer_id: int, timeout_s: float = 2.0) -> dict[str, Any]:
     """Drain until idle or deadline and stop; raise on a capture/SDK failure.
 
-    :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
+    :param analyzer_id: Configured ``io.analyzer`` ID.
     :param timeout_s: Drain deadline in seconds after stop is requested.
     :returns: Summary including limits, detected loss, path, and stop-boundary uncertainty.
     """
@@ -91,7 +98,7 @@ def export(*, analyzer_id: int, path: str, key: str) -> dict[str, Any]:
     Prefer calling ``export`` in an inner ``finally`` so a ``stop`` worker error
     still leaves the capture artifact in evidence.
 
-    :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
+    :param analyzer_id: Configured ``io.analyzer`` ID.
     :param path: Capture path relative to run output (usually the ``start`` return value).
     :param key: Unique evidence key within domain ``equipment``.
     :returns: Capture summary dict recorded with the artifact.
@@ -113,7 +120,7 @@ def export(*, analyzer_id: int, path: str, key: str) -> dict[str, Any]:
 def is_running(*, analyzer_id: int) -> bool:
     """Return whether a capture worker is currently running.
 
-    :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
+    :param analyzer_id: Configured ``io.analyzer`` ID.
     :returns: ``True`` while the capture worker thread is alive.
     """
     _logger.info("Reading run state from analyzer %s", analyzer_id)
@@ -123,7 +130,7 @@ def is_running(*, analyzer_id: int) -> bool:
 def status(*, analyzer_id: int) -> dict[str, Any]:
     """Return a mid-soak snapshot (running flag, records, stop_reason, path, …).
 
-    :param analyzer_id: Configured ``io.analyzer`` id from config TOML.
+    :param analyzer_id: Configured ``io.analyzer`` ID.
     :returns: Status dict including ``running`` and capture counters.
     """
     _logger.info("Reading status from analyzer %s", analyzer_id)

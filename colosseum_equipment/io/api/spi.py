@@ -1,4 +1,11 @@
-"""SPI master APIs (``col.io.spi``). Measurements use domain ``equipment`` in SQLite."""
+"""SPI master APIs (``col.io.spi``). Measurements use domain ``equipment`` in SQLite.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+"""
 
 from __future__ import annotations
 
@@ -23,14 +30,13 @@ def configure(
 ) -> dict[str, Any]:
     """Update SPI clock, mode (0..3), chip select, and/or bits per word.
 
-    :param spi_id: Configured ``io.spi`` id from config TOML.
+    :param spi_id: Configured ``io.spi`` ID.
     :param clock_hz: SCLK rate in hertz.
     :param mode: SPI mode 0..3 (CPOL/CPHA).
     :param chip_select: Chip-select index 0..7.
     :param bits_per_word: Bits per SPI sample (typically 8).
     :returns: Applied settings snapshot (clock_hz, mode, chip_select, …).
 
-    :raises IoConnectionError: Transport or instrument connection failed.
     :raises IoConfigError: Invalid clock/mode/CS for the configured model.
     """
     _logger.info(
@@ -56,7 +62,7 @@ def transfer(*, spi_id: int, data: bytes, key: str) -> bytes:
 
     Short transfers raise ``IoConnectionError`` rather than returning truncated data.
 
-    :param spi_id: Configured ``io.spi`` id from config TOML.
+    :param spi_id: Configured ``io.spi`` ID.
     :param data: MOSI payload bytes.
     :param key: Unique measurement key within domain ``equipment``.
 

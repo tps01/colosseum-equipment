@@ -1,4 +1,14 @@
-"""Frequency counter APIs (``col.equipment.freqcounter``)."""
+"""Frequency counter APIs (``col.equipment.freqcounter``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
+"""
 
 from __future__ import annotations
 
@@ -23,15 +33,9 @@ def _inst(freqcounter_id: EquipmentId) -> Any:
 def set_gate_time(*, freqcounter_id: EquipmentId, seconds: float) -> None:
     """Set the measurement gate time.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param seconds: Gate time in seconds.
-    :type seconds: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting gate time on frequency counter %s to %s s", freqcounter_id, seconds)
     _inst(freqcounter_id).set_gate_time(seconds)
@@ -42,17 +46,11 @@ def set_gate_time(*, freqcounter_id: EquipmentId, seconds: float) -> None:
 def set_coupling(*, freqcounter_id: EquipmentId, coupling: str, channel: int = 1) -> None:
     """Set input coupling (``AC`` or ``DC``).
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param coupling: Coupling mode.
-    :type coupling: str
+
     :param channel: Input channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting coupling on frequency counter %s channel %s to %s",
@@ -68,17 +66,11 @@ def set_coupling(*, freqcounter_id: EquipmentId, coupling: str, channel: int = 1
 def set_impedance(*, freqcounter_id: EquipmentId, ohms: float, channel: int = 1) -> None:
     """Set input termination impedance (``50`` or ``1e6``).
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param ohms: Termination in ohms.
-    :type ohms: float
+
     :param channel: Input channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting impedance on frequency counter %s channel %s to %s ohms",
@@ -94,17 +86,11 @@ def set_impedance(*, freqcounter_id: EquipmentId, ohms: float, channel: int = 1)
 def set_attenuation(*, freqcounter_id: EquipmentId, attenuation_db: float, channel: int = 1) -> None:
     """Set input attenuation in dB.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param attenuation_db: Attenuation in dB.
-    :type attenuation_db: float
+
     :param channel: Input channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting attenuation on frequency counter %s channel %s to %s dB",
@@ -120,17 +106,11 @@ def set_attenuation(*, freqcounter_id: EquipmentId, attenuation_db: float, chann
 def set_trigger_level_v(*, freqcounter_id: EquipmentId, level_v: float, channel: int = 1) -> None:
     """Set input trigger level in volts.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param level_v: Trigger level in volts.
-    :type level_v: float
+
     :param channel: Input channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting trigger level on frequency counter %s channel %s to %s V",
@@ -146,13 +126,7 @@ def set_trigger_level_v(*, freqcounter_id: EquipmentId, level_v: float, channel:
 def preset(*, freqcounter_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
     """
     _logger.info("Presetting frequency counter %s", freqcounter_id)
     _inst(freqcounter_id).preset()
@@ -162,19 +136,15 @@ def preset(*, freqcounter_id: EquipmentId) -> None:
 def measure_frequency(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure input frequency.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured frequency in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading frequency from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
@@ -182,7 +152,7 @@ def measure_frequency(*, freqcounter_id: int, channel: int = 1, key: str) -> flo
 
 
 verify_frequency = tolerance_verifier(
-    "measure_frequency",
+    "measure_frequency", module=__name__,
     name="verify_frequency",
     default_tolerance=1.0,
     unit="Hz",
@@ -193,19 +163,15 @@ verify_frequency = tolerance_verifier(
 def measure_period(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure input period.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured period in seconds.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading period from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
@@ -216,18 +182,14 @@ def measure_period(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
 def measure_time_interval_s(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure time interval in seconds.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Time interval in seconds.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Reading time interval from frequency counter %s channel %s",
@@ -242,18 +204,14 @@ def measure_time_interval_s(*, freqcounter_id: int, channel: int = 1, key: str) 
 def measure_rise_time_s(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure rise time in seconds.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Rise time in seconds.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading rise time from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
@@ -264,18 +222,14 @@ def measure_rise_time_s(*, freqcounter_id: int, channel: int = 1, key: str) -> f
 def measure_duty_cycle_pct(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure duty cycle in percent.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Duty cycle in percent.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading duty cycle from frequency counter %s channel %s", freqcounter_id, channel)
     _ = key
@@ -286,18 +240,14 @@ def measure_duty_cycle_pct(*, freqcounter_id: int, channel: int = 1, key: str) -
 def measure_totalize(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Read totalize count.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Totalize count.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Reading totalize count from frequency counter %s channel %s",
@@ -312,18 +262,14 @@ def measure_totalize(*, freqcounter_id: int, channel: int = 1, key: str) -> floa
 def measure_frequency_mean_hz(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure mean frequency when statistics are available.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Mean frequency in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Reading mean frequency from frequency counter %s channel %s",
@@ -338,18 +284,14 @@ def measure_frequency_mean_hz(*, freqcounter_id: int, channel: int = 1, key: str
 def measure_frequency_stdev_hz(*, freqcounter_id: int, channel: int = 1, key: str) -> float:
     """Measure frequency standard deviation when statistics are available.
 
-    :param freqcounter_id: Configured ``equipment.freqcounter`` id from bench TOML.
-    :type freqcounter_id: int
+    :param freqcounter_id: Configured ``equipment.freqcounter`` ID.
+
     :param channel: Input channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Frequency standard deviation in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Reading frequency stdev from frequency counter %s channel %s",

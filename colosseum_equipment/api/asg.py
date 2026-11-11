@@ -3,6 +3,15 @@
 Configure instruments with ``[equipment.asg]`` in bench TOML (``asg_id``, ``resource``,
 optional ``model`` and ``driver``; default driver is VISA/SCPI). Pulse generator and modulation
 commands use R&S-style SCPI on the ``generic`` model.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
 """
 
 from __future__ import annotations
@@ -38,19 +47,13 @@ def set_frequency(
     (desired) output level from the last ``set_power(..., calibration=)`` is
     held at the new frequency.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param frequency: Output frequency in hertz.
-    :type frequency: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting frequency on ASG %s channel %s to %s Hz", asg_id, channel, frequency)
     inst = _inst(asg_id)
@@ -68,17 +71,11 @@ def set_frequency(
 def set_waveform(*, asg_id: EquipmentId, waveform: str, channel: int = 1) -> None:
     """Set output waveform (``sine``, ``square``, ``ramp``, ``pulse``, ``noise``, ``arb``).
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param waveform: Waveform name.
-    :type waveform: str
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting waveform on ASG %s channel %s to %s", asg_id, channel, waveform)
     _inst(asg_id).set_waveform(waveform, channel=channel)
@@ -89,17 +86,11 @@ def set_waveform(*, asg_id: EquipmentId, waveform: str, channel: int = 1) -> Non
 def set_amplitude_vpp(*, asg_id: EquipmentId, vpp: float, channel: int = 1) -> None:
     """Set output amplitude in volts peak-to-peak.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param vpp: Amplitude in Vpp.
-    :type vpp: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting amplitude on ASG %s channel %s to %s Vpp", asg_id, channel, vpp)
     _inst(asg_id).set_amplitude_vpp(vpp, channel=channel)
@@ -110,17 +101,11 @@ def set_amplitude_vpp(*, asg_id: EquipmentId, vpp: float, channel: int = 1) -> N
 def set_amplitude_vrms(*, asg_id: EquipmentId, vrms: float, channel: int = 1) -> None:
     """Set output amplitude in volts RMS.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param vrms: Amplitude in Vrms.
-    :type vrms: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting amplitude on ASG %s channel %s to %s Vrms", asg_id, channel, vrms)
     _inst(asg_id).set_amplitude_vrms(vrms, channel=channel)
@@ -131,17 +116,11 @@ def set_amplitude_vrms(*, asg_id: EquipmentId, vrms: float, channel: int = 1) ->
 def set_offset_v(*, asg_id: EquipmentId, offset_v: float, channel: int = 1) -> None:
     """Set DC offset in volts.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param offset_v: Offset voltage.
-    :type offset_v: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting offset on ASG %s channel %s to %s V", asg_id, channel, offset_v)
     _inst(asg_id).set_offset_v(offset_v, channel=channel)
@@ -152,17 +131,11 @@ def set_offset_v(*, asg_id: EquipmentId, offset_v: float, channel: int = 1) -> N
 def set_load_ohms(*, asg_id: EquipmentId, ohms: float, channel: int = 1) -> None:
     """Set output load impedance in ohms.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param ohms: Load resistance in ohms.
-    :type ohms: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting load on ASG %s channel %s to %s ohms", asg_id, channel, ohms)
     _inst(asg_id).set_load_ohms(ohms, channel=channel)
@@ -172,18 +145,14 @@ def set_load_ohms(*, asg_id: EquipmentId, ohms: float, channel: int = 1) -> None
 def get_load_ohms(*, asg_id: int, channel: int = 1, key: str) -> float:
     """Read configured output load impedance in ohms.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param channel: Source channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Load resistance in ohms.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading load from ASG %s channel %s", asg_id, channel)
     _ = key
@@ -204,19 +173,13 @@ def set_power(
     With ``calibration``, ``power_dbm`` is the desired post-path level; the
     instrument is programmed to ``power_dbm - loss_db`` at the last-set frequency.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param power_dbm: Output power in dBm (post-cal desired when ``calibration`` is set).
-    :type power_dbm: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting output power on ASG %s channel %s to %s dBm", asg_id, channel, power_dbm)
     inst = _inst(asg_id)
@@ -235,17 +198,11 @@ def set_power(
 def set_duty_cycle_pct(*, asg_id: EquipmentId, pct: float, channel: int = 1) -> None:
     """Set square-wave duty cycle in percent.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param pct: Duty cycle 0–100.
-    :type pct: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting duty cycle on ASG %s channel %s to %s %%", asg_id, channel, pct)
     _inst(asg_id).set_duty_cycle_pct(pct, channel=channel)
@@ -256,17 +213,11 @@ def set_duty_cycle_pct(*, asg_id: EquipmentId, pct: float, channel: int = 1) -> 
 def set_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable RF output.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param enabled: ``True`` to enable RF output, ``False`` to disable.
-    :type enabled: bool
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "%s output on ASG %s channel %s",
@@ -282,17 +233,11 @@ def set_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
 def set_modulation_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable AM modulation on a source channel.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param enabled: ``True`` to enable modulation.
-    :type enabled: bool
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "%s modulation on ASG %s channel %s",
@@ -308,17 +253,11 @@ def set_modulation_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1
 def set_burst_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable burst mode on a source channel.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param enabled: ``True`` to enable burst.
-    :type enabled: bool
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "%s burst on ASG %s channel %s",
@@ -334,17 +273,11 @@ def set_burst_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> 
 def set_pulsegen_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable the pulse generator output (R&S-style).
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param enabled: ``True`` to enable pulse generator output, ``False`` to disable.
-    :type enabled: bool
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "%s pulse generator on ASG %s channel %s",
@@ -360,17 +293,11 @@ def set_pulsegen_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1)
 def set_pulsemod_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable pulse modulation.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param enabled: ``True`` to enable pulse modulation, ``False`` to disable.
-    :type enabled: bool
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "%s pulse modulation on ASG %s channel %s",
@@ -386,17 +313,11 @@ def set_pulsemod_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1)
 def set_pulse_period(*, asg_id: EquipmentId, period_s: float, channel: int = 1) -> None:
     """Set pulse period in seconds.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param period_s: Pulse period in seconds.
-    :type period_s: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting pulse period on ASG %s channel %s to %s s", asg_id, channel, period_s)
     _inst(asg_id).set_pulse_period(period_s, channel=channel)
@@ -407,17 +328,11 @@ def set_pulse_period(*, asg_id: EquipmentId, period_s: float, channel: int = 1) 
 def set_pulse_width(*, asg_id: EquipmentId, width_s: float, channel: int = 1) -> None:
     """Set pulse width in seconds.
 
-    :param asg_id: Configured ``equipment.asg`` id from bench TOML.
-    :type asg_id: int
+    :param asg_id: Configured ``equipment.asg`` ID.
+
     :param width_s: Pulse width in seconds.
-    :type width_s: float
+
     :param channel: Source channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting pulse width on ASG %s channel %s to %s s", asg_id, channel, width_s)
     _inst(asg_id).set_pulse_width(width_s, channel=channel)

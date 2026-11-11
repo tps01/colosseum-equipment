@@ -1,4 +1,14 @@
-"""RF switch matrix APIs (``col.equipment.rfswitch``)."""
+"""RF switch matrix APIs (``col.equipment.rfswitch``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
+"""
 
 from __future__ import annotations
 
@@ -16,17 +26,11 @@ _logger = get_logger("colosseum.equipment")
 def set_path(*, rfswitch_id: EquipmentId, path: str, wait_settle_s: float | None = None) -> None:
     """Set routing path (model-specific string, e.g. ``A=1;B=0`` or ``SETP=0011``).
 
-    :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
-    :type rfswitch_id: int
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
+
     :param path: Path command string for the configured model.
-    :type path: str
+
     :param wait_settle_s: Optional post-command wait in seconds (defaults to bench ``settle_s``).
-    :type wait_settle_s: float | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting path on RF switch %s to %s", rfswitch_id, path)
     get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).set_path(
@@ -45,19 +49,13 @@ def set_switch(
 ) -> None:
     """Set one switch letter (Mini-Circuits ``SETA=1`` style).
 
-    :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
-    :type rfswitch_id: int
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
+
     :param switch: Switch identifier (e.g. ``A``).
-    :type switch: str
+
     :param state: ``1`` on, ``0`` off.
-    :type state: int
+
     :param wait_settle_s: Optional post-command wait in seconds (defaults to bench ``settle_s``).
-    :type wait_settle_s: float | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting switch %s on RF switch %s to %s", switch, rfswitch_id, state)
     get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).set_switch(
@@ -71,15 +69,9 @@ def set_switch(
 def wait_settle(*, rfswitch_id: int, settle_s: float | None = None) -> None:
     """Wait for mechanical switches to finish settling.
 
-    :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
-    :type rfswitch_id: int
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
+
     :param settle_s: Wait time in seconds (defaults to bench ``settle_s`` when set).
-    :type settle_s: float | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Waiting for RF switch %s to settle", rfswitch_id)
     get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).wait_settle(settle_s=settle_s)
@@ -90,13 +82,7 @@ def wait_settle(*, rfswitch_id: int, settle_s: float | None = None) -> None:
 def preset(*, rfswitch_id: EquipmentId) -> None:
     """Return the switch to a default preset.
 
-    :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
-    :type rfswitch_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
     """
     _logger.info("Presetting RF switch %s", rfswitch_id)
     get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).preset()
@@ -106,17 +92,13 @@ def preset(*, rfswitch_id: EquipmentId) -> None:
 def measure_path(*, rfswitch_id: int, key: str) -> str:
     """Read the active routing path string.
 
-    :param rfswitch_id: Configured ``equipment.rfswitch`` id from bench TOML.
-    :type rfswitch_id: int
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured path string.
     :rtype: str
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading path from RF switch %s", rfswitch_id)
     _ = key

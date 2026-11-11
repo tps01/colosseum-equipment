@@ -2,27 +2,7 @@
 
 from __future__ import annotations
 
-from colosseum.docstrings import ParamSpec
 from colosseum.docstrings import sphinx_param as _sphinx_param
-
-
-def _equipment_raises() -> str:
-    return (
-        ":raises EquipmentConnectionError: Transport or instrument connection failed.\n"
-        ":raises EquipmentCapabilityError: Operation not supported by the configured model.\n\n"
-        "A raised exception is recorded as a command ERROR and aborts remaining script "
-        "steps unless ``optional=True``."
-    )
-
-
-def _measurement_raises() -> str:
-    return (
-        ":raises EquipmentConnectionError: Transport or instrument connection failed.\n"
-        ":raises EquipmentCapabilityError: Operation not supported by the configured model.\n\n"
-        "A raised exception is recorded as a measurement ERROR with a null value and "
-        "re-raised unless ``optional=True``. With ``optional=True`` the call returns "
-        "``None`` and the script continues."
-    )
 
 
 def _key_param(domain: str = "equipment") -> str:
@@ -32,74 +12,6 @@ def _key_param(domain: str = "equipment") -> str:
         f"Unique measurement key within domain ``{domain}`` and this command name. "
         "Must not collide with another instrument's measurement using the same command name.",
     )
-
-
-def equipment_id_param(
-    param: str,
-    kind: str,
-    *,
-    type_name: str = "int",
-    allow_all: bool = False,
-) -> str:
-    desc = f"Configured ``equipment.{kind}`` id from config TOML."
-    if allow_all:
-        type_name = "int | Literal['all']"
-        desc += (
-            f' Pass ``"all"`` to apply the command to every configured '
-            f"``equipment.{kind}`` row (sequential; failures aggregate)."
-        )
-    return _sphinx_param(param, type_name, desc)
-
-
-def _format_params(
-    id_param: str,
-    kind: str,
-    extra_params: list[ParamSpec],
-    *,
-    include_key: bool = False,
-    key_domain: str = "equipment",
-    allow_all: bool = False,
-) -> str:
-    blocks = [equipment_id_param(id_param, kind, allow_all=allow_all)]
-    blocks.extend(_sphinx_param(n, t, d) for n, t, d in extra_params)
-    if include_key:
-        blocks.append(_key_param(key_domain))
-    return "\n".join(blocks)
-
-
-def command_doc(
-    summary: str,
-    *,
-    id_param: str,
-    kind: str,
-    extra_params: list[ParamSpec] | None = None,
-    returns: str = "None",
-    rtype: str | None = None,
-    allow_all: bool = True,
-) -> str:
-    params = _format_params(id_param, kind, extra_params or [], allow_all=allow_all)
-    rtype_line = f"\n:rtype: {rtype}" if rtype else ""
-    return f"{summary}\n\n{params}\n\n:returns: {returns}{rtype_line}\n\n{_equipment_raises()}"
-
-
-def measurement_doc(
-    summary: str,
-    *,
-    id_param: str,
-    kind: str,
-    quantity: str,
-    extra_params: list[ParamSpec] | None = None,
-    rtype: str = "float",
-) -> str:
-    params = _format_params(
-        id_param,
-        kind,
-        extra_params or [],
-        include_key=True,
-        key_domain="equipment",
-        allow_all=False,
-    )
-    return f"{summary}\n\n{params}\n\n:returns: Measured {quantity}.\n:rtype: {rtype}\n\n{_measurement_raises()}"
 
 
 def tolerance_verify_doc(measure_command: str, *, unit: str = "") -> str:
