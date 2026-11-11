@@ -551,19 +551,19 @@ def test_factory_and_public_api_sim(
             """
             [io.dio]
             dio_id = 1
-            driver = sim
+            driver = "sim"
             port_lines = 8
             direction = 0xFF
 
             [io.i2c]
             i2c_id = 1
-            driver = sim
+            driver = "sim"
             address = 0x50
             read_data = "aabb"
 
             [io.spi]
             spi_id = 1
-            driver = sim
+            driver = "sim"
             mode = 0
             chip_select = 1
             """,
@@ -588,7 +588,7 @@ def test_sim_i2c_nack(
             """
             [io.i2c]
             i2c_id = 1
-            driver = sim
+            driver = "sim"
             nack = true
             """,
         ),
@@ -647,9 +647,9 @@ def test_close_all_releases_845x_session(
             """
             [io.i2c]
             i2c_id = 1
-            driver = ni-845x
+            driver = "ni-845x"
             resource = "USB-8452"
-            model = usb-8452
+            model = "usb-8452"
             address = 0x50
             """,
         ),

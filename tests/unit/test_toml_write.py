@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from colosseum.config.toml_relaxed import read_relaxed_toml
+from colosseum.config.toml_io import read_toml
 from colosseum_equipment.autoconfig.toml_write import (
     TomlWriteError,
     render_config_toml,
@@ -29,8 +29,8 @@ def test_render_single_table_section() -> None:
     text = render_config_toml(raw, header_comment=None)
     assert "[equipment.dmm]" in text
     assert "[[equipment.dmm]]" not in text
-    assert "model = generic" in text
-    assert "resource = USB0::0x2A8D::0x8F01::INSTR" in text
+    assert 'model = "generic"' in text
+    assert 'resource = "USB0::0x2A8D::0x8F01::INSTR"' in text
 
 
 def test_render_array_of_tables_for_multiple_rows() -> None:
@@ -44,7 +44,7 @@ def test_render_array_of_tables_for_multiple_rows() -> None:
     }
     text = render_config_toml(raw, header_comment=None)
     assert text.count("[[equipment.psu]]") == 2
-    assert "model = tdk-genesys" in text
+    assert 'model = "tdk-genesys"' in text
 
 
 def test_write_config_toml_round_trip(tmp_path: Path) -> None:
@@ -58,7 +58,7 @@ def test_write_config_toml_round_trip(tmp_path: Path) -> None:
         },
     }
     path = write_config_toml(raw, tmp_path / "config.generated.toml", header_comment="# test")
-    loaded = read_relaxed_toml(path)
+    loaded = read_toml(path)
     assert loaded == raw
 
 
@@ -85,7 +85,7 @@ def test_render_quotes_numeric_and_boolean_like_strings() -> None:
     assert 'label = "00123"' in text
     assert 'asset = "123"' in text
     assert 'flag = "no"' in text
-    assert "model = generic" in text
+    assert 'model = "generic"' in text
 
 
 def test_write_preserves_numeric_and_boolean_like_string_labels(tmp_path: Path) -> None:
@@ -100,7 +100,7 @@ def test_write_preserves_numeric_and_boolean_like_string_labels(tmp_path: Path) 
         },
     }
     path = write_config_toml(raw, tmp_path / "config.generated.toml", header_comment=None)
-    loaded = read_relaxed_toml(path)
+    loaded = read_toml(path)
     assert loaded["equipment"]["dmm"]["label"] == "00123"
     assert loaded["equipment"]["dmm"]["note"] == "no"
     assert loaded["equipment"]["dmm"]["model"] == "generic"

@@ -699,7 +699,7 @@ def test_autoconfig_export_writes_toml(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import colosseum_equipment.api._autoconfig as autoconfig_module
-    from colosseum.config.toml_relaxed import read_relaxed_toml
+    from colosseum.config.toml_io import read_toml
     from colosseum.context import get_context, init_context
     from colosseum.runner.paths import ensure_output_dir
 
@@ -724,7 +724,7 @@ def test_autoconfig_export_writes_toml(
     autoconfig(timeout=1.0, export_path=export_path)
     ctx = get_context()
     assert export_path.is_file()
-    loaded = read_relaxed_toml(export_path)
+    loaded = read_toml(export_path)
     dmm_section = loaded["equipment"]["dmm"]
     row = dmm_section[0] if isinstance(dmm_section, list) else dmm_section
     assert row["model"] == "keysight-edu34450a"
