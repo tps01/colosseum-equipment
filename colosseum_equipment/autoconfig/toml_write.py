@@ -1,56 +1,15 @@
-"""Write configuration dicts as relaxed TOML."""
+"""Write configuration dicts as standard TOML."""
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
 _DEFAULT_HEADER = "# Generated configuration — review before reuse."
-_BARE_WORD = re.compile(r"^[\w.:-]+$")
-# Match core ``coerce_config_bool`` / TOML number spellings that would change type.
-_BOOLISH_STRINGS = frozenset(
-    {
-        "true",
-        "t",
-        "yes",
-        "y",
-        "1",
-        "false",
-        "f",
-        "no",
-        "n",
-        "0",
-        "on",
-        "off",
-    },
-)
 
 
 class TomlWriteError(OSError):
     """Raised when a config TOML file cannot be written."""
-
-
-def _string_needs_quotes(text: str) -> bool:
-    """Return True when a bare write would not round-trip as this string."""
-    if text.lower() in _BOOLISH_STRINGS:
-        return True
-    if text.startswith(("0x", "0o", "0b")):
-        try:
-            int(text, 0)
-            return True
-        except ValueError:
-            return False
-    if text[:1] in "+-" or text[:1].isdigit():
-        try:
-            if any(ch in text for ch in (".", "e", "E")):
-                float(text)
-                return True
-            int(text)
-            return True
-        except ValueError:
-            return False
-    return False
 
 
 def _format_toml_value(value: object) -> str:
@@ -61,10 +20,8 @@ def _format_toml_value(value: object) -> str:
     if isinstance(value, float):
         return repr(value)
     text = str(value)
-    if _string_needs_quotes(text) or not _BARE_WORD.match(text):
-        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
-    return text
+    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 def _format_row(row: dict[str, Any]) -> list[str]:
@@ -87,7 +44,7 @@ def _section_rows(value: object) -> list[dict[str, Any]]:
 
 
 def render_config_toml(raw: dict[str, Any], *, header_comment: str | None = _DEFAULT_HEADER) -> str:
-    """Render ``raw`` config dict as relaxed config TOML text."""
+    """Render ``raw`` config dict as standard config TOML text."""
     lines: list[str] = []
     if header_comment:
         lines.append(header_comment)
@@ -124,7 +81,7 @@ def write_config_toml(
     *,
     header_comment: str | None = _DEFAULT_HEADER,
 ) -> Path:
-    """Write ``raw`` config to ``path`` as UTF-8 relaxed TOML."""
+    """Write ``raw`` config to ``path`` as UTF-8 standard TOML."""
     destination = Path(path).resolve()
     if destination.exists() and destination.is_dir():
         raise TomlWriteError(f"Config export path is a directory: {destination}")
