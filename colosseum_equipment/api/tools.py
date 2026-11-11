@@ -1,8 +1,7 @@
-"""Offline mask authoring helpers (``col.equipment.tools``).
+"""Mask JSON helpers (``col.equipment.tools``).
 
-Procedure-time apply/verify live on ``col.equipment.speca`` /
-``col.equipment.oscope``. This module is for creating and managing mask JSON
-ahead of a run.
+Create masks with colosseum-library/tools/mask_editor.py. Apply and verify
+masks through ``col.equipment.speca`` and ``col.equipment.oscope``.
 """
 
 from __future__ import annotations
@@ -11,7 +10,6 @@ from typing import Any
 
 from colosseum.logging import get_logger
 
-from colosseum_equipment.tools.mask_editor import MaskEditorCancelled, run_mask_editor
 from colosseum_equipment.tools.mask_schema import (
     list_mask_templates as _list_mask_templates,
 )
@@ -21,42 +19,10 @@ from colosseum_equipment.tools.mask_schema import save_mask as _save_mask
 _logger = get_logger("colosseum.equipment")
 
 __all__ = [
-    "MaskEditorCancelled",
-    "create_mask",
     "list_mask_templates",
     "load_mask",
     "save_mask",
 ]
-
-
-def create_mask(
-    *,
-    domain: str,
-    path: str = "",
-    template: str = "",
-    import_path: str = "",
-) -> str:
-    """Open the interactive mask editor; block until Save or Cancel.
-
-    Intended for offline authoring, not for standard test procedures. Procedure
-    scripts should call ``speca.apply_mask_setup`` / ``oscope.apply_mask_setup``
-    and ``verify_mask`` instead.
-
-    :param domain: ``frequency`` (Hz vs dBm) or ``time`` (s vs V).
-    :param path: Optional destination for Save (relative to CWD or run artifacts).
-    :param template: Built-in template id to seed the editor.
-    :param import_path: Existing mask JSON to open for editing.
-    :returns: Absolute path of the saved mask file.
-    :raises RuntimeError: If the user cancels (message ``mask editor cancelled``).
-    """
-    _logger.info("Opening mask editor for %s masks", domain)
-    saved = run_mask_editor(
-        domain=domain,
-        path=path,
-        template=template,
-        import_path=import_path,
-    )
-    return str(saved)
 
 
 def load_mask(*, path: str) -> dict[str, Any]:

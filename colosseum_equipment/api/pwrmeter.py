@@ -1,4 +1,14 @@
-"""RF power meter APIs (``col.equipment.pwrmeter``)."""
+"""RF power meter APIs (``col.equipment.pwrmeter``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
+"""
 
 from __future__ import annotations
 
@@ -40,19 +50,13 @@ def set_frequency(
     ``calibration`` only binds the frequency for later ``measure_*`` path-loss
     correction (sensor frequency is still programmed on the instrument).
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param frequency_hz: Frequency in hertz.
-    :type frequency_hz: float
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting frequency on power meter %s channel %s to %s Hz",
@@ -71,17 +75,11 @@ def set_frequency(
 def set_averaging_count(*, pwrmeter_id: EquipmentId, count: int, channel: int = 1) -> None:
     """Set the measurement averaging count.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param count: Number of averages.
-    :type count: int
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting averaging count on power meter %s channel %s to %s",
@@ -97,17 +95,11 @@ def set_averaging_count(*, pwrmeter_id: EquipmentId, count: int, channel: int = 
 def set_offset_db(*, pwrmeter_id: EquipmentId, offset_db: float, channel: int = 1) -> None:
     """Set power offset correction in dB.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param offset_db: Offset in dB.
-    :type offset_db: float
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting offset on power meter %s channel %s to %s dB",
@@ -123,15 +115,9 @@ def set_offset_db(*, pwrmeter_id: EquipmentId, offset_db: float, channel: int = 
 def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     """Zero the sensor.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Zeroing power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).zero_sensor(channel=channel)
@@ -142,15 +128,9 @@ def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
 def calibrate(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     """Run sensor calibration.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Calibrating power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).calibrate(channel=channel)
@@ -161,13 +141,7 @@ def calibrate(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
 def preset(*, pwrmeter_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
     """
     _logger.info("Presetting power meter %s", pwrmeter_id)
     _inst(pwrmeter_id).preset()
@@ -181,16 +155,9 @@ def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
     The transport timeout bounds the wait; unsupported generic dialects must
     be supplied by a model adapter rather than treated as measured power.
 
-    :param pwrmeter_id: Integer ID from the configured equipment.pwrmeter row. Select an
-        existing ID in that section.
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Acquiring power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).acquire(channel=channel)
@@ -206,21 +173,17 @@ def measure_power_dbm(
 ) -> float:
     """Measure RF power in dBm.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Measured power in dBm.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading power from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
@@ -234,7 +197,7 @@ def measure_power_dbm(
 
 
 verify_power_dbm = tolerance_verifier(
-    "measure_power_dbm",
+    "measure_power_dbm", module=__name__,
     name="verify_power_dbm",
     default_tolerance=0.5,
     unit="dBm",
@@ -253,20 +216,16 @@ def measure_power(
     Records evidence under command ``measure_power_dbm``. Pair with
     :data:`verify_power` or :data:`verify_power_dbm` using the same ``key``.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Measured power in dBm.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading power from power meter %s channel %s", pwrmeter_id, channel)
     return measure_power_dbm(
@@ -278,7 +237,7 @@ def measure_power(
 
 
 verify_power = tolerance_verifier(
-    "measure_power_dbm",
+    "measure_power_dbm", module=__name__,
     name="verify_power",
     default_tolerance=0.5,
     unit="dBm",
@@ -289,18 +248,14 @@ verify_power = tolerance_verifier(
 def measure_power_w(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
     """Measure RF power in watts.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
 
     :returns: Measured power in watts.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading power in watts from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
@@ -317,20 +272,16 @@ def measure_power_peak_dbm(
 ) -> float:
     """Measure peak RF power in dBm.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Peak power in dBm.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading peak power from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
@@ -353,20 +304,16 @@ def measure_power_avg_dbm(
 ) -> float:
     """Measure averaged RF power in dBm.
 
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` id from bench TOML.
-    :type pwrmeter_id: int
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
     :param channel: Sensor channel index (1-based).
-    :type channel: int
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Averaged power in dBm.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading average power from power meter %s channel %s", pwrmeter_id, channel)
     _ = key

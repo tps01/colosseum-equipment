@@ -12,31 +12,37 @@ from colosseum_equipment.instruments.dmm.keithley_dmm6500 import KeithleyDmm6500
 from colosseum_equipment.instruments.dmm.keysight_34401a import Keysight34401A
 from colosseum_equipment.instruments.registry import instrument_model
 
+# TODO: Validate rigol-dm3058 inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "rigol-dm3058")
 class RigolDm3058(GenericDMM):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dm3068 inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "rigol-dm3068")
 class RigolDm3068(GenericDMM):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dm858 inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "rigol-dm858")
 class RigolDm858(GenericDMM):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate siglent-sdm3045x inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "siglent-sdm3045x")
 class SiglentSdm3045x(GenericDMM):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
+# TODO: Validate siglent-sdm3055 inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "siglent-sdm3055")
 class SiglentSdm3055(GenericDMM):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
+# TODO: Validate siglent-sdm3065x inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "siglent-sdm3065x")
 class SiglentSdm3065x(GenericDMM):
@@ -47,21 +53,25 @@ class SiglentSdm3065x(GenericDMM):
 class Keysight34401a(Keysight34401A):
     """Manual: https://www.keysight.com/us/en/assets/9018-01063/user-manuals/9018-01063.pdf"""
 
+# TODO: Validate keysight-34460a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34460a")
 class Keysight34460a(GenericDMM):
     """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
 
+# TODO: Validate keysight-34461a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34461a")
 class Keysight34461a(GenericDMM):
     """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
 
+# TODO: Validate keysight-34465a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34465a")
 class Keysight34465a(GenericDMM):
     """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
 
+# TODO: Validate keysight-34470a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34470a")
 class Keysight34470a(GenericDMM):
@@ -72,6 +82,7 @@ class Keysight34470a(GenericDMM):
 class KeithleyDmm6500(KeithleyDmm6500Family):
     """Manual: https://www.tek.com/en/support/datasheets-manuals-software-downloads"""
 
+# TODO: Validate keithley-dmm7510 inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keithley-dmm7510")
 class KeithleyDmm7510(GenericDMM):

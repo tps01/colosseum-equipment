@@ -5,6 +5,15 @@ Configure instruments with ``[equipment.speca]`` in config TOML (``speca_id``,
 Trace and capture files are written under the active run output directory and
 registered as artifacts. Unsupported operations raise
 :class:`~colosseum_equipment.exceptions.EquipmentCapabilityError`.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
 """
 
 from __future__ import annotations
@@ -34,17 +43,11 @@ def set_center_frequency(
 
     ``calibration`` binds the frequency for later measure/trace path-loss lookups.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param frequency: Center frequency in hertz.
-    :type frequency: float
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _ = calibration
     _logger.info("Setting center frequency on SpecA %s to %s Hz", speca_id, frequency)
@@ -58,15 +61,9 @@ def set_center_frequency(
 def set_span(*, speca_id: EquipmentId, span: float) -> None:
     """Set frequency span in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param span: Frequency span in hertz.
-    :type span: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting span on SpecA %s to %s Hz", speca_id, span)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_span(span)
@@ -77,15 +74,9 @@ def set_span(*, speca_id: EquipmentId, span: float) -> None:
 def set_start_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
     """Set the start frequency of the span in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param frequency_hz: Start frequency in hertz.
-    :type frequency_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting start frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_start_frequency(frequency_hz)
@@ -96,15 +87,9 @@ def set_start_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
 def set_stop_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
     """Set the stop frequency of the span in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param frequency_hz: Stop frequency in hertz.
-    :type frequency_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting stop frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_stop_frequency(frequency_hz)
@@ -115,15 +100,9 @@ def set_stop_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
 def set_rbw(*, speca_id: EquipmentId, rbw: float) -> None:
     """Set resolution bandwidth in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param rbw: Resolution bandwidth in hertz.
-    :type rbw: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting RBW on SpecA %s to %s Hz", speca_id, rbw)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_rbw(rbw)
@@ -133,15 +112,9 @@ def set_rbw(*, speca_id: EquipmentId, rbw: float) -> None:
 def peak_search(*, speca_id: int, marker: int = 1) -> None:
     """Run a peak search and move the given marker to the peak.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Searching for peak on SpecA %s marker %s", speca_id, marker)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).peak_search(marker)
@@ -152,17 +125,11 @@ def peak_search(*, speca_id: int, marker: int = 1) -> None:
 def toggle_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
     """Enable or disable a marker by id.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int
+
     :param enabled: ``True`` to enable the marker, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s marker %s on SpecA %s", "Enabling" if enabled else "Disabling", marker, speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_marker(marker, enabled)
@@ -172,15 +139,9 @@ def toggle_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
 def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
     """Move the marker to the next peak to the right.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Moving SpecA %s marker %s to next peak right", speca_id, marker)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_right(marker)
@@ -190,15 +151,9 @@ def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
 def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
     """Move the marker to the next peak to the left.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Moving SpecA %s marker %s to next peak left", speca_id, marker)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_left(marker)
@@ -208,15 +163,9 @@ def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
 def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
     """Move the marker to the highest peak in the current span.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Moving SpecA %s marker %s to highest peak", speca_id, marker)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_highest_peak(marker)
@@ -227,17 +176,11 @@ def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
 def set_marker_frequency(*, speca_id: EquipmentId, marker: int, frequency_hz: float) -> None:
     """Place a marker at the given frequency in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int
+
     :param frequency_hz: Marker frequency in hertz.
-    :type frequency_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting SpecA %s marker %s to %s Hz", speca_id, marker, frequency_hz)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_frequency(marker, frequency_hz)
@@ -253,21 +196,17 @@ def measure_marker_power(
 ) -> float:
     """Read marker amplitude in dBm from the last completed sweep (does not re-arm).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Marker amplitude in dBm.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading marker power from SpecA %s marker %s", speca_id, marker)
     _ = key
@@ -283,19 +222,15 @@ def measure_marker_power(
 def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
     """Read marker frequency in hertz from the last completed sweep (does not re-arm).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Marker frequency in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading marker frequency from SpecA %s marker %s", speca_id, marker)
     _ = key
@@ -305,14 +240,14 @@ def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> flo
 
 
 verify_marker_frequency = tolerance_verifier(
-    "measure_marker_frequency",
+    "measure_marker_frequency", module=__name__,
     name="verify_marker_frequency",
     default_tolerance=1000.0,
 )
 
 
 verify_marker_power = tolerance_verifier(
-    "measure_marker_power",
+    "measure_marker_power", module=__name__,
     name="verify_marker_power",
     default_tolerance=0.5,
     unit="dBm",
@@ -330,23 +265,19 @@ def measure_trace_power_at_frequency(
 ) -> float:
     """Read trace power (dBm) at ``frequency_hz`` using the nearest CSV frequency bin.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param frequency_hz: Query frequency in hertz.
-    :type frequency_hz: float
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
+
     :param trace_path: Optional relative path to a prior trace CSV under the run directory.
-    :type trace_path: str | None, optional
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Trace power in dBm at the nearest frequency bin.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading trace power on SpecA %s at %s Hz", speca_id, frequency_hz)
     _ = key
@@ -364,7 +295,7 @@ def measure_trace_power_at_frequency(
 
 
 verify_trace_power_at_frequency = tolerance_verifier(
-    "measure_trace_power_at_frequency",
+    "measure_trace_power_at_frequency", module=__name__,
     name="verify_trace_power_at_frequency",
     default_tolerance=0.5,
     unit="dBm",
@@ -388,27 +319,21 @@ def save_trace_data(
     With ``calibration``, each bin is corrected by nearest-bin path loss before
     the CSV (and optional plot) is written.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param path: Relative path under the output directory (for example ``traces/sweep.csv``).
-    :type path: str
+
     :param trace: Trace number (1-based).
-    :type trace: int, optional
+
     :param include_frequency: When True, CSV columns are ``frequency_hz,amplitude_dbm``.
-    :type include_frequency: bool, optional
+
     :param save_plot: When True, also write a PNG plot (``path`` with ``.png`` suffix).
-    :type save_plot: bool, optional
+
     :param plot_path: Optional explicit PNG path under the run directory.
-    :type plot_path: str | None, optional
+
     :param key: Evidence key for later ``verify_mask`` (default ``speca_trace_<n>``).
-    :type key: str, optional
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving trace data from SpecA %s to %s", speca_id, path)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).save_trace_data(
@@ -427,7 +352,7 @@ def save_trace_data(
 def apply_mask_setup(*, speca_id: EquipmentId, mask: str, key: str = "") -> None:
     """Apply mask JSON ``setup`` fields (center/span/ref/RBW) to this SpecA.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
+    :param speca_id: Configured ``equipment.speca`` ID.
     :param mask: Path to mask JSON (or from ``parameters.toml`` via ``key=``).
     :param key: Optional parameters / evidence key for this step.
     """
@@ -447,8 +372,7 @@ def verify_mask(
 
     ``mask`` may come from ``parameters.toml`` for ``key``.
 
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param key: Unique evidence key for this measurement.
     :param mask: Mask definition used by this operation; see the mask workflow for supported
         structure and units. Default: ``''``.
     :param optional: When true, retain an unsuccessful outcome without failing the aggregate
@@ -457,10 +381,6 @@ def verify_mask(
 
     :returns: Recorded verification outcome (PASS, FAIL, ERROR, or BLOCKED), including the
         actual value when available.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     return verification_from_mask(
         key=key,
@@ -484,29 +404,25 @@ def measure_bw(
 ) -> float:
     """Measure occupied bandwidth in hertz from a trace CSV or live sweep.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param start_hz: Lower frequency bound for bandwidth analysis in hertz.
-    :type start_hz: float
+
     :param stop_hz: Upper frequency bound for bandwidth analysis in hertz.
-    :type stop_hz: float
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
+
     :param threshold_db: Power drop from peak used to define bandwidth edges in dB.
-    :type threshold_db: float, optional
+
     :param smoothing_order: Savitzky-Golay smoothing order applied before edge detection.
-    :type smoothing_order: int, optional
+
     :param trace: Trace number (1-based) when reading from the instrument.
-    :type trace: int, optional
+
     :param trace_path: Optional relative path to a prior trace CSV under the run directory.
-    :type trace_path: str | None, optional
 
     :returns: Occupied bandwidth in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Measuring bandwidth on SpecA %s", speca_id)
     _ = key
@@ -523,7 +439,7 @@ def measure_bw(
 
 
 verify_bandwidth = tolerance_verifier(
-    "measure_bw",
+    "measure_bw", module=__name__,
     name="verify_bandwidth",
     default_tolerance=1000.0,
 )
@@ -534,13 +450,7 @@ verify_bandwidth = tolerance_verifier(
 def preset(*, speca_id: EquipmentId) -> None:
     """Return the instrument to a default preset state.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param speca_id: Configured ``equipment.speca`` ID.
     """
     _logger.info("Presetting SpecA %s", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).preset()
@@ -551,15 +461,9 @@ def preset(*, speca_id: EquipmentId) -> None:
 def set_reference_level(*, speca_id: EquipmentId, level_dbm: float) -> None:
     """Set display reference level in dBm.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param level_dbm: Reference level in dBm.
-    :type level_dbm: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting reference level on SpecA %s to %s dBm", speca_id, level_dbm)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_reference_level(level_dbm)
@@ -570,15 +474,9 @@ def set_reference_level(*, speca_id: EquipmentId, level_dbm: float) -> None:
 def set_vbw(*, speca_id: EquipmentId, vbw: float) -> None:
     """Set video bandwidth in hertz.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param vbw: Video bandwidth in hertz.
-    :type vbw: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting VBW on SpecA %s to %s Hz", speca_id, vbw)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_vbw(vbw)
@@ -589,15 +487,9 @@ def set_vbw(*, speca_id: EquipmentId, vbw: float) -> None:
 def set_sweep_time(*, speca_id: EquipmentId, seconds: float) -> None:
     """Set sweep time in seconds.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param seconds: Sweep time in seconds.
-    :type seconds: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sweep time on SpecA %s to %s s", speca_id, seconds)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_time(seconds)
@@ -608,15 +500,9 @@ def set_sweep_time(*, speca_id: EquipmentId, seconds: float) -> None:
 def set_sweep_points(*, speca_id: EquipmentId, count: int) -> None:
     """Set the number of sweep points.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param count: Number of sweep points.
-    :type count: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sweep points on SpecA %s to %s", speca_id, count)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_points(count)
@@ -627,15 +513,9 @@ def set_sweep_points(*, speca_id: EquipmentId, count: int) -> None:
 def toggle_trigger_delay(*, speca_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable trigger delay.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param enabled: ``True`` to enable trigger delay, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s trigger delay on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_trigger_delay(enabled)
@@ -646,15 +526,9 @@ def toggle_trigger_delay(*, speca_id: EquipmentId, enabled: bool) -> None:
 def set_trigger_delay(*, speca_id: EquipmentId, delay_s: float) -> None:
     """Set trigger delay in seconds.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param delay_s: Trigger delay in seconds.
-    :type delay_s: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger delay on SpecA %s to %s s", speca_id, delay_s)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_delay(delay_s)
@@ -665,15 +539,9 @@ def set_trigger_delay(*, speca_id: EquipmentId, delay_s: float) -> None:
 def set_trigger_source(*, speca_id: EquipmentId, source: str) -> None:
     """Set trigger source (for example ``IMM``, ``VID``, ``LINE``, ``EXT``, ``RFB``, ``TV``).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param source: Trigger source string accepted by the configured model.
-    :type source: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trigger source on SpecA %s to %s", speca_id, source)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_source(source)
@@ -684,13 +552,7 @@ def set_trigger_source(*, speca_id: EquipmentId, source: str) -> None:
 def user_preset(*, speca_id: EquipmentId) -> None:
     """Recall user preset 1.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param speca_id: Configured ``equipment.speca`` ID.
     """
     _logger.info("Recalling user preset on SpecA %s", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).user_preset()
@@ -701,15 +563,9 @@ def user_preset(*, speca_id: EquipmentId) -> None:
 def set_detector(*, speca_id: EquipmentId, detector: str) -> None:
     """Set trace detector mode (model-specific, for example ``APEak``).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param detector: Detector mode string accepted by the configured model.
-    :type detector: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting detector on SpecA %s to %s", speca_id, detector)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_detector(detector)
@@ -720,17 +576,11 @@ def set_detector(*, speca_id: EquipmentId, detector: str) -> None:
 def set_trace_mode(*, speca_id: EquipmentId, trace: int, mode: str) -> None:
     """Set trace mode (for example ``WRIT``, ``MAXH``, ``AVER``).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param trace: Trace number (1-based).
-    :type trace: int
+
     :param mode: Trace mode string accepted by the configured model.
-    :type mode: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting SpecA %s trace %s mode to %s", speca_id, trace, mode)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trace_mode(trace, mode)
@@ -741,15 +591,9 @@ def set_trace_mode(*, speca_id: EquipmentId, trace: int, mode: str) -> None:
 def set_continuous_sweep(*, speca_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable continuous sweep.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param enabled: ``True`` for continuous sweep, ``False`` for single-sweep mode.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s continuous sweep on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_continuous_sweep(enabled)
@@ -760,13 +604,7 @@ def set_continuous_sweep(*, speca_id: EquipmentId, enabled: bool) -> None:
 def arm_sweep(*, speca_id: EquipmentId) -> None:
     """Arm a single sweep without blocking for completion.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param speca_id: Configured ``equipment.speca`` ID.
     """
     _logger.info("Arming single sweep on SpecA %s", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).arm_sweep()
@@ -776,15 +614,10 @@ def arm_sweep(*, speca_id: EquipmentId) -> None:
 def wait_complete(*, speca_id: int, timeout_s: float = 60.0) -> None:
     """Block until the current sweep completes or ``timeout_s`` elapses.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param timeout_s: Maximum wait time in seconds.
-    :type timeout_s: float, optional
 
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     :raises EquipmentTimeoutError: Sweep did not complete in time.
     """
     _logger.info("Waiting for SpecA %s sweep to complete", speca_id)
@@ -796,13 +629,7 @@ def wait_complete(*, speca_id: int, timeout_s: float = 60.0) -> None:
 def abort(*, speca_id: EquipmentId) -> None:
     """Cancel an in-progress sweep.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param speca_id: Configured ``equipment.speca`` ID.
     """
     _logger.info("Aborting sweep on SpecA %s", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).abort()
@@ -813,12 +640,9 @@ def abort(*, speca_id: EquipmentId) -> None:
 def set_attenuation_db(*, speca_id: EquipmentId, attenuation_db: float) -> None:
     """Set input attenuation in dB.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param attenuation_db: Input attenuation in dB.
-    :type attenuation_db: float
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param attenuation_db: Input attenuation in dB.
     """
     _logger.info("Setting attenuation on SpecA %s to %s dB", speca_id, attenuation_db)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_attenuation_db(attenuation_db)
@@ -829,12 +653,9 @@ def set_attenuation_db(*, speca_id: EquipmentId, attenuation_db: float) -> None:
 def set_auto_attenuation(*, speca_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable automatic input attenuation.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param enabled: ``True`` to enable auto attenuation.
-    :type enabled: bool
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param enabled: ``True`` to enable auto attenuation.
     """
     _logger.info(
         "%s auto attenuation on SpecA %s",
@@ -849,12 +670,9 @@ def set_auto_attenuation(*, speca_id: EquipmentId, enabled: bool) -> None:
 def toggle_preamp(*, speca_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable the input preamplifier.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param enabled: ``True`` to enable the preamp.
-    :type enabled: bool
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param enabled: ``True`` to enable the preamp.
     """
     _logger.info("%s preamp on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_preamp(enabled)
@@ -865,12 +683,9 @@ def toggle_preamp(*, speca_id: EquipmentId, enabled: bool) -> None:
 def set_averaging_count(*, speca_id: EquipmentId, count: int) -> None:
     """Set sweep averaging count.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param count: Number of sweeps to average.
-    :type count: int
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param count: Number of sweeps to average.
     """
     _logger.info("Setting averaging count on SpecA %s to %s", speca_id, count)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_averaging_count(count)
@@ -881,12 +696,9 @@ def set_averaging_count(*, speca_id: EquipmentId, count: int) -> None:
 def set_average_type(*, speca_id: EquipmentId, average_type: str) -> None:
     """Set trace averaging type (model-specific, for example ``VID`` or ``POW``).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param average_type: Averaging type string accepted by the configured model.
-    :type average_type: str
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param average_type: Averaging type string accepted by the configured model.
     """
     _logger.info("Setting average type on SpecA %s to %s", speca_id, average_type)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_average_type(average_type)
@@ -897,12 +709,9 @@ def set_average_type(*, speca_id: EquipmentId, average_type: str) -> None:
 def set_marker_to_center(*, speca_id: EquipmentId, marker: int = 1) -> None:
     """Move a marker to the spectrum center frequency.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param marker: Marker number (1-based).
-    :type marker: int, optional
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param marker: Marker number (1-based).
     """
     _logger.info("Moving SpecA %s marker %s to center", speca_id, marker)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_to_center(marker)
@@ -913,14 +722,11 @@ def set_marker_to_center(*, speca_id: EquipmentId, marker: int = 1) -> None:
 def toggle_delta_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
     """Enable or disable delta-marker mode on a marker.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param marker: Marker number (1-based).
-    :type marker: int
-    :param enabled: ``True`` to enable delta mode.
-    :type enabled: bool
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param marker: Marker number (1-based).
+
+    :param enabled: ``True`` to enable delta mode.
     """
     _logger.info(
         "%s delta marker %s on SpecA %s",
@@ -936,14 +742,11 @@ def toggle_delta_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) ->
 def set_marker_delta_reference(*, speca_id: EquipmentId, marker: int, reference_marker: int) -> None:
     """Set which marker is the delta reference for ``marker``.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-    :param marker: Delta marker number.
-    :type marker: int
-    :param reference_marker: Reference marker number.
-    :type reference_marker: int
+    :param speca_id: Configured ``equipment.speca`` ID.
 
-    :returns: None
+    :param marker: Delta marker number.
+
+    :param reference_marker: Reference marker number.
     """
     _logger.info(
         "Setting SpecA %s marker %s delta reference to marker %s",
@@ -960,12 +763,11 @@ def set_marker_delta_reference(*, speca_id: EquipmentId, marker: int, reference_
 def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
     """Read delta-marker frequency offset in hertz (last sweep; does not re-arm).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Delta frequency in hertz.
     :rtype: float
@@ -981,12 +783,11 @@ def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) 
 def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> float:
     """Read delta-marker amplitude in dB (last sweep; does not re-arm).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker number (1-based).
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Delta amplitude in dB.
     :rtype: float
@@ -1008,14 +809,13 @@ def measure_channel_power_dbm(
 ) -> float:
     """Read channel power in dBm when instrument CALC supports it (fetch; no new sweep).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param marker: Marker tied to the channel-power measurement.
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-    :type calibration: str | None, optional
 
     :returns: Channel power in dBm.
     :rtype: float
@@ -1034,12 +834,11 @@ def measure_channel_power_dbm(
 def measure_acpr_db(*, speca_id: int, key: str, side: str = "both") -> float:
     """Read adjacent-channel power ratio in dB when ACP CALC exists (fetch).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+
     :param side: ``upper``, ``lower``, or ``both``.
-    :type side: str, optional
 
     :returns: ACPR in dB.
     :rtype: float
@@ -1063,22 +862,21 @@ def measure_obw_hz(
 ) -> float:
     """Measure occupied bandwidth in hertz (instrument OBW when available, else host trace).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param start_hz: Lower analysis bound in hertz (host fallback).
-    :type start_hz: float
+
     :param stop_hz: Upper analysis bound in hertz (host fallback).
-    :type stop_hz: float
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+
     :param threshold_db: Host fallback threshold below peak in dB.
-    :type threshold_db: float, optional
+
     :param smoothing_order: Host fallback Savitzky-Golay order.
-    :type smoothing_order: int, optional
+
     :param trace: Trace number when a live sweep is required for fallback.
-    :type trace: int, optional
+
     :param trace_path: Optional prior trace CSV under the run directory.
-    :type trace_path: str | None, optional
 
     :returns: Occupied bandwidth in hertz.
     :rtype: float
@@ -1101,13 +899,7 @@ def measure_obw_hz(
 def single_sweep(*, speca_id: int) -> None:
     """Trigger a single sweep and wait for completion.
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param speca_id: Configured ``equipment.speca`` ID.
     """
     _logger.info("Running single sweep on SpecA %s", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).single_sweep()
@@ -1117,17 +909,11 @@ def single_sweep(*, speca_id: int) -> None:
 def save_screenshot(*, speca_id: int, path: str, key: str = "") -> None:
     """Save a display screenshot and register an artifact (vendor-specific).
 
-    :param speca_id: Configured ``equipment.speca`` id from config TOML.
-    :type speca_id: int
+    :param speca_id: Configured ``equipment.speca`` ID.
+
     :param path: Relative path under the output directory for the screenshot file.
-    :type path: str
+
     :param key: Evidence key (default ``speca_screenshot_<sweep>``).
-    :type key: str, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving screenshot from SpecA %s to %s", speca_id, path)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).save_screenshot(path, key=key)

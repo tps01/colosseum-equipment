@@ -4,6 +4,15 @@ Configure instruments with ``[equipment.vna]`` in bench TOML (``vna_id``, ``reso
 optional ``model``, ``channel``, and ``driver``; default driver is VISA/SCPI). Trace exports are
 written under the active run output directory. Unsupported operations on ``anritsu-541xx`` raise
 :class:`~colosseum_equipment.exceptions.EquipmentCapabilityError`.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
 """
 
 from __future__ import annotations
@@ -23,13 +32,7 @@ _logger = get_logger("colosseum.equipment")
 def preset(*, vna_id: EquipmentId) -> None:
     """Return the VNA to a default preset.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vna_id: Configured ``equipment.vna`` ID.
     """
     _logger.info("Presetting VNA %s", vna_id)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).preset()
@@ -40,15 +43,9 @@ def preset(*, vna_id: EquipmentId) -> None:
 def set_start_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
     """Set the sweep start frequency.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param frequency_hz: Start frequency in hertz.
-    :type frequency_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting start frequency on VNA %s to %s Hz", vna_id, frequency_hz)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_start_frequency(frequency_hz)
@@ -59,15 +56,9 @@ def set_start_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
 def set_stop_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
     """Set the sweep stop frequency.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param frequency_hz: Stop frequency in hertz.
-    :type frequency_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting stop frequency on VNA %s to %s Hz", vna_id, frequency_hz)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_stop_frequency(frequency_hz)
@@ -78,15 +69,9 @@ def set_stop_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
 def set_points(*, vna_id: EquipmentId, count: int) -> None:
     """Set the number of sweep points.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param count: Number of frequency points in the sweep.
-    :type count: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sweep points on VNA %s to %s", vna_id, count)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_points(count)
@@ -96,13 +81,7 @@ def set_points(*, vna_id: EquipmentId, count: int) -> None:
 def single_sweep(*, vna_id: int) -> None:
     """Trigger a single sweep and wait for completion.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vna_id: Configured ``equipment.vna`` ID.
     """
     _logger.info("Running single sweep on VNA %s", vna_id)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).single_sweep()
@@ -113,13 +92,7 @@ def single_sweep(*, vna_id: int) -> None:
 def abort(*, vna_id: EquipmentId) -> None:
     """Cancel an in-progress sweep.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vna_id: Configured ``equipment.vna`` ID.
     """
     _logger.info("Aborting sweep on VNA %s", vna_id)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).abort()
@@ -130,12 +103,9 @@ def abort(*, vna_id: EquipmentId) -> None:
 def set_averaging_count(*, vna_id: EquipmentId, count: int) -> None:
     """Set sweep averaging count.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-    :param count: Number of sweeps to average.
-    :type count: int
+    :param vna_id: Configured ``equipment.vna`` ID.
 
-    :returns: None
+    :param count: Number of sweeps to average.
     """
     _logger.info("Setting averaging count on VNA %s to %s", vna_id, count)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_averaging_count(count)
@@ -146,12 +116,9 @@ def set_averaging_count(*, vna_id: EquipmentId, count: int) -> None:
 def toggle_averaging(*, vna_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable sweep averaging.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-    :param enabled: ``True`` to enable averaging.
-    :type enabled: bool
+    :param vna_id: Configured ``equipment.vna`` ID.
 
-    :returns: None
+    :param enabled: ``True`` to enable averaging.
     """
     _logger.info("%s averaging on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_averaging(enabled)
@@ -162,12 +129,9 @@ def toggle_averaging(*, vna_id: EquipmentId, enabled: bool) -> None:
 def set_smoothing_aperture(*, vna_id: EquipmentId, percent: float) -> None:
     """Set trace smoothing aperture as a percent of span.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-    :param percent: Smoothing aperture in percent.
-    :type percent: float
+    :param vna_id: Configured ``equipment.vna`` ID.
 
-    :returns: None
+    :param percent: Smoothing aperture in percent.
     """
     _logger.info("Setting smoothing aperture on VNA %s to %s %%", vna_id, percent)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_smoothing_aperture(percent)
@@ -177,12 +141,11 @@ def set_smoothing_aperture(*, vna_id: EquipmentId, percent: float) -> None:
 def measure_s11_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
     """Peak S11 magnitude in dB after a single sweep.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param trace: Trace number.
-    :type trace: int, optional
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Peak formatted S11 value in dB.
     :rtype: float
@@ -196,12 +159,11 @@ def measure_s11_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
 def measure_s21_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
     """Peak S21 magnitude in dB after a single sweep.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param trace: Trace number.
-    :type trace: int, optional
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Peak formatted S21 value in dB.
     :rtype: float
@@ -222,16 +184,15 @@ def measure_s_parameter(
 ) -> float:
     """Peak formatted S-parameter value after a single sweep.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param trace: Trace number.
-    :type trace: int, optional
+
     :param parameter: S-parameter name (for example ``S21``).
-    :type parameter: str, optional
+
     :param format: Display format (for example ``MLOG``).
-    :type format: str, optional
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Peak trace value in the configured format.
     :rtype: float
@@ -251,13 +212,7 @@ def measure_s_parameter(
 def wait_complete(*, vna_id: int) -> None:
     """Block until the current operation completes.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param vna_id: Configured ``equipment.vna`` ID.
     """
     _logger.info("Waiting for VNA %s sweep to complete", vna_id)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).wait_complete()
@@ -268,15 +223,9 @@ def wait_complete(*, vna_id: int) -> None:
 def toggle_display(*, vna_id: EquipmentId, enabled: bool) -> None:
     """Enable or disable instrument display updates.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param enabled: ``True`` to enable display updates, ``False`` to disable.
-    :type enabled: bool
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("%s display on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_display(enabled)
@@ -286,15 +235,9 @@ def toggle_display(*, vna_id: EquipmentId, enabled: bool) -> None:
 def perform_ecal(*, vna_id: int, ports: str) -> None:
     """Run guided e-calibration between ports.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param ports: Port pair for calibration (for example ``1:4``).
-    :type ports: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Running ecal on VNA %s ports %s", vna_id, ports)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).perform_ecal(ports)
@@ -305,19 +248,13 @@ def perform_ecal(*, vna_id: int, ports: str) -> None:
 def set_marker(*, vna_id: EquipmentId, marker: int, frequency_hz: float, trace: int = 1) -> None:
     """Place a marker at the given frequency on a trace.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param marker: Marker number.
-    :type marker: int
+
     :param frequency_hz: Marker frequency in hertz.
-    :type frequency_hz: float
+
     :param trace: Trace number (default ``1``).
-    :type trace: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting VNA %s marker %s to %s Hz", vna_id, marker, frequency_hz)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_marker(marker, frequency_hz, trace=trace)
@@ -327,19 +264,15 @@ def set_marker(*, vna_id: EquipmentId, marker: int, frequency_hz: float, trace: 
 def measure_marker_frequency(*, vna_id: int, marker: int = 1, key: str) -> float:
     """Read marker frequency.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param marker: Marker number (default ``1``).
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured marker frequency in hertz.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading marker frequency from VNA %s marker %s", vna_id, marker)
     _ = key
@@ -350,19 +283,15 @@ def measure_marker_frequency(*, vna_id: int, marker: int = 1, key: str) -> float
 def measure_marker_value(*, vna_id: int, marker: int = 1, key: str) -> float:
     """Read marker trace value.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param marker: Marker number (default ``1``).
-    :type marker: int, optional
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
 
     :returns: Measured marker trace value.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading marker value from VNA %s marker %s", vna_id, marker)
     _ = key
@@ -370,14 +299,14 @@ def measure_marker_value(*, vna_id: int, marker: int = 1, key: str) -> float:
 
 
 verify_marker_frequency = tolerance_verifier(
-    "measure_marker_frequency",
+    "measure_marker_frequency", module=__name__,
     name="verify_marker_frequency",
     default_tolerance=1000.0,
 )
 
 
 verify_marker_value = tolerance_verifier(
-    "measure_marker_value",
+    "measure_marker_value", module=__name__,
     name="verify_marker_value",
     default_tolerance=0.01,
 )
@@ -394,21 +323,15 @@ def save_trace_data(
 ) -> None:
     """Export trace data to CSV or Touchstone S2P under the run directory.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param path: Relative path under the run directory.
-    :type path: str
+
     :param trace: Trace number to export (default ``1``).
-    :type trace: int, optional
+
     :param file_format: Export format, ``csv`` or ``s2p`` (default ``csv``).
-    :type file_format: str, optional
+
     :param parameter: S-parameter name for S2P export (default ``S11``).
-    :type parameter: str, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Saving trace data from VNA %s to %s", vna_id, path)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).save_trace_data(
@@ -424,15 +347,9 @@ def save_trace_data(
 def set_if_bw(*, vna_id: EquipmentId, bandwidth_hz: float) -> None:
     """Set IF/resolution bandwidth.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param bandwidth_hz: IF bandwidth in hertz.
-    :type bandwidth_hz: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting IF bandwidth on VNA %s to %s Hz", vna_id, bandwidth_hz)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_if_bw(bandwidth_hz)
@@ -443,17 +360,11 @@ def set_if_bw(*, vna_id: EquipmentId, bandwidth_hz: float) -> None:
 def set_tx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> None:
     """Set source port output power.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param power_dbm: Output power in dBm.
-    :type power_dbm: float
+
     :param port: Source port number (default ``1``).
-    :type port: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting transmit power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_tx_power(power_dbm, port=port)
@@ -464,17 +375,11 @@ def set_tx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> Non
 def set_rx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> None:
     """Set receiver/reference level.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param power_dbm: Reference level in dBm.
-    :type power_dbm: float
+
     :param port: Receiver port number (default ``1``).
-    :type port: int, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting receive power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_rx_power(power_dbm, port=port)
@@ -485,15 +390,9 @@ def set_rx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> Non
 def set_sweep_time(*, vna_id: EquipmentId, seconds: float) -> None:
     """Set sweep time.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param seconds: Sweep duration in seconds.
-    :type seconds: float
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting sweep time on VNA %s to %s s", vna_id, seconds)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_sweep_time(seconds)
@@ -504,15 +403,9 @@ def set_sweep_time(*, vna_id: EquipmentId, seconds: float) -> None:
 def set_trace_count(*, vna_id: EquipmentId, count: int) -> None:
     """Set the number of traces shown on the instrument.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param count: Number of traces.
-    :type count: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting trace count on VNA %s to %s", vna_id, count)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_trace_count(count)
@@ -523,17 +416,11 @@ def set_trace_count(*, vna_id: EquipmentId, count: int) -> None:
 def set_trace_hold(*, vna_id: EquipmentId, trace: int, mode: str) -> None:
     """Configure trace hold mode.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param trace: Trace number.
-    :type trace: int
+
     :param mode: Hold mode (for example ``MAXH``, ``MINH``, ``WRIT``, ``HOLD``).
-    :type mode: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting VNA %s trace %s hold to %s", vna_id, trace, mode)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_trace_hold(trace, mode)
@@ -544,19 +431,13 @@ def set_trace_hold(*, vna_id: EquipmentId, trace: int, mode: str) -> None:
 def set_trace_parameters(*, vna_id: EquipmentId, trace: int, parameter: str, format: str) -> None:
     """Set trace S-parameter and display format.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param trace: Trace number.
-    :type trace: int
+
     :param parameter: S-parameter name (for example ``S11``).
-    :type parameter: str
+
     :param format: Display format (for example ``MLOG``).
-    :type format: str
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Setting VNA %s trace %s to %s %s", vna_id, trace, parameter, format)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_trace_parameters(trace, parameter, format)
@@ -575,23 +456,17 @@ def configure_trigger(
 ) -> None:
     """Configure acquisition trigger source and optional settings.
 
-    :param vna_id: Configured ``equipment.vna`` id from bench TOML.
-    :type vna_id: int
+    :param vna_id: Configured ``equipment.vna`` ID.
+
     :param source: Trigger source (default ``IMM``).
-    :type source: str, optional
+
     :param continuous: ``True`` for continuous sweep, ``False`` for single sweep.
-    :type continuous: bool | None, optional
+
     :param edge: Trigger edge (for example ``POS``, ``NEG``).
-    :type edge: str | None, optional
+
     :param delay_s: Trigger delay in seconds.
-    :type delay_s: float | None, optional
+
     :param channel: Measurement channel override.
-    :type channel: int | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting trigger on VNA %s channel %s to %s edge %s delay %s s",
