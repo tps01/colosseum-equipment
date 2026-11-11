@@ -5,7 +5,7 @@ coverage. A model slug or a successful transport write does not establish
 hardware support. New deep APIs in a development checkout may require a newer
 core than a tagged release; see the GNSS compatibility note below.
 
-For SpecA/oscope **mask** files (`tools.create_mask` offline;
+For SpecA/oscope **mask** files (the colosseum-library mask editor offline;
 `speca`/`oscope` `apply_mask_setup` + `verify_mask` in procedures), see
 [mask guide](https://tps01.github.io/colosseum-equipment/guides/masks.html).
 

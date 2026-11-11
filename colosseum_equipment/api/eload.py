@@ -1,4 +1,14 @@
-"""Electronic load APIs (``col.equipment.eload``)."""
+"""Electronic load APIs (``col.equipment.eload``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
+"""
 
 from __future__ import annotations
 
@@ -23,18 +33,11 @@ def _inst(eload_id: EquipmentId) -> Any:
 def set_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
     """Set operating mode (CC, CV, CP, or CR per model).
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param mode: Load mode token: CC, CV, CP, or CR, subject to the selected driver's
         capabilities.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting mode on ELoad %s channel %s to %s", eload_id, channel, mode)
     _inst(eload_id).set_mode(mode, channel=channel)
@@ -45,18 +48,11 @@ def set_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
 def set_current(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set constant-current level.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param current: Current in amperes. Valid settings and protection limits depend on the
         instrument model and range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting current on ELoad %s channel %s to %s A", eload_id, channel, current)
     _inst(eload_id).set_current(current, channel=channel)
@@ -67,18 +63,11 @@ def set_current(*, eload_id: EquipmentId, current: float, channel: int = 1) -> N
 def set_voltage(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set constant-voltage level.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param voltage: Voltage in volts. Valid settings and protection limits depend on the
         instrument model and output range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting voltage on ELoad %s channel %s to %s V", eload_id, channel, voltage)
     _inst(eload_id).set_voltage(voltage, channel=channel)
@@ -89,17 +78,10 @@ def set_voltage(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> N
 def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
     """Set constant-power level (use when load is in CP mode).
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param power: Power in watts. Supported settings depend on the configured load and range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting power on ELoad %s channel %s to %s W", eload_id, channel, power)
     _inst(eload_id).set_power(power, channel=channel)
@@ -110,18 +92,11 @@ def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
 def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1) -> None:
     """Set constant-resistance level (use when load is in CR mode).
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param resistance: Resistance in ohms. Supported settings depend on the configured load and
         range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "Setting resistance on ELoad %s channel %s to %s ohms",
@@ -137,16 +112,9 @@ def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1
 def engage(*, eload_id: EquipmentId, channel: int = 1) -> None:
     """Connect the load input.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Engaging ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).engage(channel=channel)
@@ -157,16 +125,9 @@ def engage(*, eload_id: EquipmentId, channel: int = 1) -> None:
 def disengage(*, eload_id: EquipmentId, channel: int = 1) -> None:
     """Disconnect the load input.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Disengaging ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).disengage(channel=channel)
@@ -177,14 +138,7 @@ def disengage(*, eload_id: EquipmentId, channel: int = 1) -> None:
 def preset(*, eload_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param eload_id: Configured ``equipment.eload`` ID.
     """
     _logger.info("Presetting ELoad %s", eload_id)
     _inst(eload_id).preset()
@@ -195,18 +149,11 @@ def preset(*, eload_id: EquipmentId) -> None:
 def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1) -> None:
     """Set current slew rate.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param amps_per_s: Current slew rate in amperes per second; availability and range depend on
         the model.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "Setting slew rate on ELoad %s channel %s to %s A/s",
@@ -222,17 +169,10 @@ def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1)
 def toggle_short(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable input short.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param enabled: True to enable the named feature; false to disable it.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "%s short on ELoad %s channel %s",
@@ -248,18 +188,11 @@ def toggle_short(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> N
 def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set over-voltage protection level.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param voltage: Voltage in volts. Valid settings and protection limits depend on the
         instrument model and output range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting OVP on ELoad %s channel %s to %s V", eload_id, channel, voltage)
     _inst(eload_id).set_ovp_v(voltage, channel=channel)
@@ -270,18 +203,11 @@ def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> Non
 def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set over-current protection level.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param current: Current in amperes. Valid settings and protection limits depend on the
         instrument model and range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting OCP on ELoad %s channel %s to %s A", eload_id, channel, current)
     _inst(eload_id).set_ocp_a(current, channel=channel)
@@ -292,17 +218,10 @@ def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> Non
 def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
     """Set over-power protection level.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param power: Power in watts. Supported settings depend on the configured load and range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting OPP on ELoad %s channel %s to %s W", eload_id, channel, power)
     _inst(eload_id).set_opp_w(power, channel=channel)
@@ -313,16 +232,9 @@ def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
 def clear_protection(*, eload_id: EquipmentId, channel: int = 1) -> None:
     """Clear latched protection state.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Clearing protection on ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).clear_protection(channel=channel)
@@ -333,18 +245,11 @@ def clear_protection(*, eload_id: EquipmentId, channel: int = 1) -> None:
 def set_transient_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
     """Set transient generator mode.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param mode: Model-specific transient mode token; consult the load's command set before
         enabling transients.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting transient mode on ELoad %s channel %s to %s", eload_id, channel, mode)
     _inst(eload_id).set_transient_mode(mode, channel=channel)
@@ -355,18 +260,11 @@ def set_transient_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) ->
 def set_transient_level_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set transient alternate current level.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param current: Current in amperes. Valid settings and protection limits depend on the
         instrument model and range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "Setting transient level on ELoad %s channel %s to %s A",
@@ -382,17 +280,10 @@ def set_transient_level_a(*, eload_id: EquipmentId, current: float, channel: int
 def set_transient_timer_s(*, eload_id: EquipmentId, seconds: float, channel: int = 1) -> None:
     """Set transient dwell / timer in seconds.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param seconds: Time in seconds. The configured model determines the accepted range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "Setting transient timer on ELoad %s channel %s to %s s",
@@ -408,17 +299,10 @@ def set_transient_timer_s(*, eload_id: EquipmentId, seconds: float, channel: int
 def toggle_transient(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable transient mode.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param enabled: True to enable the named feature; false to disable it.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "%s transient on ELoad %s channel %s",
@@ -441,8 +325,7 @@ def configure_list_step(
 ) -> None:
     """Configure one step of a basic current list.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param step: Instrument list-step index; numbering and available steps follow the selected
         load driver.
     :param current_a: Current for this list step in amperes; None leaves the step current
@@ -450,12 +333,6 @@ def configure_list_step(
     :param dwell_s: Dwell time for this list step in seconds; None leaves dwell unchanged.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "Setting list step %s on ELoad %s channel %s to %s A for %s s",
@@ -478,17 +355,10 @@ def configure_list_step(
 def set_list_count(*, eload_id: EquipmentId, count: int, channel: int = 1) -> None:
     """Set list sequence step count.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param count: List repetition count using the load's supported range.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Setting list count on ELoad %s channel %s to %s", eload_id, channel, count)
     _inst(eload_id).set_list_count(count, channel=channel)
@@ -499,17 +369,10 @@ def set_list_count(*, eload_id: EquipmentId, count: int, channel: int = 1) -> No
 def toggle_list(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable list mode.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param enabled: True to enable the named feature; false to disable it.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info(
         "%s list mode on ELoad %s channel %s",
@@ -524,93 +387,69 @@ def toggle_list(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> No
 def measure_voltage(*, eload_id: int, channel: int = 1, key: str) -> float:
     """Read input voltage.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded voltage in volts.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading voltage from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_voltage(channel=channel))
 
 
-verify_voltage = tolerance_verifier("measure_voltage", name="verify_voltage", unit="V")
+verify_voltage = tolerance_verifier("measure_voltage", module=__name__, name="verify_voltage", unit="V")
 
 
 @measurement
 def measure_current(*, eload_id: int, channel: int = 1, key: str) -> float:
     """Read input current.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded current in amperes.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading current from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_current(channel=channel))
 
 
-verify_current = tolerance_verifier("measure_current", name="verify_current", unit="A")
+verify_current = tolerance_verifier("measure_current", module=__name__, name="verify_current", unit="A")
 
 
 @measurement
 def measure_power_w(*, eload_id: int, channel: int = 1, key: str) -> float:
     """Read input power in watts.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded power w in watts.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading power from ELoad %s channel %s", eload_id, channel)
     _ = key
     return float(_inst(eload_id).measure_power_w(channel=channel))
 
 
-verify_power_w = tolerance_verifier("measure_power_w", name="verify_power_w", unit="W")
+verify_power_w = tolerance_verifier("measure_power_w", module=__name__, name="verify_power_w", unit="W")
 
 
 @measurement
 def measure_resistance_ohm(*, eload_id: int, channel: int = 1, key: str) -> float:
     """Read input resistance in ohms.
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded resistance ohm in ohms.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading resistance from ELoad %s channel %s", eload_id, channel)
     _ = key
@@ -618,7 +457,7 @@ def measure_resistance_ohm(*, eload_id: int, channel: int = 1, key: str) -> floa
 
 
 verify_resistance_ohm = tolerance_verifier(
-    "measure_resistance_ohm",
+    "measure_resistance_ohm", module=__name__,
     name="verify_resistance_ohm",
     unit="ohm",
 )
@@ -628,18 +467,12 @@ verify_resistance_ohm = tolerance_verifier(
 def measure_input_state(*, eload_id: int, channel: int = 1, key: str) -> float:
     """Read whether load input is engaged (``1.0`` / ``0.0``).
 
-    :param eload_id: Integer ID from the configured equipment.eload row. Select an existing ID
-        in that section.
+    :param eload_id: Configured ``equipment.eload`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded input state: 1.0 engaged, 0.0 disengaged.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading input state from ELoad %s channel %s", eload_id, channel)
     _ = key
@@ -648,7 +481,7 @@ def measure_input_state(*, eload_id: int, channel: int = 1, key: str) -> float:
 
 
 verify_input_state = tolerance_verifier(
-    "measure_input_state",
+    "measure_input_state", module=__name__,
     name="verify_input_state",
     default_tolerance=0.0,
 )

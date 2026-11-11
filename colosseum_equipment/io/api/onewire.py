@@ -1,4 +1,11 @@
-"""1-Wire master APIs (``col.io.onewire``). Measurements use domain ``equipment``."""
+"""1-Wire master APIs (``col.io.onewire``). Measurements use domain ``equipment``.
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +23,7 @@ _logger = get_logger("colosseum.equipment")
 def configure(*, onewire_id: int, speed: str | None = None) -> dict[str, Any]:
     """Configure 1-Wire bus speed (``standard`` or ``overdrive``).
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param speed: Optional bus speed (``standard`` or ``overdrive``).
     :returns: Applied settings snapshot (port, baudrate, speed, driver).
     """
@@ -28,7 +35,7 @@ def configure(*, onewire_id: int, speed: str | None = None) -> dict[str, Any]:
 def reset(*, onewire_id: int, required: bool = False) -> bool:
     """Issue a 1-Wire reset and return whether a presence pulse was seen.
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param required: When ``True``, raise if no slave presence is detected.
     :returns: ``True`` when a presence pulse was detected.
     """
@@ -40,7 +47,7 @@ def reset(*, onewire_id: int, required: bool = False) -> bool:
 def search(*, onewire_id: int, key: str) -> list[str]:
     """Search the bus and return ROM ids as uppercase hex strings.
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param key: Unique measurement key within domain ``equipment``.
     :returns: List of 8-byte ROM ids as uppercase hex.
     """
@@ -53,7 +60,7 @@ def search(*, onewire_id: int, key: str) -> list[str]:
 def select(*, onewire_id: int, rom: str | None = None) -> None:
     """Reset then MATCH ROM, or SKIP ROM when ``rom`` is omitted (single-drop).
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param rom: Optional ROM hex string; omit for SKIP ROM on a single-drop bus.
     """
     _logger.info("Selecting 1-Wire %s ROM %s", onewire_id, rom)
@@ -64,7 +71,7 @@ def select(*, onewire_id: int, rom: str | None = None) -> None:
 def write(*, onewire_id: int, data: bytes) -> None:
     """Write bytes on the 1-Wire bus (after ``select`` / ``reset`` as needed).
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param data: Bytes to write on the bus.
     """
     _logger.info("Writing %s bytes to 1-Wire %s", len(data), onewire_id)
@@ -75,7 +82,7 @@ def write(*, onewire_id: int, data: bytes) -> None:
 def read(*, onewire_id: int, nbytes: int, key: str) -> bytes:
     """Read ``nbytes`` from the 1-Wire bus.
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param nbytes: Number of bytes to read.
     :param key: Unique measurement key within domain ``equipment``.
     :returns: Bytes read from the bus.
@@ -89,7 +96,7 @@ def read(*, onewire_id: int, nbytes: int, key: str) -> bytes:
 def write_read(*, onewire_id: int, write_data: bytes, read_nbytes: int, key: str) -> bytes:
     """Write then read on the 1-Wire bus.
 
-    :param onewire_id: Configured ``io.onewire`` id from config TOML.
+    :param onewire_id: Configured ``io.onewire`` ID.
     :param write_data: Bytes to write before reading.
     :param read_nbytes: Number of bytes to read after the write.
     :param key: Unique measurement key within domain ``equipment``.

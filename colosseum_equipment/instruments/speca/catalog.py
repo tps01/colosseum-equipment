@@ -36,51 +36,61 @@ class RigolDsa875(RigolDsa800):
 class RigolDsa800e(RigolDsa800):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dsa1000 inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "rigol-dsa1000")
 class RigolDsa1000(GenericSpecA):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-rsa3030 inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "rigol-rsa3030")
 class RigolRsa3030(GenericSpecA):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-rsa3045 inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "rigol-rsa3045")
 class RigolRsa3045(GenericSpecA):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-rsa5065 inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "rigol-rsa5065")
 class RigolRsa5065(GenericSpecA):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate siglent-ssa3021x inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "siglent-ssa3021x")
 class SiglentSsa3021x(GenericSpecA):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
+# TODO: Validate siglent-ssa3032x inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "siglent-ssa3032x")
 class SiglentSsa3032x(GenericSpecA):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
+# TODO: Validate siglent-ssa3021x-plus inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "siglent-ssa3021x-plus")
 class SiglentSsa3021xPlus(GenericSpecA):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
+# TODO: Validate siglent-ssa3032x-plus inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "siglent-ssa3032x-plus")
 class SiglentSsa3032xPlus(GenericSpecA):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
+# TODO: Validate siglent-ssa3075x-plus inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "siglent-ssa3075x-plus")
 class SiglentSsa3075xPlus(GenericSpecA):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
+# TODO: Validate siglent-ssa5000a inherited commands against its vendor manual and hardware.
 
 @instrument_model("speca", "siglent-ssa5000a")
 class SiglentSsa5000a(GenericSpecA):

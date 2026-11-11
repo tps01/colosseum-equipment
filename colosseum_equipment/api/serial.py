@@ -1,4 +1,14 @@
-"""Serial/COM port APIs (``col.equipment.serial``)."""
+"""Serial/COM port APIs (``col.equipment.serial``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
+"""
 
 from __future__ import annotations
 
@@ -22,14 +32,11 @@ def _channel(serial_id: EquipmentId) -> SerialChannel:
 def write(*, serial_id: EquipmentId, data: str, append_newline: str = "") -> None:
     """Write raw text to a configured serial port.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
-    :param data: Payload to send (no line ending added unless ``append_newline`` is set).
-    :type data: str
-    :param append_newline: Optional suffix (for example ``"\\r\\n"``).
-    :type append_newline: str, optional
+    :param serial_id: Configured ``equipment.serial`` ID.
 
-    :returns: None
+    :param data: Payload to send (no line ending added unless ``append_newline`` is set).
+
+    :param append_newline: Optional suffix (for example ``"\\r\\n"``).
 
     :raises EquipmentConnectionError: Port open or write failed.
     """
@@ -42,12 +49,9 @@ def write(*, serial_id: EquipmentId, data: str, append_newline: str = "") -> Non
 def write_bytes(*, serial_id: EquipmentId, data: bytes) -> None:
     """Write raw bytes to a configured serial port.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
-    :param data: Payload to send.
-    :type data: bytes
+    :param serial_id: Configured ``equipment.serial`` ID.
 
-    :returns: None
+    :param data: Payload to send.
 
     :raises EquipmentConnectionError: Port open or write failed.
     """
@@ -59,12 +63,11 @@ def write_bytes(*, serial_id: EquipmentId, data: bytes) -> None:
 def read(*, serial_id: int, key: str, strip_ansi: bool = False) -> str:
     """Read one line from a configured serial port.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
+    :param serial_id: Configured ``equipment.serial`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+
     :param strip_ansi: When ``True``, strip CSI ANSI escape sequences from the line.
-    :type strip_ansi: bool, optional
 
     :returns: Received line text.
     :rtype: str
@@ -81,12 +84,11 @@ def read(*, serial_id: int, key: str, strip_ansi: bool = False) -> str:
 def read_bytes(*, serial_id: int, size: int, key: str) -> bytes:
     """Read up to ``size`` bytes from a configured serial port.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
+    :param serial_id: Configured ``equipment.serial`` ID.
+
     :param size: Maximum number of bytes to read.
-    :type size: int
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Received bytes (may be shorter than ``size`` on timeout).
     :rtype: bytes
@@ -108,14 +110,13 @@ def read_until(
 ) -> str:
     """Read from a serial port until ``terminator`` appears in the response.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
+    :param serial_id: Configured ``equipment.serial`` ID.
+
     :param terminator: Stop reading when this substring is received.
-    :type terminator: str
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
+
     :param strip_ansi: When ``True``, strip CSI ANSI escape sequences from the result.
-    :type strip_ansi: bool, optional
 
     :returns: Received text including the terminator when present.
     :rtype: str
@@ -133,10 +134,7 @@ def read_until(
 def flush(*, serial_id: EquipmentId) -> None:
     """Discard pending RX/TX buffers on the serial port when supported.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
-
-    :returns: None
+    :param serial_id: Configured ``equipment.serial`` ID.
 
     :raises EquipmentConnectionError: Port flush failed.
     :raises EquipmentCapabilityError: Transport does not support flush.
@@ -149,10 +147,9 @@ def flush(*, serial_id: EquipmentId) -> None:
 def measure_in_waiting(*, serial_id: int, key: str) -> int:
     """Read the number of bytes waiting in the RX buffer.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
+    :param serial_id: Configured ``equipment.serial`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Byte count available to read.
     :rtype: int
@@ -170,12 +167,9 @@ def measure_in_waiting(*, serial_id: int, key: str) -> int:
 def set_timeout_s(*, serial_id: EquipmentId, timeout_s: float) -> None:
     """Set the serial port read timeout in seconds.
 
-    :param serial_id: Configured ``equipment.serial`` id from config TOML.
-    :type serial_id: int
-    :param timeout_s: Read timeout in seconds.
-    :type timeout_s: float
+    :param serial_id: Configured ``equipment.serial`` ID.
 
-    :returns: None
+    :param timeout_s: Read timeout in seconds.
 
     :raises EquipmentConnectionError: Port access failed.
     :raises EquipmentCapabilityError: Transport does not support changing timeout.

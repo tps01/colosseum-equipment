@@ -58,7 +58,7 @@ GPIB host setup (`GPIB0::<pad>::INSTR`, not `/dev/gpib0`), USB CDC vs USBTMC vs
 
 ## Trace / waveform masks
 
-Author masks offline with `col.equipment.tools.create_mask`. In procedures use
+Author masks offline with `tools/mask_editor.py` in colosseum-library. In procedures use
 `speca` / `oscope` `apply_mask_setup` and `verify_mask`. See
 [mask workflow guide](https://tps01.github.io/colosseum-equipment/guides/masks.html).
 

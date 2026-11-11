@@ -3,6 +3,14 @@
 One-shot measurements (``measure_voltage``, ``measure_voltage_dc``, etc.) configure
 the function then issue ``READ?``. Use ``set_function`` → ``initiate`` → ``fetch``
 when you need a fixed configuration across multiple samples.
+
+
+Configured IDs select ``equipment.dmm`` rows. Commands decorated with
+``@broadcastable`` also accept ``"all"``: targets run sequentially and failures
+are aggregated. Measurements require a numeric ID and distinct evidence keys.
+Unsupported model operations raise ``EquipmentCapabilityError``; connection
+failures raise ``EquipmentConnectionError``. Core records outcomes and applies
+its standard ``optional`` handling. Channel availability depends on the model.
 """
 
 from __future__ import annotations
@@ -28,18 +36,10 @@ def _inst(dmm_id: EquipmentId) -> Any:
 def set_function(*, dmm_id: EquipmentId, function: str, channel: int = 1) -> None:
     """Set measurement function (e.g. ``VOLT:DC``, ``CURR:AC``, ``RES``).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param function: Measurement function token, such as VOLT:DC, CURR:AC, or RES. Supported
         functions depend on the meter.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Setting function on DMM %s channel %s to %s", dmm_id, channel, function)
     _inst(dmm_id).set_function(function, channel=channel)
@@ -50,18 +50,10 @@ def set_function(*, dmm_id: EquipmentId, function: str, channel: int = 1) -> Non
 def set_range(*, dmm_id: EquipmentId, value: float, channel: int = 1) -> None:
     """Set manual measurement range for the active function.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param value: Manual range in the active measurement function's units (volts, amperes, ohms,
         or hertz).
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Setting range on DMM %s channel %s to %s", dmm_id, channel, value)
     _inst(dmm_id).set_range(value, channel=channel)
@@ -72,17 +64,9 @@ def set_range(*, dmm_id: EquipmentId, value: float, channel: int = 1) -> None:
 def set_auto_range(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable autorange.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param enabled: True to enable the named feature; false to disable it.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info(
         "%s auto range on DMM %s channel %s",
@@ -98,18 +82,10 @@ def set_auto_range(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> N
 def set_nplc(*, dmm_id: EquipmentId, nplc: float, channel: int = 1) -> None:
     """Set integration time in power-line cycles (NPLC).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param nplc: Integration interval in power-line cycles. Supported values depend on the meter
         and active function.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Setting NPLC on DMM %s channel %s to %s", dmm_id, channel, nplc)
     _inst(dmm_id).set_nplc(nplc, channel=channel)
@@ -120,17 +96,9 @@ def set_nplc(*, dmm_id: EquipmentId, nplc: float, channel: int = 1) -> None:
 def set_aperture_s(*, dmm_id: EquipmentId, seconds: float, channel: int = 1) -> None:
     """Set aperture time in seconds (when supported).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param seconds: Time in seconds. The configured model determines the accepted range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Setting aperture on DMM %s channel %s to %s s", dmm_id, channel, seconds)
     _inst(dmm_id).set_aperture_s(seconds, channel=channel)
@@ -141,17 +109,9 @@ def set_aperture_s(*, dmm_id: EquipmentId, seconds: float, channel: int = 1) -> 
 def set_auto_zero(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
     """Enable or disable auto-zero.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param enabled: True to enable the named feature; false to disable it.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info(
         "%s auto zero on DMM %s channel %s",
@@ -167,17 +127,9 @@ def set_auto_zero(*, dmm_id: EquipmentId, enabled: bool, channel: int = 1) -> No
 def set_input_z(*, dmm_id: EquipmentId, ohms: float, channel: int = 1) -> None:
     """Set input impedance in ohms.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param ohms: Impedance in ohms. The configured model determines the accepted values.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Setting input impedance on DMM %s channel %s to %s ohms", dmm_id, channel, ohms)
     _inst(dmm_id).set_input_z(ohms, channel=channel)
@@ -188,17 +140,9 @@ def set_input_z(*, dmm_id: EquipmentId, ohms: float, channel: int = 1) -> None:
 def set_trigger_source(*, dmm_id: EquipmentId, source: str, channel: int = 1) -> None:
     """Set trigger source (e.g. ``IMM``, ``EXT``, ``BUS``).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
     :param source: DMM trigger token, such as IMM, EXT, or BUS; support depends on the meter.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Setting trigger source on DMM %s channel %s to %s", dmm_id, channel, source)
     _inst(dmm_id).set_trigger_source(source, channel=channel)
@@ -209,16 +153,8 @@ def set_trigger_source(*, dmm_id: EquipmentId, source: str, channel: int = 1) ->
 def initiate(*, dmm_id: EquipmentId, channel: int = 1) -> None:
     """Arm a measurement (``INIT``); read with :func:`fetch`.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-
-    :returns: None; the command outcome is recorded.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
     """
     _logger.info("Initiating measurement on DMM %s channel %s", dmm_id, channel)
     _inst(dmm_id).initiate(channel=channel)
@@ -228,18 +164,11 @@ def initiate(*, dmm_id: EquipmentId, channel: int = 1) -> None:
 def get_function(*, dmm_id: int, channel: int = 1, key: str) -> str:
     """Read active measurement function.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Active measurement function token as reported by the meter.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading function from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -250,18 +179,11 @@ def get_function(*, dmm_id: int, channel: int = 1, key: str) -> str:
 def get_range(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Read manual range setting.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded range in the active function units.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading range from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -272,18 +194,11 @@ def get_range(*, dmm_id: int, channel: int = 1, key: str) -> float:
 def get_auto_range(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Read autorange state (``1.0`` / ``0.0``).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded state (1.0 enabled, 0.0 disabled).
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading auto range from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -294,18 +209,11 @@ def get_auto_range(*, dmm_id: int, channel: int = 1, key: str) -> float:
 def get_nplc(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Read NPLC setting.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded nplc in power-line cycles.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading NPLC from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -316,18 +224,11 @@ def get_nplc(*, dmm_id: int, channel: int = 1, key: str) -> float:
 def get_aperture_s(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Read aperture time in seconds.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded aperture s in seconds.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading aperture from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -338,18 +239,11 @@ def get_aperture_s(*, dmm_id: int, channel: int = 1, key: str) -> float:
 def get_auto_zero(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Read auto-zero state (``1.0`` / ``0.0``).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded state (1.0 enabled, 0.0 disabled).
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading auto zero from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -360,18 +254,11 @@ def get_auto_zero(*, dmm_id: int, channel: int = 1, key: str) -> float:
 def get_input_z(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Read input impedance in ohms.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded input z in ohms.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading input impedance from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -382,18 +269,11 @@ def get_input_z(*, dmm_id: int, channel: int = 1, key: str) -> float:
 def get_trigger_source(*, dmm_id: int, channel: int = 1, key: str) -> str:
     """Read trigger source.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Trigger-source token as reported by the meter.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading trigger source from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -404,26 +284,19 @@ def get_trigger_source(*, dmm_id: int, channel: int = 1, key: str) -> str:
 def fetch(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Fetch result after :func:`initiate`.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded scalar in the active function units (V, A, ohms, or Hz); fetch does not
         configure a new function.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Fetching reading from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).fetch(channel=channel))
 
 
-verify_fetch = tolerance_verifier("fetch", name="verify_fetch")
+verify_fetch = tolerance_verifier("fetch", module=__name__, name="verify_fetch")
 
 
 def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
@@ -432,19 +305,11 @@ def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
     Records evidence under command ``measure_voltage_dc``. Pair with
     :data:`verify_voltage` or :data:`verify_voltage_dc` using the same ``key``.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded voltage in volts.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
-
 
     Pair with verify_voltage using the same key. Configure equipment.dmm first;
     see the PSU/DMM acquisition recipe in the instrument workflow guide.
@@ -453,57 +318,43 @@ def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
     return measure_voltage_dc(dmm_id=dmm_id, channel=channel, key=key)
 
 
-verify_voltage = tolerance_verifier("measure_voltage_dc", name="verify_voltage", unit="V")
+verify_voltage = tolerance_verifier("measure_voltage_dc", module=__name__, name="verify_voltage", unit="V")
 
 
 @measurement
 def measure_voltage_dc(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """One-shot DC voltage (``CONF:VOLT:DC`` then ``READ?``).
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded DC voltage in volts.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading DC voltage from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_voltage_dc(channel))
 
 
-verify_voltage_dc = tolerance_verifier("measure_voltage_dc", name="verify_voltage_dc", unit="V")
+verify_voltage_dc = tolerance_verifier("measure_voltage_dc", module=__name__, name="verify_voltage_dc", unit="V")
 
 
 @measurement
 def measure_voltage_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """One-shot AC voltage.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded AC voltage in volts.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading AC voltage from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_voltage_ac(channel))
 
 
-verify_voltage_ac = tolerance_verifier("measure_voltage_ac", name="verify_voltage_ac", unit="V")
+verify_voltage_ac = tolerance_verifier("measure_voltage_ac", module=__name__, name="verify_voltage_ac", unit="V")
 
 
 def measure_current(*, dmm_id: int, channel: int = 1, key: str) -> float:
@@ -512,117 +363,82 @@ def measure_current(*, dmm_id: int, channel: int = 1, key: str) -> float:
     Records evidence under command ``measure_current_dc``. Pair with
     :data:`verify_current` or :data:`verify_current_dc` using the same ``key``.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded current in amperes.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading current from DMM %s channel %s", dmm_id, channel)
     return measure_current_dc(dmm_id=dmm_id, channel=channel, key=key)
 
 
-verify_current = tolerance_verifier("measure_current_dc", name="verify_current", unit="A")
+verify_current = tolerance_verifier("measure_current_dc", module=__name__, name="verify_current", unit="A")
 
 
 @measurement
 def measure_current_dc(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """One-shot DC current.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded DC current in amperes.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading DC current from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_current_dc(channel))
 
 
-verify_current_dc = tolerance_verifier("measure_current_dc", name="verify_current_dc", unit="A")
+verify_current_dc = tolerance_verifier("measure_current_dc", module=__name__, name="verify_current_dc", unit="A")
 
 
 @measurement
 def measure_current_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """One-shot AC current.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded AC current in amperes.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading AC current from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_current_ac(channel))
 
 
-verify_current_ac = tolerance_verifier("measure_current_ac", name="verify_current_ac", unit="A")
+verify_current_ac = tolerance_verifier("measure_current_ac", module=__name__, name="verify_current_ac", unit="A")
 
 
 @measurement
 def measure_resistance(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Measure 2-wire resistance.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded resistance in ohms.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading resistance from DMM %s channel %s", dmm_id, channel)
     _ = key
     return float(_inst(dmm_id).measure_resistance(channel))
 
 
-verify_resistance = tolerance_verifier("measure_resistance", name="verify_resistance", unit="ohm")
+verify_resistance = tolerance_verifier("measure_resistance", module=__name__, name="verify_resistance", unit="ohm")
 
 
 @measurement
 def measure_resistance_4w(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Measure 4-wire resistance.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded resistance 4w in ohms.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading 4-wire resistance from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -630,7 +446,7 @@ def measure_resistance_4w(*, dmm_id: int, channel: int = 1, key: str) -> float:
 
 
 verify_resistance_4w = tolerance_verifier(
-    "measure_resistance_4w",
+    "measure_resistance_4w", module=__name__,
     name="verify_resistance_4w",
     unit="ohm",
 )
@@ -640,18 +456,11 @@ verify_resistance_4w = tolerance_verifier(
 def measure_frequency_hz(*, dmm_id: int, channel: int = 1, key: str) -> float:
     """Measure frequency in hertz.
 
-    :param dmm_id: Integer ID from the configured equipment.dmm row. Select an existing ID in
-        that section.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide.
+    :param dmm_id: Configured ``equipment.dmm`` ID.
+    :param channel: Physical channel (1-based); availability depends on the model.
+    :param key: Unique evidence key for this measurement.
 
     :returns: Recorded frequency hz in hertz.
-
-    :raises EquipmentCapabilityError: The configured model does not implement this operation or
-        channel.
-    :raises EquipmentConnectionError: The instrument transport could not complete the operation.
     """
     _logger.info("Reading frequency from DMM %s channel %s", dmm_id, channel)
     _ = key
@@ -659,7 +468,7 @@ def measure_frequency_hz(*, dmm_id: int, channel: int = 1, key: str) -> float:
 
 
 verify_frequency_hz = tolerance_verifier(
-    "measure_frequency_hz",
+    "measure_frequency_hz", module=__name__,
     name="verify_frequency_hz",
     unit="Hz",
 )

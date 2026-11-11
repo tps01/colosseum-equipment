@@ -132,8 +132,6 @@ def write_capture_iq(
     Returns the metadata dict written alongside the samples (includes
     ``sample_format``, ``num_samples``, and ``peak`` for ``i16``).
     """
-    from scipy.io import savemat
-
     export_format = normalize_iq_format(file_format, str(path))
     payload, encode_meta = encode_iq_samples(iq, sample_format=sample_format)
     out_meta = dict(metadata or {})
@@ -142,6 +140,8 @@ def write_capture_iq(
     samples = _as_complex64(iq)
 
     if export_format == "mat":
+        from scipy.io import savemat
+
         mat_data: dict[str, Any] = {"iq": samples, "metadata": out_meta}
         path.parent.mkdir(parents=True, exist_ok=True)
         savemat(path, mat_data)

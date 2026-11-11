@@ -52,46 +52,55 @@ class RigolDp832(RigolDp800):
 class RigolDp832a(RigolDp800):
     """Manual: https://www.rigolna.com/products/dc-power-loads/dp800/"""
 
+# TODO: Validate rigol-dp711 inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp711")
 class RigolDp711(GenericPSU):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dp712 inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp712")
 class RigolDp712(GenericPSU):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dp932u inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp932u")
 class RigolDp932u(GenericPSU):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dp932a inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp932a")
 class RigolDp932a(GenericPSU):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dp2000 inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp2000")
 class RigolDp2000(GenericPSU):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate rigol-dp1116a inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp1116a")
 class RigolDp1116a(GenericPSU):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
+# TODO: Validate siglent-spd3303x inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "siglent-spd3303x")
 class SiglentSpd3303x(GenericPSU):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
+# TODO: Validate siglent-spd3303x-e inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "siglent-spd3303x-e")
 class SiglentSpd3303xE(GenericPSU):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
+# TODO: Validate siglent-spd3303c inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "siglent-spd3303c")
 class SiglentSpd3303c(GenericPSU):
@@ -107,6 +116,7 @@ class SiglentSpd1168x(SiglentSpdSingle):
 class SiglentSpd1305x(SiglentSpdSingle):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
+# TODO: Validate keysight-n6705c inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "keysight-n6705c")
 class KeysightN6705c(GenericPSU):

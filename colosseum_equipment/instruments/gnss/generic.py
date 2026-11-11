@@ -806,7 +806,7 @@ class GenericGnss:
         unsupported(self._model, "set_message_rate", detail=f"message={message!r}")
 
     def start_logging(self, path: str, key: str = "", messages: str = "default") -> None:
-        if self._logging_active():
+        if self._listener is not None or self._epoch_timer is not None:
             raise RuntimeError(f"gnss model `{self._model}` is already logging")
         if not key:
             key = f"gnss{self._gnss_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
@@ -867,6 +867,8 @@ class GenericGnss:
         self._epoch_stop.set()
         if self._epoch_timer is not None:
             self._epoch_timer.join(timeout=2.0)
+            if self._epoch_timer.is_alive():
+                raise EquipmentTimeoutError("gnss epoch timer did not stop within the shutdown timeout")
             self._epoch_timer = None
         if self._listener is not None:
             self._listener.stop()

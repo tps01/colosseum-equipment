@@ -40,9 +40,12 @@ class GnssListener:
         self._thread.start()
 
     def stop(self, timeout_s: float = 2.0) -> None:
+        """Stop reading; report a timeout rather than claiming the worker finished."""
         self._stop.set()
         if self._thread.is_alive():
             self._thread.join(timeout=timeout_s)
+            if self._thread.is_alive():
+                raise EquipmentTimeoutError("gnss listener did not stop within the shutdown timeout")
 
     def is_alive(self) -> bool:
         return self._thread.is_alive()

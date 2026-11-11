@@ -476,28 +476,6 @@ def test_api_load_save_list(tmp_path: Path) -> None:
     assert not hasattr(tools_api, "apply_mask_setup")
 
 
-@pytest.mark.gui
-def test_mask_editor_constructs_and_destroys() -> None:
-    try:
-        import tkinter as tk
-    except ImportError as exc:  # pragma: no cover
-        pytest.skip(f"tkinter unavailable: {exc}")
-    try:
-        probe = tk.Tk()
-        probe.destroy()
-    except tk.TclError as exc:  # pragma: no cover - environment dependent
-        pytest.skip(f"no Tk display: {exc}")
-
-    from colosseum_equipment.tools.mask_editor import MaskEditorApp
-
-    app = MaskEditorApp(domain="frequency", template="freq_spur_floor")
-    try:
-        app._root.update_idletasks()
-        assert len(app._mask["regions"]) >= 1
-    finally:
-        app._root.destroy()
-
-
 def test_template_json_files_are_valid() -> None:
     root = Path(__file__).resolve().parents[2] / "colosseum_equipment" / "tools" / "mask_templates"
     for path in sorted(root.glob("*.json")):

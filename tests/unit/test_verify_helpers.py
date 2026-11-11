@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import pytest
+from colosseum.database.manager import MeasurementRow
 from colosseum.decorators import measurement
-from colosseum_equipment.api._verify import tolerance_verifier, verify_tolerance
+from colosseum_equipment.api._verify import limit_verifier, tolerance_verifier, verify_tolerance
 
 
 @pytest.fixture
@@ -56,7 +57,33 @@ def test_verify_tolerance_missing_measurement(ctx) -> None:
 
 
 def test_tolerance_verifier_factory(ctx) -> None:
-    verify_sample = tolerance_verifier("_sample_measure", name="verify_sample", domain="core")
+    verify_sample = tolerance_verifier("_sample_measure", module=__name__, name="verify_sample", domain="core")
     _sample_measure(key="k", value=2.0)
     assert verify_sample(key="k", expected_val=2.0).status == "PASS"
     assert verify_sample.__name__ == "verify_sample"
+
+
+@pytest.mark.parametrize("upper", [True, False])
+@pytest.mark.parametrize("value", [None, 2.0, 3.0, 4.0])
+def test_explicit_limit_identity_and_boundary(ctx, upper, value) -> None:
+    # Caller location differs from the source module: lookup must use explicit identity.
+    verify = limit_verifier(
+        "measure_voltage", module="colosseum_equipment.api.psu",
+        name="verify_boundary", upper=upper, unit="V",
+    )
+    if value is not None:
+        ctx.db.insert_measurement(MeasurementRow(
+            domain="equipment", command="psu.measure_voltage", key="boundary", value=value,
+        ))
+    result = verify(key="boundary", limit=3.0, optional=True)
+    assert verify.__module__ == "colosseum_equipment.api.psu"
+    assert verify.__name__ == "verify_boundary"
+    assert result.optional is True
+    if value is None:
+        assert result.status == "ERROR"
+    else:
+        expected_pass = value <= 3.0 if upper else value >= 3.0
+        assert result.status == ("PASS" if expected_pass else "FAIL")
+        assert result.actual == value
+        if not expected_pass:
+            assert result.message == f"expected {value} V {'<=' if upper else '>='} 3.0 V"

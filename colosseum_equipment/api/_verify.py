@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 from typing import TYPE_CHECKING, cast
 
 from colosseum.context import get_context
@@ -44,14 +43,6 @@ def verify_tolerance(
     )
 
 
-def _caller_module() -> str:
-    frame = inspect.currentframe()
-    caller_frame = frame.f_back.f_back if frame is not None and frame.f_back is not None else None
-    if caller_frame is None:
-        return __name__
-    return str(caller_frame.f_globals.get("__name__", __name__))
-
-
 def _source_command(command: str, caller_module: str) -> str:
     return command if "." in command else command_id_for_module(caller_module, command)
 
@@ -60,13 +51,13 @@ def tolerance_verifier(
     command: str,
     *,
     name: str,
+    module: str,
     default_tolerance: float = 0.1,
     unit: str = "",
     domain: str = "equipment",
 ) -> Callable[..., VerificationResult]:
     """Build a @verification function that compares a prior measurement with tolerance."""
-    caller_module = _caller_module()
-    source_command = _source_command(command, caller_module)
+    source_command = _source_command(command, module)
 
     def verify(
         *,
@@ -87,7 +78,7 @@ def tolerance_verifier(
 
     verify.__name__ = name
     verify.__qualname__ = name
-    verify.__module__ = caller_module
+    verify.__module__ = module
     verify.__doc__ = tolerance_verify_doc(source_command, unit=unit)
     return cast(
         "Callable[..., VerificationResult]",
@@ -99,13 +90,13 @@ def limit_verifier(
     command: str,
     *,
     name: str,
+    module: str,
     upper: bool = True,
     unit: str = "",
     domain: str = "equipment",
 ) -> Callable[..., VerificationResult]:
     """Build a verifier that checks a measurement is below (or above) a limit."""
-    caller_module = _caller_module()
-    source_command = _source_command(command, caller_module)
+    source_command = _source_command(command, module)
 
     def verify(
         *,
@@ -131,61 +122,12 @@ def limit_verifier(
 
     verify.__name__ = name
     verify.__qualname__ = name
-    verify.__module__ = caller_module
+    verify.__module__ = module
     verify.__doc__ = f"""Verify ``{source_command}`` against an inclusive {'upper' if upper else 'lower'} limit.
 
     :param key: Key of a prior ``{source_command}`` measurement (row 0).
     :param limit: {'Maximum' if upper else 'Minimum'} accepted value{f' in {unit}' if unit else
         ', in the measurement units'}.
-    :param optional: False by default; true retains FAIL/ERROR/BLOCKED without failing the run.
-    :returns: VerificationResult with actual numeric value and PASS/FAIL, or ERROR/BLOCKED when
-        evidence is missing.
-    """
-    return cast("Callable[..., VerificationResult]", verification(verify))
-
-
-def minimum_verifier(
-    command: str,
-    *,
-    name: str,
-    unit: str = "",
-    domain: str = "equipment",
-) -> Callable[..., VerificationResult]:
-    """Build a verifier that checks a measurement is at least ``minimum``.
-
-    Resolves the source command from *this* caller's module (not via
-    ``limit_verifier``, which would mis-attribute the module).
-    """
-    caller_module = _caller_module()
-    source_command = _source_command(command, caller_module)
-
-    def verify(
-        *,
-        key: str,
-        limit: float,
-        optional: bool = False,
-    ) -> VerificationResult:
-        row = get_context().db.get_measurement(domain, source_command, key, row_index=0)
-        if row is None or row.value is None:
-            return missing_measurement_result(key=key, optional=optional)
-        actual = float(str(row.value))
-        if actual >= limit:
-            return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
-        unit_suffix = f" {unit}" if unit else ""
-        return VerificationResult(
-            status="FAIL",
-            message=f"expected {actual}{unit_suffix} >= {limit}{unit_suffix}",
-            optional=optional,
-            actual=actual,
-        )
-
-    verify.__name__ = name
-    verify.__qualname__ = name
-    verify.__module__ = caller_module
-    verify.__doc__ = f"""Verify ``{source_command}`` is at least ``limit`` (inclusive).
-
-    :param key: Key of a prior ``{source_command}`` measurement (row 0).
-    :param limit: Minimum accepted value{f' in {unit}' if unit else ', in the measurement units'}.
     :param optional: False by default; true retains FAIL/ERROR/BLOCKED without failing the run.
     :returns: VerificationResult with actual numeric value and PASS/FAIL, or ERROR/BLOCKED when
         evidence is missing.

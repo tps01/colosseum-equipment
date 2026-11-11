@@ -8,7 +8,7 @@ are out of scope for v1.
 
 | When | API |
 | --- | --- |
-| Ahead of time (authoring) | `col.equipment.tools.create_mask` / `load_mask` / `save_mask` |
+| Ahead of time (authoring) | Library `tools/mask_editor.py`; equipment `load_mask` / `save_mask` |
 | In a procedure | `col.equipment.speca.apply_mask_setup` + `verify_mask` |
 | In a procedure | `col.equipment.oscope.apply_mask_setup` + `verify_mask` |
 
@@ -25,7 +25,8 @@ reference the JSON from `parameters.toml`.
 ```python
 import colosseum as col
 
-# Offline (once): col.equipment.tools.create_mask(domain="frequency", path="masks/wifi_spurious.json")
+# Offline (from colosseum-library):
+# python tools/mask_editor.py --domain frequency --path masks/wifi_spurious.json
 
 col.equipment.speca.apply_mask_setup(speca_id=1, key="speca_trace_1")  # mask= from parameters
 # The E4407B exporter performs a single sweep internally.
@@ -113,7 +114,16 @@ Standards-inspired **starting points** (not certified compliance kits). Retune
 
 ```python
 col.equipment.tools.list_mask_templates()
-col.equipment.tools.create_mask(domain="frequency", template="freq_spur_floor")
+
 ```
 
-Cancel in the editor raises `RuntimeError("mask editor cancelled")`.
+Launch the editor from a colosseum-library checkout:
+
+```sh
+python tools/mask_editor.py --domain frequency --template freq_spur_floor --path masks/spurs.json
+```
+
+Use `--import-path` to edit an existing JSON mask. Cancel exits without saving
+(exit code 1). The equipment wheel retains the schema and built-in templates;
+install it in the tool's Python environment. `col.equipment.tools.create_mask`
+and the equipment editor imports have been removed.

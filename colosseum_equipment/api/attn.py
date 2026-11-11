@@ -1,4 +1,14 @@
-"""Programmable attenuator APIs (``col.equipment.attn``)."""
+"""Programmable attenuator APIs (``col.equipment.attn``).
+
+Configured IDs select bench TOML rows. Core records command and measurement
+outcomes and applies its standard optional-failure handling. Unsupported model
+operations raise ``EquipmentCapabilityError``; transport failures raise
+``EquipmentConnectionError``.
+Operation-specific validation and acquisition constraints are described below.
+
+Commands with an ``EquipmentId`` parameter also accept ``"all"``: targets run
+sequentially and failures aggregate. Measurements require numeric IDs.
+"""
 
 from __future__ import annotations
 
@@ -23,19 +33,13 @@ def set_attenuation_db(
 ) -> None:
     """Set attenuation.
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
+    :param attn_id: Configured ``equipment.attn`` ID.
+
     :param attenuation_db: Attenuation in dB.
-    :type attenuation_db: float
+
     :param channel: Optional RF channel (overrides bench ``channel`` / ``path``).
-    :type channel: int | None, optional
+
     :param settle_s: Optional post-command wait in seconds (defaults to bench ``settle_s``).
-    :type settle_s: float | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info(
         "Setting attenuation on attenuator %s channel %s to %s dB",
@@ -54,15 +58,9 @@ def set_attenuation_db(
 def wait_settle(*, attn_id: int, settle_s: float | None = None) -> None:
     """Wait for the attenuator to finish settling after a step.
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
+    :param attn_id: Configured ``equipment.attn`` ID.
+
     :param settle_s: Wait time in seconds (defaults to bench ``settle_s`` when set).
-    :type settle_s: float | None, optional
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Waiting for attenuator %s to settle", attn_id)
     get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).wait_settle(settle_s=settle_s)
@@ -73,13 +71,7 @@ def wait_settle(*, attn_id: int, settle_s: float | None = None) -> None:
 def preset(*, attn_id: EquipmentId) -> None:
     """Return the instrument to a default preset.
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
-
-    :returns: None
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
+    :param attn_id: Configured ``equipment.attn`` ID.
     """
     _logger.info("Presetting attenuator %s", attn_id)
     get_cached_instrument("attn", require_int_id(attn_id, kind="attn")).preset()
@@ -89,19 +81,15 @@ def preset(*, attn_id: EquipmentId) -> None:
 def measure_attenuation_db(*, attn_id: int, key: str, channel: int | None = None) -> float:
     """Read programmed or measured attenuation.
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
+    :param attn_id: Configured ``equipment.attn`` ID.
+
     :param key: Unique measurement key within domain ``equipment`` and this command name.
         Must not collide with another instrument's measurement using the same command name.
-    :type key: str
+
     :param channel: Optional RF channel (overrides bench ``channel`` / ``path``).
-    :type channel: int | None, optional
 
     :returns: Measured attenuation in dB.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading attenuation from attenuator %s channel %s", attn_id, channel)
     _ = key
@@ -111,7 +99,7 @@ def measure_attenuation_db(*, attn_id: int, key: str, channel: int | None = None
 
 
 verify_attenuation_db = tolerance_verifier(
-    "measure_attenuation_db",
+    "measure_attenuation_db", module=__name__,
     name="verify_attenuation_db",
     unit="dB",
 )
@@ -121,16 +109,12 @@ verify_attenuation_db = tolerance_verifier(
 def measure_min_attenuation_db(*, attn_id: int, key: str) -> float:
     """Read minimum attenuation (instrument query or bench metadata).
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
+    :param attn_id: Configured ``equipment.attn`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Minimum attenuation in dB.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading minimum attenuation from attenuator %s", attn_id)
     _ = key
@@ -141,16 +125,12 @@ def measure_min_attenuation_db(*, attn_id: int, key: str) -> float:
 def measure_max_attenuation_db(*, attn_id: int, key: str) -> float:
     """Read maximum attenuation (instrument query or bench metadata).
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
+    :param attn_id: Configured ``equipment.attn`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Maximum attenuation in dB.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading maximum attenuation from attenuator %s", attn_id)
     _ = key
@@ -161,16 +141,12 @@ def measure_max_attenuation_db(*, attn_id: int, key: str) -> float:
 def measure_step_db(*, attn_id: int, key: str) -> float:
     """Read attenuator step size in dB (instrument query or bench metadata).
 
-    :param attn_id: Configured ``equipment.attn`` id from bench TOML.
-    :type attn_id: int
+    :param attn_id: Configured ``equipment.attn`` ID.
+
     :param key: Unique measurement key within domain ``equipment``.
-    :type key: str
 
     :returns: Step size in dB.
     :rtype: float
-
-    :raises EquipmentConnectionError: Transport or instrument connection failed.
-    :raises EquipmentCapabilityError: Operation not supported by the configured model.
     """
     _logger.info("Reading attenuation step from attenuator %s", attn_id)
     _ = key
