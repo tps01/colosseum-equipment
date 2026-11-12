@@ -324,7 +324,7 @@ docstring records the manual link.
 | `minicircuits-rc4dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:CHAN:n:SETATT:` / `:ATT?` |
 | `minicircuits-rc8dat` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:CHAN:n:SETATT:` / `:ATT?` |
 | `minicircuits-zvva` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-6-Programmable_Attenuator.pdf` | `:SETATT=` / `:ATT?` dialect |
-| `minicircuits-rcm-ztm` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-Modular_ZTM_RCM.pdf` | generic SCPI |
+| `minicircuits-rcm-ztm` | attn | `https://www.minicircuits.com/softwaredownload/Prog_Manual-Modular_ZTM_RCM.pdf` | Native HTTP/Telnet/USB HID block/channel attenuation; exact rack qualification outstanding |
 | `vaunix-lda-302p-1` | attn | <https://vaunix.com/digital-attenuators/> | SDK/DLL only (ops refused) |
 | `vaunix-lda-302p-h` | attn | <https://vaunix.com/digital-attenuators/> | SDK/DLL only (ops refused) |
 | `vaunix-lda` | attn | <https://vaunix.com/digital-attenuators/> | SDK/DLL only (ops refused) |
@@ -349,7 +349,7 @@ docstring records the manual link.
 | `siglent-sdl1020x-e` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `siglent-sdl1030x` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `siglent-sdl1030x-e` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
-| `bk-8500` | eload | <https://www.bkprecision.com/> | generic SCPI |
+| `bk-8500` | eload | <https://www.bkprecision.com/> | Native 26-byte binary serial static subset; transient/list/protection/preset refused; hardware qualification outstanding |
 | `bk-8600` | eload | <https://www.bkprecision.com/> | generic SCPI |
 | `tektronix-fca3000` | freqcounter | <https://www.tek.com/en/frequency-counter/mca3000-manual/fca3000-and-fca3100-series-mca3000-series> | existing driver |
 | `tektronix-fca3003` | freqcounter | <https://www.tek.com/en/frequency-counter/mca3000-manual/fca3000-and-fca3100-series-mca3000-series> | alias of `tektronix-fca3000` |
@@ -445,12 +445,12 @@ docstring records the manual link.
 | `rigol-rsa6000` | rtsa | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `siglent-ssa3032x-r` | rtsa | <https://siglentna.com/resources/documents/spectrum-analyzers/> | generic SCPI |
 | `siglent-ssa3075x-r` | rtsa | <https://siglentna.com/resources/documents/spectrum-analyzers/> | generic SCPI |
-| `tektronix-rsa306` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | generic SCPI |
-| `tektronix-rsa306b` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | generic SCPI |
-| `tektronix-rsa503a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | generic SCPI |
-| `tektronix-rsa507a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | generic SCPI |
-| `tektronix-rsa603a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | generic SCPI |
-| `tektronix-rsa607a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | generic SCPI |
+| `tektronix-rsa306` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | Direct RSA API finite IQ and spectrum subset; vendor runtime required; hardware qualification outstanding |
+| `tektronix-rsa306b` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | Direct RSA API finite IQ and spectrum subset; vendor runtime required; hardware qualification outstanding |
+| `tektronix-rsa503a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | Direct RSA API finite IQ and spectrum subset; vendor runtime required; hardware qualification outstanding |
+| `tektronix-rsa507a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | Direct RSA API finite IQ and spectrum subset; vendor runtime required; hardware qualification outstanding |
+| `tektronix-rsa603a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | Direct RSA API finite IQ and spectrum subset; vendor runtime required; hardware qualification outstanding |
+| `tektronix-rsa607a` | rtsa | <https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306> | Direct RSA API finite IQ and spectrum subset; vendor runtime required; hardware qualification outstanding |
 | `rigol-dsa815` | speca | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-dsa815-tg` | speca | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-dsa832` | speca | <https://www.rigolna.com/support/downloads/> | generic SCPI |

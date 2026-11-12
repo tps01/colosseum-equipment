@@ -6,8 +6,12 @@ import importlib
 import inspect
 import pkgutil
 
+import pytest
+
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.registry import registered_models
+from colosseum_equipment.transports.tektronix_rsa import USB_RSA_MODELS
 
 from tests.support.stubs import StubTransport
 
@@ -29,14 +33,23 @@ def test_catalog_classes_register_and_build() -> None:
                 continue
             slug = cls.model_slug
             assert slug in registered_models(cls.instrument_kind)
+            found += 1
+            # Native protocols must refuse the text-only stub. Their valid raw
+            # packet / native API construction is covered in the protocol tests.
+            if slug in USB_RSA_MODELS or slug == "bk-8500":
+                with pytest.raises(EquipmentCapabilityError):
+                    build_instrument(cls.instrument_kind, 1, {"model": slug}, StubTransport())
+                continue
+            config = {"model": slug}
+            if slug == "minicircuits-rcm-ztm":
+                config.update(block=1, channel=1)
             built = build_instrument(
                 cls.instrument_kind,
                 1,
-                {"model": slug},
+                config,
                 StubTransport(),
             )
             assert isinstance(built, cls)
-            found += 1
     # Dedicated Mini-Circuits attenuator / Vaunix refuse modules live outside catalog.py.
     assert found == 155
 

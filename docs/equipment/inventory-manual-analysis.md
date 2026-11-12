@@ -430,3 +430,188 @@ fitted-option compatibility, firmware behavior or hardware measurement accuracy.
 
 The skipped test does not supply hardware qualification. Manual analysis and
 synthetic command/response checks are the validation mechanisms for this pass.
+
+
+## Catalog audit batch 1 (0.12.28)
+
+- **Rigol DP711 / DP712:** output-state readback accepts the documented ON/OFF
+  replies and rejects malformed states. See the [DP700 programming guide,
+  p.2-21](https://int.rigol.com/Images/DP700_ProgrammingGuide_EN_tcm7-3994.pdf).
+- **Rigol DM858:** range, autorange and NPLC setters/readbacks query the current
+  measurement function and use its SENSe branch. DC voltage/current and
+  two/four-wire resistance accept NPLC 0.4, 5 or 20; nonintegrating functions
+  reject NPLC. Range/autorange cover voltage, current, resistance and capacitance.
+  See [DM858 PGC11101-1110, section 3.17](https://download.rigol.com/en/Manual/Digital%20Multimeters/DM858/DM858_ProgrammingGuide_EN.pdf).
+
+These are manual-backed corrections with recording-transport tests, not hardware
+qualification. Remaining unverified inherited methods retain their generic
+warning-and-send behavior. Other catalog families are unchanged.
+
+
+## Catalog audit batch 2 (0.12.29)
+
+- **Siglent SDG1032X/1062X, SDG2042X/2082X/2122X, SDG6032X/6052X and
+  SDG7000A:** use the native BSWV basic-wave, OUTP load/output, MDWV modulation
+  and BTWV burst groups. Load readback parses the selected channel's composite
+  reply. Positive infinity represents HiZ. Select a suitable waveform first:
+  frequency/amplitude/offset applicability depends on its type. ARB selects the
+  instrument's current arbitrary waveform. SDG3000X remains unverified.
+  Reference: [PG02_E05B, sections 3.3?3.7](https://siglentna.com/wp-content/uploads/dlm_uploads/2023/08/SDG_Programming-Guide_PG02-E05B.pdf).
+- **Siglent SPD3303X/X-E:** explicit CH1/CH2 voltage/current and measurement
+  addressing; output switching includes CH3. Status/regulation readback decodes
+  the documented bitmap; tracking uses the native numeric mode. CH3 has no
+  adjustable voltage/current or status readback in this implemented subset.
+  Reference: [SPD3000X Quick Start, pp.29?34](https://siglentna.com/wp-content/uploads/dlm_uploads/2017/10/SPD3303X_QuickStart_QS0503X-E01B-1.pdf).
+- **Tektronix AFG31000:** pulse period/width use SOURce:PULSe, noise maps to
+  PRNoise. The `arb` shorthand refuses before I/O because it cannot specify the
+  required memory/file; configure that selection outside this shorthand API.
+  Reference: [077148803, pp.119,130?133](https://www.tek.com/en/-/media/documents/077148803_afg31000_series_programmersmanual_nov2020.pdf).
+
+These corrections are covered by recording-transport tests. They do not imply
+hardware qualification or validation of the remaining inherited operations,
+which retain their existing warning-and-send behavior.
+
+
+## Catalog audit batch 3 (0.12.30)
+
+**Siglent SDL1020X/1020X-E and SDL1030X/1030X-E:** static mode selection now
+uses `SOUR:FUNC` with CURR/VOLT/POW/RES (CC/CV/CP/CR) or LED; short control
+uses `SOUR:SHOR ON/OFF`. These methods do not issue an input-enable command.
+The family accepts one input channel; invalid modes and multi-channel
+configurations are rejected before I/O.
+
+Reference: [manufacturer SDL1000X programming guide -E02B, section 3.3.1,
+pp.12?13 (distributor mirror)](https://www.batronix.com/files/Siglent/Elektronische-Last/SDL1000X/SDL1000X-Programming_Guide.pdf).
+This is a manual-backed correction with recording-transport tests, not hardware
+qualification. Transient/list sequences remain outside this batch and retain
+warning-and-send behavior pending their separate review. Other load families
+are unchanged.
+
+
+## Catalog audit batch 4 (0.12.31)
+
+- **Siglent SSA3021X / SSA3032X:** trace acquisition selects ASCII transfer and
+  dBm, uses numeric trace IDs 1?4, and retains the normal single-sweep workflow.
+  Directional peak searches use LEFT/RIGH; next-highest uses NEXT. Malformed
+  traces and zero-span frequency exports are rejected. Sample-index exports
+  remain available for zero-span captures. No unqualified display-update command
+  is sent by the family fetch/close paths. Plus/R and SSA5000A are not included.
+  Reference: [PG0703X-E04A, sections 3.4, 3.5.3.6, 3.5.5 and 3.6.1.29?31](https://siglentna.com/wp-content/uploads/dlm_uploads/2017/10/SSA3000X_ProgrammingGuide_PG0703X_E04A.pdf).
+- **Keysight E5071C / Siglent SNA5000A:** reuse selected-trace ENA-style CSV
+  acquisition, scalar format configuration and primary/secondary pair decoding.
+  Exports use the actual stimulus array and reject mismatched lengths rather
+  than generating a replacement axis. Only CSV of the implemented scalar
+  S11/S21/S12/S22 subset is qualified; single traces are refused as S2P because
+  they cannot supply a complete two-port matrix. E5071C uses the documented
+  bus-trigger sequence and explicit ASCII transfer. SNA5000A uses its native
+  indexed single initiation and documented ASCII arrays. Smoothing percentages
+  use SMO:APER; hold uses CALC:TRAC:HOLD. Smoothing applies to the currently selected trace of the configured channel;
+  hold addresses the requested trace explicitly. Smoothing does not implicitly turn
+  smoothing on. E5071C hold requires firmware A.11.20 or later; its aperture
+  range is 0.05?25%, versus 0?100% for SNA5000A.
+  References: [E5071C selected-trace data](https://helpfiles.keysight.com/csg/e5071c/programming/command_reference/calculate/scpi_calculate_ch_selected_data_sdata.htm),
+  [smoothing](https://helpfiles.keysight.com/csg/e5071c/programming/command_reference/calculate/scpi_calculate_ch_selected_smoothing_aperture.htm),
+  [hold](https://helpfiles.keysight.com/csg/e5071c/programming/command_reference/calculate/scpi.calculate%28ch%29.trace%28tr%29.hold.type.htm),
+  and [SNA5000A PG09050_E01A, sections 3.2.14?15, 3.2.100?104, 3.4.90 and 3.6.2](https://siglentna.com/wp-content/uploads/dlm_uploads/2021/10/SNA5000A_ProgrammingGuide_PG09050_E01A.pdf).
+
+Recording-transport regressions cover the corrected sequences, scalar calculations,
+CSV exports and response failures. Hardware qualification remains outstanding.
+Other unverified inherited methods continue to warn and send generic commands.
+SNA6000A/SVA1000X and Rigol DNA families remain outside this batch.
+
+
+## Catalog audit batch 5 (0.12.32)
+
+**Keysight E4418B / E4419B:** native average-power reads explicitly select the
+physical input and display window, force ASCII/dBm, and disable relative mode.
+Fresh reads use READ with immediate triggering and automatic settling delay;
+average fetch retains the last acquisition. Malformed/nonfinite/overload readings
+are refused. Physical input limits are one/two respectively. Envelope peak is
+unsupported and refuses before I/O.
+
+Frequency, averaging, offset and zero/calibration use indexed sensor/CAL paths.
+Averaging and offset setters select 20 readings/s because 200 readings/s disables
+both features. Positive offset compensates cable loss using LOSS2 with explicit dB.
+Zero requires no applied RF; calibrate requires a suitable 1 mW reference and prior
+zeroing. Completion waits are not calibration success checks. Configure the
+transport timeout for these operations (zeroing takes approximately ten seconds).
+Automatic delay helps filter settling but does not guarantee sensor settling after
+large power changes.
+
+Reference: [HP E4418-90029, December 1998, sections 1-66–69, 2-22–23,
+2-36–37, 4-7/14, 6-2, 9-5/26/33/37/54, 12-9 and 13-3
+(manufacturer guide, distributor mirror)](https://docs.alltest.net/manual/Alltest-HP-Agilent-Keysight-E4419B-Programming%20guide.pdf).
+Requires native SCPI personality. Recording-transport tests do not provide hardware
+qualification. N1913A/N1914A and unverified inherited operations remain outside
+this batch.
+
+
+## Catalog audit batches 6–8 (0.13.0)
+
+- **Batch 6 / F3 — original B&K 8500:** static CC/CV/CP/CR, setpoints,
+  input switching, short function and native V/I/P/state measurement use framed
+  26-byte exchanges with checksum, address, response-command and status checks.
+  Resistance derives from one V/I snapshot. COM/ASRL opens in binary mode at
+  the configured baud (default 9600). Construction selects remote control;
+  it does not enable the input. Remaining incompatible SCPI operations refuse;
+  transient/list/protection/preset and 8500B support are not claimed.
+  Reference: manufacturer user manual **032218**, pp.46–69, accessible through
+  [the distributor mirror](https://www.indomultimeter.com/Pdf/BK-Precision-8500-Manual.pdf),
+  and [B&K's protocol notice](https://www.bkprecision.com/knowledge/remote-communication/1/rs232-communication-instructions-for-85xx-series).
+- **Batch 7 / F9 — Mini-Circuits RCM/ZTM:** HTTP set/read operations address
+  an explicit block and channel and validate the block-prefixed reply. Clamping
+  is reported as a failure to apply the requested setting. Configured module
+  limits replace unqualified generic range queries. The HTTP transport preserves
+  the significant trailing query marker. USB HID/.NET and Telnet control are
+  outside this implementation and refuse at transport selection.
+  Reference: [Multi-Channel Attenuator & Mesh Networks **C2, 1-Feb-21**,
+  sections 3.2 and 4.3(a–b), pp.11–12,23–24](https://minicircuits.com/softwaredownload/Prog_Manual-Multi_Attenuators.pdf).
+- **Batch 8 — Tektronix USB RSA306/306B/503A/507A/603A/607A:** direct
+  ctypes RSA API sessions, serial/model selection and one context per process.
+  Implements finite IQ acquisition, explicit trigger setup, actual sampling
+  metadata, shared IQ exporters and native trace-1 dBm spectrum CSV. Failed,
+  short, nonfinite or status-flagged IQ records cannot be exported. Timestamp
+  fields retain native ticks. No SignalVu/SCPI endpoint or streaming is assumed.
+  Runtime must be installed separately. Configuration and public API semantics
+  are detailed in the transport guide and native-protocol example config.
+  References: manufacturer **077-1031-04 Rev A**, DEVICE/CONFIG/IQBLK/SPECTRUM/TRIG
+  groups ([manual mirror](https://w140.com/tekwiki/images/1/13/077-1031-04.pdf)) and
+  [vendor API examples](https://github.com/tektronix/RSA_API/tree/master/Python).
+
+These are manual-backed implementations with recording-transport and native ABI
+simulator regressions. Physical hardware, runtime-version and firmware qualification
+remain outstanding. Other families retain the established warning-and-send policy.
+
+
+## F9 completion: RCM/ZTM transports (0.13.1)
+
+The F9 adapter now supports HTTP, native Telnet and direct USB HID. All three
+reuse explicit block/channel attenuation commands and validate their addressed
+replies. Fractional topology values refuse instead of truncating. The default
+channel's `path` alias is supported when `channel` is unset.
+
+HTTP authentication now uses the documented `PWD=...;` URL prefix with encoded
+passwords; failures redact that URL. Telnet handles the initial greeting,
+password login, CRLF framing, option negotiation and a transaction-wide deadline.
+Malformed replies and timeouts close the session without replaying commands.
+
+USB uses VID 0x20CE/PID 0x0022 and 64-byte reports with native SCPI interrupt
+code 42 (the guide also permits code 1). The separate HID report ID is supplied
+to HIDAPI. Controller serial verification prevents implicit first-device selection;
+`auto` requires one HID path. Multiple block rows share a locked, reference-counted
+handle. Invalid/short/unterminated reports or timeout invalidate the shared session.
+No address reassignment, mesh-path guessing or rack-wide preset is introduced.
+
+Evidence: [Multi-Channel Attenuator & Mesh Networks C2, 1-Feb-21,
+sections 4.2(b), 4.3, 5.2, 5.4 and 7.1–7.2](https://minicircuits.com/softwaredownload/Prog_Manual-Multi_Attenuators.pdf).
+The prior batch-7 USB/Telnet exclusion is superseded by this implementation.
+Hardware/firmware and custom topology qualification remain outstanding.
+
+`hidapi>=0.14` is a runtime dependency, installed as an unmodified package.
+Its installed `LICENSE.txt` explicitly permits choosing its BSD alternative;
+this project uses **BSD-3-Clause**, which is on the repository allowlist.
+References: [wrapper license choice](https://github.com/trezor/cython-hidapi/blob/master/LICENSE.txt),
+[BSD terms](https://github.com/trezor/cython-hidapi/blob/master/LICENSE-bsd.txt),
+and [HIDAPI library BSD terms](https://github.com/libusb/hidapi/blob/master/LICENSE-bsd.txt).
+No Mini-Circuits proprietary DLL is redistributed. Tests used HIDAPI 0.15.0;
+PyPI supplies Windows x64 and Linux x64 wheels for the CI Python versions.

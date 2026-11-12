@@ -53,6 +53,103 @@ A USB cable does not imply one VISA class:
   use the CDC/USBTMC path for the instrument. Do not set ``resource`` to RAW
   unless a supported model documents that protocol.
 
+Native protocol catalog adapters
+--------------------------------
+
+Version 0.13.0 adds three paths which require an explicit model. See
+``examples/configs/config.native-protocols.toml`` for complete bench rows.
+
+* **Original B&K 8500** (``bk-8500``): COM/ASRL at the configured baud rate
+  (default 9600, 8N1). The adapter disables serial terminators and exchanges
+  checksummed 26-byte packets. ``device_address`` defaults to 0 (range 0–254).
+  Static CC/CV/CP/CR, setpoints, input switching, voltage/current/power/state
+  readback, derived resistance and short-function selection are implemented.
+  Construction selects remote control without enabling the input. Transient/list,
+  protection, slew and preset operations refuse before I/O; 8500B is not covered.
+* **Mini-Circuits RCM/ZTM** (``minicircuits-rcm-ztm``): use ``driver="http"``,
+  ``driver="minicircuits-telnet"`` or ``driver="minicircuits-usb"``. Configure
+  ``block`` (1–99), a default ``channel`` (or ``path``), and
+  ``channels_per_block`` (4 by default, or 8 for RS8DAT). A row addresses one
+  installed block, not an inferred mesh path. Set/read replies must match that
+  block. Rejected or clamped attenuation raises an error; status 2 means the rack
+  has already set its maximum rather than the requested value. Range/step getters
+  require ``min_attenuation_db``, ``max_attenuation_db`` and ``step_db`` from the
+  installed module's specification. Fractional block/channel values are refused;
+  they are never rounded to another physical path. Rack-wide preset remains
+  unsupported. These adapters do not issue address-assignment commands or infer
+  mesh paths from endpoint numbers.
+* **Tektronix USB RSA306/306B/503A/507A/603A/607A**: use ``driver="rsa-api"``.
+  Install the matching Tektronix RSA API runtime separately and set
+  ``rsa_api_library`` to its absolute library path. The default is
+  ``C:/Tektronix/RSA_API/lib/x64/RSA_API.dll``. No vendor runtime is included in
+  the wheel. ``resource`` is the exact serial number; ``"auto"`` is accepted only
+  with one device connected. The reported model must match the configured model.
+  One native device context may be open per process; use separate processes for
+  multiple devices. Close SignalVu-PC before claiming a device through this API.
+
+USB RSA ``run``/``wait_complete``/``acquire`` capture finite IQ blocks.
+``iq_bandwidth_hz`` (default 40 MHz) determines the actual IQ sample rate;
+``num_samples`` defaults to 1024 and is checked against the runtime's current
+limit. ``sample_rate_hz``, if supplied, must match the resulting rate. ``span``
+and ``rbw`` configure spectrum span and resolution bandwidth; they do not set
+IQ sample rate. ``capture_iq`` configures the requested spectrum span and IQ
+bandwidth separately and calculates record length from the actual rate. Immediate,
+external and IF-power triggers are implemented; trigger position is 1–99 percent
+despite the legacy public argument name ``position_dbm``. Continuous streaming,
+DPX and peak-marker control are outside this subset.
+
+Completed IQ records are retained for export without reacquisition; configuration
+changes, aborts, failed captures and timeouts invalidate them. Short records,
+nonfinite data and acquisition status flags (including overrange/USB transfer
+errors) refuse export. ``save_IQ_data`` retains the established interleaved
+little-endian float64 layout. ``capture_iq`` uses the shared f32/i16/c64 encodings
+and bin/MAT/iq.tar containers. Metadata records the actual sample rate/bandwidth
+and native timestamp ticks without claiming those ticks are UTC. Spectrum CSV
+exports acquire trace 1 in dBm and use the actual frequency grid returned by the API.
+
+These paths have manual-backed recording/ABI tests, not physical hardware
+qualification. Runtime, firmware, sensor settling and installed rack topology
+still need validation on the bench.
+
+RCM/ZTM connection details (0.13.1)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+HTTP resources are origin URLs such as ``http://192.0.2.10:800/``. Configure
+``password`` only when rack password security is enabled; leave ``username``
+unset because the native protocol does not use HTTP Basic authentication.
+The transport sends the documented ``PWD=...;``
+prefix, percent-encodes the password, and preserves the trailing ``?`` on queries.
+Connection failures redact the password-bearing URL.
+
+For Telnet, set ``driver="minicircuits-telnet"`` and
+``resource="telnet://192.0.2.10:23"`` (23 is the default port). The transport
+consumes the connection greeting, performs password login when configured, and
+uses CRLF command/reply framing. Telnet option requests are refused without
+passing control bytes to the instrument parser. Each transaction has one
+``timeout`` deadline, including fragmented replies. Timed-out, disconnected or
+malformed sessions close; commands are not automatically retried, since a set
+may already have executed. Close/reopen the row to establish a new session.
+
+For USB, set ``driver="minicircuits-usb"`` and ``resource`` to the controller's
+actual serial number. ``"auto"`` requires exactly one distinct matching HID
+path. The transport selects VID 0x20CE / PID 0x0022, verifies the serial with
+``:SN?``, and sends native 64-byte SCPI reports through HIDAPI. The HID report
+ID is transport framing, separate from the native interrupt code. Commands are
+limited to 63 ASCII bytes; returned reports must have the documented size,
+command code and NUL terminator. Each block can have its own configuration row;
+rows for one USB rack share one handle and serialize complete exchanges.
+The handle closes when the final row releases it. A failed exchange invalidates
+the shared session; close all rows for that rack before reopening, so a delayed
+reply cannot be assigned to another command.
+Use one controlling USB application per rack; close the vendor GUI before using
+the plugin's USB connection.
+
+USB uses the packaged ``hidapi`` dependency with its BSD-3-Clause license
+alternative. No vendor .NET/ActiveX DLL or WinUSB driver replacement is required.
+Linux hosts need HID device permissions (udev rules) and HIDAPI's system runtime
+requirements. Host/runtime setup and actual firmware remain bench qualification
+items; tests here use simulated sockets and HID handles.
+
 Linux GPIB
 ----------
 

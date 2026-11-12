@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from colosseum_equipment.instruments.asg.generic import GenericASG
 from colosseum_equipment.instruments.asg.rigol_dg800 import RigolDg800
+from colosseum_equipment.instruments.asg.siglent_sdg import SiglentSdg
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.registry import instrument_model
 
 # TODO: Validate rigol-dg1022z inherited commands against its vendor manual and hardware.
@@ -112,43 +114,43 @@ class RigolDg70000(GenericASG):
 # TODO: Validate siglent-sdg1032x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg1032x")
-class SiglentSdg1032x(GenericASG):
+class SiglentSdg1032x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg1062x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg1062x")
-class SiglentSdg1062x(GenericASG):
+class SiglentSdg1062x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg2042x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg2042x")
-class SiglentSdg2042x(GenericASG):
+class SiglentSdg2042x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg2082x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg2082x")
-class SiglentSdg2082x(GenericASG):
+class SiglentSdg2082x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg2122x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg2122x")
-class SiglentSdg2122x(GenericASG):
+class SiglentSdg2122x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg6052x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg6052x")
-class SiglentSdg6052x(GenericASG):
+class SiglentSdg6052x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg6032x inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg6032x")
-class SiglentSdg6032x(GenericASG):
+class SiglentSdg6032x(SiglentSdg):
     """Manual: https://siglentna.com/resources/documents/waveform-generators/"""
 
 # TODO: Validate siglent-sdg3000x inherited commands against its vendor manual and hardware.
@@ -160,7 +162,7 @@ class SiglentSdg3000x(GenericASG):
 # TODO: Validate siglent-sdg7000a inherited commands against its vendor manual and hardware.
 
 @instrument_model("asg", "siglent-sdg7000a")
-class SiglentSdg7000a(GenericASG):
+class SiglentSdg7000a(SiglentSdg):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
 # TODO: Validate tektronix-afg31000 inherited commands against its vendor manual and hardware.
@@ -168,3 +170,19 @@ class SiglentSdg7000a(GenericASG):
 @instrument_model("asg", "tektronix-afg31000")
 class TektronixAfg31000(GenericASG):
     """Manual: https://www.tek.com/en/support/datasheets-manuals-software-downloads"""
+
+
+    def set_waveform(self, waveform: str, *, channel: int = 1) -> None:
+        shapes = {"sine": "SIN", "square": "SQU", "ramp": "RAMP", "pulse": "PULS", "noise": "PRN"}
+        name = waveform.strip().lower()
+        if name == "arb":
+            raise EquipmentCapabilityError("AFG31000 arbitrary waveform requires an explicit memory/file selection")
+        if name not in shapes:
+            raise EquipmentCapabilityError(f"unsupported AFG31000 waveform {waveform!r}")
+        self._scpi.write(f"{self._source(channel)}FUNC {shapes[name]}")
+
+    def set_pulse_period(self, period_s: float, *, channel: int = 1) -> None:
+        self._scpi.write(f"{self._source(channel)}PULS:PER {period_s:.9f}")
+
+    def set_pulse_width(self, width_s: float, *, channel: int = 1) -> None:
+        self._scpi.write(f"{self._source(channel)}PULS:WIDT {width_s:.9f}")

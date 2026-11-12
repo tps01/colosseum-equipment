@@ -98,6 +98,10 @@ def _open_visa(
         return UsbtmcTransport(usbtmc_path, timeout=timeout)
     resource = normalize_visa_resource(raw_address)
     serial_line = line_mode or _COM_PORT.fullmatch(raw_address) is not None
+    binary_load = kind == "eload" and str(config.get("model", "")).lower() == "bk-8500"
+    if binary_load and not resource.upper().startswith("ASRL"):
+        raise _open_failed("original B&K 8500 requires a COM/ASRL serial resource")
+    serial_config = {"baudrate": 9600, **config} if binary_load else config
     visa_backend = config.get("visa_backend")
     sim_definition = config.get("sim_definition")
     visa_library = config.get("visa_library")
@@ -107,9 +111,29 @@ def _open_visa(
         visa_backend=str(visa_backend) if visa_backend is not None else None,
         sim_definition=str(sim_definition) if sim_definition is not None else None,
         visa_library=str(visa_library) if visa_library is not None else None,
-        baudrate=_line_baud(kind, config, line_mode=serial_line, resource=resource),
+        baudrate=_line_baud(kind, serial_config, line_mode=serial_line, resource=resource),
         line_mode=serial_line,
+        **({"binary_mode": True} if binary_load else {}),
     )
+
+
+def _native_transport(kind: str, driver: str, config: dict[str, Any]) -> Transport | None:
+    from colosseum_equipment.transports.tektronix_rsa import USB_RSA_MODELS, RsaApiTransport
+
+    usb_rsa = str(config.get("model", "")).lower() in USB_RSA_MODELS
+    if usb_rsa and driver != "rsa-api":
+        raise _open_failed("USB RSA models require driver=rsa-api and the installed Tektronix RSA API runtime")
+    if driver == "rsa-api":
+        if kind != "rtsa" or not usb_rsa:
+            raise _open_failed("driver=rsa-api requires an explicit supported USB RSA rtsa model")
+        return RsaApiTransport(config)
+    if str(config.get("model", "")).lower() == "minicircuits-rcm-ztm":
+        from colosseum_equipment.transports.minicircuits import open_rcm_transport
+
+        if kind != "attn":
+            raise _open_failed("RCM/ZTM transport requires an attn configuration row")
+        return open_rcm_transport(driver, config)
+    return None
 
 
 def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Transport:
@@ -117,13 +141,12 @@ def open_transport(kind: str, equipment_id: int, config: dict[str, Any]) -> Tran
     timeout = float(config.get("timeout", 5.0))
     _logger.debug(
         "open_transport kind=%s id=%s driver=%s timeout=%ss",
-        kind,
-        equipment_id,
-        driver,
-        timeout,
+        kind, equipment_id, driver, timeout,
     )
-
     try:
+        native = _native_transport(kind, driver, config)
+        if native is not None:
+            return native
         if driver == "sim":
             return SimTransport(kind, equipment_id, config)
         if driver == "visa":

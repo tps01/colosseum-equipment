@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.eload.agilent_6050 import Agilent6050Eload
 from colosseum_equipment.instruments.eload.chroma_8600 import Chroma8600Eload
 from colosseum_equipment.instruments.eload.generic import GenericEload
@@ -84,3 +87,61 @@ def test_generic_eload_transient_twid() -> None:
     inst = build_instrument("eload", 1, {"model": "generic"}, transport)
     inst.set_transient_timer_s(0.01)
     assert transport.written == ["TRAN:TWID 0.01"]
+
+
+_SDL_MODELS = ["siglent-sdl1020x", "siglent-sdl1020x-e", "siglent-sdl1030x", "siglent-sdl1030x-e"]
+
+
+@pytest.mark.parametrize("model", _SDL_MODELS)
+@pytest.mark.parametrize(("mode", "expected"), [("CC", "CURR"), (" cv ", "VOLT"), ("CP", "POW"), ("cr", "RES"), ("LED", "LED"), ("current", "CURR"), ("VOLT", "VOLT"), ("POWER", "POW"), ("resistance", "RES")])
+def test_sdl_static_mode_uses_function_without_engaging_input(model, mode, expected):
+    io = RfStubTransport()
+    load = build_instrument("eload", 1, {"model": model}, io)
+    load.set_mode(mode)
+    assert io.written == [f"SOUR:FUNC {expected}"]
+
+
+@pytest.mark.parametrize("model", _SDL_MODELS)
+def test_sdl_short_uses_source_short_without_changing_input(model):
+    io = RfStubTransport()
+    load = build_instrument("eload", 1, {"model": model}, io)
+    load.toggle_short(True)
+    load.toggle_short(False)
+    assert io.written == ["SOUR:SHOR ON", "SOUR:SHOR OFF"]
+
+
+@pytest.mark.parametrize("mode", ["", "unknown", "CC;INP ON", "TRAN"])
+def test_sdl_invalid_static_mode_does_not_write(mode):
+    io = RfStubTransport()
+    load = build_instrument("eload", 1, {"model": "siglent-sdl1020x"}, io)
+    with pytest.raises(EquipmentCapabilityError):
+        load.set_mode(mode)
+    assert io.written == []
+
+
+@pytest.mark.parametrize("operation,arg", [("set_mode", "CC"), ("toggle_short", True)])
+def test_sdl_invalid_channel_does_not_write(operation, arg):
+    io = RfStubTransport()
+    load = build_instrument("eload", 1, {"model": "siglent-sdl1020x"}, io)
+    with pytest.raises(EquipmentCapabilityError):
+        getattr(load, operation)(arg, channel=2)
+    assert io.written == []
+
+
+@pytest.mark.parametrize("key", ["channels", "channel_count"])
+def test_sdl_rejects_multichannel_config_before_any_io(key):
+    io = RfStubTransport()
+    with pytest.raises(EquipmentCapabilityError):
+        build_instrument("eload", 1, {"model": "siglent-sdl1020x", key: 2}, io)
+    assert io.written == []
+
+
+def test_sdl_unverified_commands_retain_warning_and_send(caplog):
+    from colosseum_equipment.instruments.registry import reset_best_effort_warnings
+
+    reset_best_effort_warnings()
+    io = RfStubTransport()
+    load = build_instrument("eload", 1, {"model": "siglent-sdl1020x"}, io)
+    load.set_list_count(3)
+    assert io.written == ["LIST:COUN 3"]
+    assert "generic SCPI" in caplog.text

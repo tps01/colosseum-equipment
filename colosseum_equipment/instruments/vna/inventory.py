@@ -163,13 +163,58 @@ class InventoryVna(GenericVna):
         return max(values)
 
 
-@instrument_model("vna", "keysight-e5071b", "keysight-e5062a")
-@supported_commands(*_COMMANDS)
-class KeysightEna(InventoryVna):
-    """Manual: https://helpfiles.keysight.com/csg/e5071c/programming/programming.htm
+class PairedTraceVna(InventoryVna):
+    """Selected-trace ASCII data shared by ENA and SNA5000A."""
 
-    ENA uses a bus trigger; unlike PNA, INIT:IMM is not the sweep command.
-    """
+    _ascii_command = "FORM:DATA ASC"
+    _smoothing_limits = (0.05, 25.0)
+    _trace_limit = 16
+    _channel_limit = 160
+
+    def _channel(self) -> int:
+        channel = super()._channel()
+        if channel > self._channel_limit:
+            raise EquipmentCapabilityError(f"VNA channel must be 1..{self._channel_limit}")
+        return channel
+
+    def _validate_trace(self, trace: int, parameter: str, fmt: str) -> tuple[str, str]:
+        if trace > self._trace_limit:
+            raise EquipmentCapabilityError(f"VNA trace must be 1..{self._trace_limit}")
+        return super()._validate_trace(trace, parameter, fmt)
+
+    def _trace_values(self, trace: int) -> list[float]:
+        self._select_trace(trace)
+        if self._ascii_command:
+            self._scpi.write(self._ascii_command)
+        raw = self._scpi.query(f"{self._calc()}:DATA:FDAT?")
+        try:
+            if any(not part.strip() for part in raw.split(",")):
+                raise ValueError("empty sample")
+            values = parse_vna_trace_values(raw)
+        except ValueError as exc:
+            raise EquipmentResponseError("malformed paired VNA trace") from exc
+        if len(values) % 2 or any(not math.isfinite(v) or abs(v) >= 9e37 for v in values):
+            raise EquipmentResponseError("VNA formatted trace must contain valid primary/secondary pairs")
+        return values[::2]
+
+    def set_smoothing_aperture(self, percent: float) -> None:
+        low, high = self._smoothing_limits
+        if not low <= percent <= high:
+            raise ValueError(f"smoothing aperture must be {low}..{high} percent")
+        self._scpi.write(f"{self._calc()}:SMO:APER {percent:.3f}")
+
+    def set_trace_hold(self, trace: int, mode: str) -> None:
+        if not 1 <= trace <= self._trace_limit:
+            raise ValueError(f"trace must be 1..{self._trace_limit}")
+        modes = {"OFF": "OFF", "MAX": "MAX", "MAXIMUM": "MAX", "MIN": "MIN", "MINIMUM": "MIN"}
+        token = mode.strip().upper()
+        if token not in modes:
+            raise EquipmentCapabilityError(f"unsupported trace hold mode {mode!r}")
+        self._scpi.write(f"{self._calc()}:TRAC{trace}:HOLD {modes[token]}")
+
+
+class EnaVna(PairedTraceVna):
+    """ENA bus-trigger sequence; E5071C hold requires firmware A.11.20+."""
 
     def _sweep_once(self) -> None:
         self._scpi.write("TRIG:SOUR BUS")
@@ -178,12 +223,11 @@ class KeysightEna(InventoryVna):
         self._scpi.write("TRIG:SING")
         self.wait_complete()
 
-    def _trace_values(self, trace: int) -> list[float]:
-        values = super()._trace_values(trace)
-        # ENA FDATA is primary/secondary pairs even for scalar display formats.
-        if len(values) % 2:
-            raise EquipmentResponseError("ENA formatted trace must contain primary/secondary pairs")
-        return values[::2]
+
+@instrument_model("vna", "keysight-e5071b", "keysight-e5062a")
+@supported_commands(*_COMMANDS)
+class KeysightEna(EnaVna):
+    """Manual: https://helpfiles.keysight.com/csg/e5071c/programming/programming.htm"""
 
 
 @instrument_model("vna", "keysight-n5245b", "keysight-n5247b", "keysight-n5222b")
