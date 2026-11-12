@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ctypes as ct
 import os
+import sys
 import threading
 from pathlib import Path
 from typing import Any, NoReturn
@@ -69,7 +70,7 @@ class RsaApiTransport:
                 raise EquipmentConnectionError(
                     "install the RSA API runtime and set rsa_api_library to its library path",
                 )
-            if os.name == "nt":
+            if sys.platform == "win32":
                 self._directory = os.add_dll_directory(str(path.parent))
             self._dll = ct.CDLL(str(path))
             self._bind()

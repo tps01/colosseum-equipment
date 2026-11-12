@@ -228,7 +228,7 @@ def open_rsa(monkeypatch, tmp_path, library=None, **config):
     path.write_bytes(b"mock ABI library, never loaded")
     # Isolate vendor loading without changing NumPy's OS/DLL loading functions.
     monkeypatch.setattr(native, "ct", SimpleNamespace(**{**vars(native.ct), "CDLL": lambda _: library}))
-    monkeypatch.setattr(native, "os", SimpleNamespace(name=native.os.name, add_dll_directory=lambda _: SimpleNamespace(close=lambda: None)))
+    monkeypatch.setattr(native, "os", SimpleNamespace(add_dll_directory=lambda _: SimpleNamespace(close=lambda: None)))
     row = {"driver": "rsa-api", "resource": "ABC123", "model": "tektronix-rsa306b", "rsa_api_library": str(path), **config}
     transport = open_transport("rtsa", 1, row)
     try:
