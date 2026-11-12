@@ -154,6 +154,7 @@ class VISATransport(Transport):
         visa_library: str | None = None,
         baudrate: int | None = None,
         line_mode: bool = False,
+        binary_mode: bool = False,
     ) -> None:
         self._resource = resource
         self._timeout = timeout
@@ -183,6 +184,13 @@ class VISATransport(Transport):
             else:
                 session = self._rm.open_resource(resource)
             self._inst = session
+            if binary_mode:
+                import pyvisa
+
+                self._inst.read_termination = None
+                self._inst.write_termination = None
+                self._inst.end_input = pyvisa.constants.SerialTermination.none
+                self._inst.end_output = pyvisa.constants.SerialTermination.none
             self._inst.timeout = int(timeout * 1000)
             if baudrate is not None:
                 self._inst.baud_rate = int(baudrate)

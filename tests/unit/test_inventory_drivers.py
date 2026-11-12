@@ -1068,3 +1068,376 @@ def test_case_insensitive_tds_model_still_enforces_two_physical_channels():
     with pytest.raises(EquipmentCapabilityError):
         scope.set_channel_display(3, True)
     assert io.events == []
+
+
+@pytest.mark.parametrize("model", ["rigol-dp711", "rigol-dp712"])
+@pytest.mark.parametrize(("reply", "expected"), [("ON", True), ("OFF\n", False)])
+def test_dp700_output_state_is_text(model, reply, expected):
+    psu, io = instrument("psu", model, {"OUTP?": reply})
+    assert psu.get_output() is expected
+    assert psu.measure_output_state() is expected
+    assert io.events == ["OUTP?", "OUTP?"]
+
+
+@pytest.mark.parametrize("function", ["VOLT", "CURR", "RES", "FRES", "VOLT:AC", "CURR:AC", "CAP"])
+def test_dm858_range_tracks_front_panel_function(function):
+    branch = {"VOLT": "VOLT:DC", "CURR": "CURR:DC"}.get(function, function)
+    dmm, io = instrument("dmm", "rigol-dm858", {"SENS:FUNC?": f'"{function}"'})
+    dmm.set_range(1.0)
+    dmm.set_auto_range(True)
+    assert io.events == ["SENS:FUNC?", f"SENS:{branch}:RANG 1.0", "SENS:FUNC?", f"SENS:{branch}:RANG:AUTO 1"]
+
+
+@pytest.mark.parametrize("function", ["VOLT", "CURR", "RES", "FRES"])
+def test_dm858_nplc_is_function_qualified(function):
+    branch = {"VOLT": "VOLT:DC", "CURR": "CURR:DC"}.get(function, function)
+    dmm, io = instrument("dmm", "rigol-dm858", {"SENS:FUNC?": function})
+    dmm.set_nplc(5)
+    assert io.events == ["SENS:FUNC?", f"SENS:{branch}:NPLC 5"]
+
+
+@pytest.mark.parametrize("raw", ["", "enabled", "2"])
+def test_dp700_rejects_invalid_output_state(raw):
+    psu, _ = instrument("psu", "rigol-dp711", {"OUTP?": raw})
+    with pytest.raises(EquipmentResponseError):
+        psu.get_output()
+
+
+def test_dm858_readbacks_follow_function_changes():
+    dmm, io = instrument("dmm", "rigol-dm858", {
+        "SENS:FUNC?": ['"VOLT"', '"CURR"', '"RES"'],
+        "SENS:VOLT:DC:RANG?": "10", "SENS:CURR:DC:RANG:AUTO?": "1", "SENS:RES:NPLC?": "5",
+    })
+    assert dmm.get_range() == 10
+    assert dmm.get_auto_range() is True
+    assert dmm.get_nplc() == 5
+    assert io.events == ["SENS:FUNC?", "SENS:VOLT:DC:RANG?", "SENS:FUNC?", "SENS:CURR:DC:RANG:AUTO?", "SENS:FUNC?", "SENS:RES:NPLC?"]
+
+
+@pytest.mark.parametrize("function", ["VOLT:AC", "CURR:AC", "CAP", "TEMP", "FREQ"])
+def test_dm858_nonintegrating_functions_reject_nplc(function):
+    dmm, io = instrument("dmm", "rigol-dm858", {"SENS:FUNC?": function})
+    with pytest.raises(EquipmentCapabilityError):
+        dmm.set_nplc(5)
+    assert io.events == ["SENS:FUNC?"]
+
+
+@pytest.mark.parametrize("value", [1, 0, float("nan"), float("inf")])
+def test_dm858_invalid_nplc_does_not_send_commands(value):
+    dmm, io = instrument("dmm", "rigol-dm858")
+    with pytest.raises(EquipmentCapabilityError):
+        dmm.set_nplc(value)
+    assert io.events == []
+
+
+def test_dm858_unknown_function_does_not_send_setting():
+    dmm, io = instrument("dmm", "rigol-dm858", {"SENS:FUNC?": ""})
+    with pytest.raises(EquipmentResponseError):
+        dmm.set_range(1)
+    assert io.events == ["SENS:FUNC?"]
+
+
+_SDG_MODELS = ["siglent-sdg1032x", "siglent-sdg1062x", "siglent-sdg2042x", "siglent-sdg2082x", "siglent-sdg2122x", "siglent-sdg6032x", "siglent-sdg6052x", "siglent-sdg7000a"]
+
+
+@pytest.mark.parametrize("model", _SDG_MODELS)
+def test_sdg_basic_controls_address_both_channels_without_enabling_output(model):
+    asg, io = instrument("asg", model, channels=2)
+    asg.set_frequency(1000, channel=2)
+    asg.set_waveform("square", channel=2)
+    asg.set_amplitude_vpp(2, channel=2)
+    asg.set_amplitude_vrms(1, channel=1)
+    asg.set_offset_v(0.5, channel=2)
+    asg.set_duty_cycle_pct(25, channel=2)
+    asg.set_pulse_period(0.001, channel=2)
+    asg.set_pulse_width(0.0001, channel=2)
+    asg.set_output(False, channel=2)
+    assert io.events == ["C2:BSWV FRQ,1000", "C2:BSWV WVTP,SQUARE", "C2:BSWV AMP,2", "C1:BSWV AMPVRMS,1", "C2:BSWV OFST,0.5", "C2:BSWV DUTY,25", "C2:BSWV PERI,0.001", "C2:BSWV WIDTH,0.0001", "C2:OUTP OFF"]
+
+
+@pytest.mark.parametrize("model", ["siglent-spd3303x", "siglent-spd3303x-e"])
+def test_spd3303_explicit_channels_and_output_status(model):
+    psu, io = instrument("psu", model, {"SYST:STAT?": "0x0024", "MEAS:VOLT? CH2": "5"}, channels=3)
+    psu.set_voltage(5, channel=2)
+    psu.set_current_limit(1, channel=2)
+    psu.set_output(False, channel=3)
+    assert psu.measure_voltage(channel=2) == 5
+    assert psu.get_output(channel=1) is False
+    assert psu.get_output(channel=2) is True
+    assert io.events == ["CH2:VOLT 5", "CH2:CURR 1", "OUTP CH3,OFF", "MEAS:VOLT? CH2", "SYST:STAT?", "SYST:STAT?"]
+
+
+def test_afg31000_native_pulse_and_waveform_commands():
+    asg, io = instrument("asg", "tektronix-afg31000", channels=2)
+    asg.set_pulse_period(0.001, channel=2)
+    asg.set_pulse_width(0.0001, channel=2)
+    asg.set_waveform("noise", channel=2)
+    assert io.events == ["SOUR2:PULS:PER 0.001000000", "SOUR2:PULS:WIDT 0.000100000", "SOUR2:FUNC PRN"]
+
+
+def test_afg31000_arb_requires_explicit_memory_selection():
+    asg, io = instrument("asg", "tektronix-afg31000")
+    with pytest.raises(EquipmentCapabilityError, match="memory"):
+        asg.set_waveform("arb")
+    assert io.events == []
+
+
+@pytest.mark.parametrize("load,reply", [(50.0, "C2:OUTP OFF,LOAD,50,PLRT,NOR"), (float("inf"), "C2:OUTP OFF,LOAD,HZ,PLRT,NOR")])
+def test_sdg_load_uses_output_parameters_without_enabling(load, reply):
+    asg, io = instrument("asg", "siglent-sdg1032x", {"C2:OUTP?": reply}, channels=2)
+    asg.set_load_ohms(load, channel=2)
+    assert asg.get_load_ohms(channel=2) == load
+    assert io.events == [f"C2:OUTP LOAD,{'HZ' if load == float('inf') else str(load)}", "C2:OUTP?"]
+
+
+@pytest.mark.parametrize("reply", ["", "C1:OUTP OFF,LOAD,50", "C2:OUTP OFF,LOAD", "C2:OUTP OFF,LOAD,nan"])
+def test_sdg_rejects_malformed_or_wrong_channel_load_reply(reply):
+    asg, _ = instrument("asg", "siglent-sdg1032x", {"C2:OUTP?": reply}, channels=2)
+    with pytest.raises(EquipmentResponseError):
+        asg.get_load_ohms(channel=2)
+
+
+def test_sdg_constructor_uses_native_settings_and_modulation_commands():
+    asg, io = instrument("asg", "siglent-sdg2122x", frequency=1000, amplitude_vpp=2)
+    asg.set_modulation_state(True)
+    asg.set_burst_state(False)
+    assert io.events == ["C1:BSWV FRQ,1000.0", "C1:BSWV AMP,2.0", "C1:MDWV STATE,ON", "C1:BTWV STATE,OFF"]
+
+
+@pytest.mark.parametrize("model", ["siglent-spd3303x", "siglent-spd3303x-e"])
+def test_spd3303_readbacks_and_tracking_use_native_commands(model):
+    psu, io = instrument("psu", model, {"CH2:VOLT?": "5", "CH2:CURR?": "1", "MEAS:CURR? CH2": "0.5", "MEAS:POW? CH2": "2.5", "SYST:STAT?": "0x0036"})
+    assert psu.get_voltage(channel=2) == 5
+    assert psu.get_current_limit(channel=2) == 1
+    assert psu.measure_current(channel=2) == 0.5
+    assert psu.measure_power_w(channel=2) == 2.5
+    assert psu.get_regulation_mode(channel=2) == "cc"
+    psu.set_tracking_mode("series")
+    assert io.events == ["CH2:VOLT?", "CH2:CURR?", "MEAS:CURR? CH2", "MEAS:POW? CH2", "SYST:STAT?", "OUTP:TRACK 1"]
+
+
+@pytest.mark.parametrize("operation,args", [("set_voltage", (5,)), ("set_current_limit", (1,)), ("get_voltage", ()), ("get_output", ()), ("measure_power_w", ())])
+def test_spd3303_ch3_adjustment_and_readback_refuse_before_io(operation, args):
+    psu, io = instrument("psu", "siglent-spd3303x")
+    with pytest.raises(EquipmentCapabilityError):
+        getattr(psu, operation)(*args, channel=3)
+    assert io.events == []
+
+
+@pytest.mark.parametrize("raw", ["garbage", "-1", "0x10000"])
+def test_spd3303_rejects_malformed_status(raw):
+    psu, _ = instrument("psu", "siglent-spd3303x", {"SYST:STAT?": raw})
+    with pytest.raises(EquipmentResponseError):
+        psu.get_output()
+
+
+@pytest.mark.parametrize("model", ["siglent-sdg1032x", "siglent-spd3303x", "tektronix-afg31000"])
+def test_batch2_invalid_channel_does_not_write(model):
+    kind = "psu" if "spd" in model else "asg"
+    dev, io = instrument(kind, model, channels=2)
+    with pytest.raises(EquipmentCapabilityError):
+        dev.set_output(True, channel=3)
+    assert io.events == []
+
+
+def test_batch2_unverified_models_still_use_warning_and_send(caplog):
+    dev, io = instrument("asg", "siglent-sdg3000x")
+    dev.set_frequency(1000)
+    assert io.events == ["FREQ 1000.000000"]
+    assert "generic SCPI" in caplog.text
+
+
+@pytest.mark.parametrize("model", ["siglent-ssa3021x", "siglent-ssa3032x"])
+def test_ssa_trace_uses_numeric_selector_ascii_dbm_and_a_new_sweep(model):
+    analyzer, io = instrument("speca", model, {"*OPC?": "1", "FREQ:CENT?": "100", "FREQ:SPAN?": "20", "TRAC:DATA? 2": "-30,-10,-20"})
+    assert analyzer._fetch_trace(2) == ([90, 100, 110], [-30, -10, -20])
+    assert io.events == ["UNIT:POW DBM", "FORM ASC", "INIT:CONT OFF", "INIT:IMM", "*OPC?", "FREQ:CENT?", "FREQ:SPAN?", "TRAC:DATA? 2"]
+
+
+@pytest.mark.parametrize("model", ["siglent-ssa3021x", "siglent-ssa3032x"])
+def test_ssa_directional_and_amplitude_peak_searches_are_distinct(model):
+    analyzer, io = instrument("speca", model)
+    analyzer.next_peak_right(2)
+    analyzer.next_peak_left(2)
+    analyzer.next_highest_peak(2)
+    assert io.events == ["CALC:MARK2:MAX:RIGH", "CALC:MARK2:MAX:LEFT", "CALC:MARK2:MAX:NEXT"]
+
+
+@pytest.mark.parametrize("model", ["keysight-e5071c", "siglent-sna5000a"])
+def test_catalog_vna_peak_ignores_secondary_values_and_uses_selected_trace(model):
+    vna, io = instrument("vna", model, {"SENS2:AVER?": "0", "*OPC?": "1", "CALC2:DATA:FDAT?": "-20,0,-10,0"}, channel=2)
+    assert vna.measure_s21_magnitude(trace=2) == -10
+    assert "CALC2:PAR2:DEF S21" in io.events
+    assert "CALC2:PAR2:SEL" in io.events
+    assert "CALC2:FORM MLOG" in io.events
+    assert "CALC2:PAR2:DATA:FDATA?" not in io.events
+
+
+@pytest.mark.parametrize("model", ["keysight-e5071c", "siglent-sna5000a"])
+def test_catalog_vna_smoothing_and_hold_use_separate_native_paths(model):
+    vna, io = instrument("vna", model, channel=2)
+    vna.set_smoothing_aperture(5)
+    vna.set_trace_hold(2, "maximum")
+    assert io.events == ["CALC2:SMO:APER 5.000", "CALC2:TRAC2:HOLD MAX"]
+
+
+@pytest.mark.parametrize("raw", ["", "-10,,0", "nan,0", "9.9e37,0", "#212not-ascii", "-10"])
+def test_ssa_rejects_invalid_trace_samples(raw):
+    dev, _ = instrument("speca", "siglent-ssa3021x", {"*OPC?": "1", "FREQ:CENT?": "100", "FREQ:SPAN?": "20", "TRAC:DATA? 1": raw})
+    with pytest.raises(EquipmentResponseError):
+        dev._fetch_trace(1)
+
+
+def test_ssa_bandwidth_and_csv_use_correct_trace(unit_runtime_context, tmp_path):
+    dev, io = instrument("speca", "siglent-ssa3032x", {"*OPC?": "1", "FREQ:CENT?": "100", "FREQ:SPAN?": "20", "TRAC:DATA? 1": "-10,0,-10"})
+    bw = dev.measure_bw(90, 110, threshold_db=3)
+    assert bw > 0
+    path = dev.save_trace_data(str(tmp_path / "ssa.csv"))
+    assert "amplitude_dbm" in path.read_text()
+    assert dev.measure_trace_power_at_frequency(100) == (0, 100)
+    assert io.events.count("TRAC:DATA? 1") == 2
+
+
+def test_ssa_zero_span_refuses_frequency_export_but_allows_sample_indexes():
+    dev, _ = instrument("speca", "siglent-ssa3021x", {"*OPC?": "1", "FREQ:CENT?": "100", "FREQ:SPAN?": "0", "TRAC:DATA? 1": "-10,-20"})
+    with pytest.raises(EquipmentResponseError, match="zero-span"):
+        dev._fetch_trace(1)
+    assert dev._fetch_trace(1, include_frequency=False) == ([0, 1], [-10, -20])
+
+
+@pytest.mark.parametrize("model", ["keysight-e5071c", "siglent-sna5000a"])
+def test_catalog_vna_export_keeps_actual_axis_and_rejects_fake_s2p(model, tmp_path, unit_runtime_context):
+    dev, io = instrument("vna", model, {"SENS2:AVER?": "0", "*OPC?": "1", "CALC2:DATA:FDAT?": "-20,0,-10,0,-30,0", "SENS2:FREQ:DATA?": "1e6,2e6,10e6"}, channel=2)
+    with pytest.raises(EquipmentCapabilityError):
+        dev.save_trace_data(str(tmp_path / "invalid.s2p"))
+    assert io.events == []
+    path = dev.save_trace_data(str(tmp_path / "native.csv"), trace=2, parameter="S21")
+    assert path.read_text().splitlines()[-1] == "10000000.000000,-30.000000"
+    assert "INIT:IMM" not in io.events
+    if model.startswith("keysight"):
+        assert "TRIG:SING" in io.events
+        assert "FORM:DATA ASC" in io.events
+    else:
+        assert "TRIG:SOUR INT" in io.events
+        assert "INIT2:IMM" in io.events
+        assert "FORM:DATA ASC" not in io.events
+
+
+@pytest.mark.parametrize("model", ["keysight-e5071c", "siglent-sna5000a"])
+@pytest.mark.parametrize("raw", ["-10", "nan,0", "-10,inf", "-10,,0", "9.9e37,0", "garbage"])
+def test_catalog_vna_rejects_malformed_pairs(model, raw):
+    dev, _ = instrument("vna", model, {"SENS1:AVER?": "0", "*OPC?": "1", "CALC1:DATA:FDAT?": raw})
+    with pytest.raises(EquipmentResponseError):
+        dev.measure_s11_magnitude()
+
+
+@pytest.mark.parametrize("model", ["keysight-e5071c", "siglent-sna5000a"])
+def test_catalog_vna_axis_mismatch_does_not_invent_frequencies(model, tmp_path, unit_runtime_context):
+    dev, _ = instrument("vna", model, {"SENS1:AVER?": "0", "*OPC?": "1", "CALC1:DATA:FDAT?": "-20,0,-10,0", "SENS1:FREQ:DATA?": "1,2,3"})
+    path = tmp_path / "invalid.csv"
+    with pytest.raises(EquipmentResponseError, match="length mismatch"):
+        dev.save_trace_data(str(path))
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("model,value", [("keysight-e5071c", 0), ("keysight-e5071c", 26), ("siglent-sna5000a", -1), ("siglent-sna5000a", 101), ("siglent-sna5000a", float("nan"))])
+def test_catalog_vna_invalid_smoothing_does_not_write(model, value):
+    dev, io = instrument("vna", model)
+    with pytest.raises(ValueError):
+        dev.set_smoothing_aperture(value)
+    assert io.events == []
+
+
+@pytest.mark.parametrize("model", ["keysight-e5071c", "siglent-sna5000a"])
+def test_catalog_vna_invalid_hold_and_trace_do_not_write(model):
+    dev, io = instrument("vna", model)
+    with pytest.raises(EquipmentCapabilityError):
+        dev.set_trace_hold(1, "MAX;INIT")
+    with pytest.raises(ValueError):
+        dev.set_trace_hold(0, "MAX")
+    with pytest.raises(EquipmentCapabilityError):
+        dev.measure_s11_magnitude(trace=201)
+    assert io.events == []
+
+
+def test_ssa_invalid_trace_or_marker_does_not_write():
+    dev, io = instrument("speca", "siglent-ssa3021x")
+    with pytest.raises(ValueError):
+        dev._fetch_trace(5)
+    with pytest.raises(ValueError):
+        dev.next_peak_right(5)
+    assert io.events == []
+
+
+@pytest.mark.parametrize("model,channel", [("keysight-e4418b", 1), ("keysight-e4419b", 2)])
+def test_epm_reads_explicit_input_in_dbm_and_converts_watts(model, channel):
+    query = f"READ{channel}:POW:AC? DEF,DEF,(@{channel})"
+    meter, io = instrument("pwrmeter", model, {query: "-30"})
+    assert meter.measure_power_w(channel=channel) == pytest.approx(1e-6)
+    assert io.events == [f"INIT{channel}:CONT OFF", f"TRIG{channel}:SOUR IMM", f"TRIG{channel}:DEL:AUTO ON", f"UNIT{channel}:POW DBM", "FORM ASC", query]
+    io.events.clear()
+    meter.preset()
+    assert meter.measure_power(channel=channel) == -30
+    assert io.events[-3:] == [f"UNIT{channel}:POW DBM", "FORM ASC", query]
+
+
+def test_epm_average_fetch_does_not_acquire_and_acquire_leaves_a_valid_sample():
+    read = "READ2:POW:AC? DEF,DEF,(@2)"
+    fetch = "FETC2:POW:AC? DEF,DEF,(@2)"
+    meter, io = instrument("pwrmeter", "keysight-e4419b", {read: "-20", fetch: "-20"})
+    meter.acquire(channel=2)
+    assert io.events[-1] == read
+    io.events.clear()
+    assert meter.measure_power_avg_dbm(channel=2) == -20
+    assert io.events == ["UNIT2:POW DBM", "FORM ASC", fetch]
+
+
+@pytest.mark.parametrize("model,channel", [("keysight-e4418b", 1), ("keysight-e4419b", 2)])
+def test_epm_sensor_setup_and_calibration_address_physical_input(model, channel):
+    meter, io = instrument("pwrmeter", model, {"*OPC?": "1"})
+    meter.set_frequency(1e9, channel=channel)
+    meter.set_averaging_count(400, channel=channel)
+    meter.set_offset_db(10, channel=channel)
+    meter.zero_sensor(channel=channel)
+    meter.calibrate(channel=channel)
+    assert io.events == [f"SENS{channel}:FREQ 1000000000.000000", f"SENS{channel}:SPE 20", f"SENS{channel}:AVER:COUN 400", f"SENS{channel}:SPE 20", f"SENS{channel}:CORR:LOSS2 10.000DB", f"CAL{channel}:ZERO:AUTO ONCE", "*OPC?", f"CAL{channel}:AUTO ONCE", "*OPC?"]
+
+
+@pytest.mark.parametrize("model", ["keysight-e4418b", "keysight-e4419b"])
+def test_epm_refuses_peak_without_io(model):
+    meter, io = instrument("pwrmeter", model)
+    with pytest.raises(EquipmentCapabilityError, match="peak"):
+        meter.measure_power_peak_dbm()
+    assert io.events == []
+
+
+@pytest.mark.parametrize("model,config", [("keysight-e4418b", {"channels": 2}), ("keysight-e4419b", {"channel_count": 3}), ("keysight-e4419b", {"channels": 0}), ("keysight-e4419b", {"channels": 2, "channel_count": 1})])
+def test_epm_rejects_impossible_or_conflicting_input_counts(config, model):
+    with pytest.raises((ValueError, EquipmentCapabilityError)):
+        instrument("pwrmeter", model, **config)
+
+
+def test_epm_single_input_and_restricted_dual_input_reject_channel_two():
+    for model in ("keysight-e4418b", "keysight-e4419b"):
+        meter, io = instrument("pwrmeter", model, channel_count=1)
+        with pytest.raises(EquipmentCapabilityError):
+            meter.measure_power_dbm(channel=2)
+        with pytest.raises(EquipmentCapabilityError):
+            meter.zero_sensor(channel=2)
+        assert io.events == []
+
+
+@pytest.mark.parametrize("raw", ["nan", "inf", "9.9e37", "-9.9e37", "1,2", "", "overload"])
+@pytest.mark.parametrize("method,query", [("measure_power_dbm", "READ1:POW:AC? DEF,DEF,(@1)"), ("measure_power_avg_dbm", "FETC1:POW:AC? DEF,DEF,(@1)")])
+def test_epm_rejects_invalid_readings(raw, method, query):
+    meter, _ = instrument("pwrmeter", "keysight-e4418b", {query: raw})
+    with pytest.raises(EquipmentResponseError):
+        getattr(meter, method)()
+
+
+@pytest.mark.parametrize("method,value", [("set_averaging_count", 0), ("set_averaging_count", 1025), ("set_averaging_count", 1.5), ("set_offset_db", 101), ("set_offset_db", float("nan")), ("set_frequency", 0)])
+def test_epm_invalid_settings_do_not_write(method, value):
+    meter, io = instrument("pwrmeter", "keysight-e4418b")
+    with pytest.raises(ValueError):
+        getattr(meter, method)(value)
+    assert io.events == []

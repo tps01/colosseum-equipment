@@ -43,6 +43,10 @@ class HttpTransport(Transport):
         request_target = target.path or "/"
         if target.query:
             request_target = f"{request_target}?{target.query}"
+        elif path.endswith("?"):
+            # A Mini-Circuits command's trailing query marker is significant,
+            # even though urlsplit represents it as an empty HTTP query string.
+            request_target += "?"
         connection_cls = HTTPSConnection if target.scheme == "https" else HTTPConnection
         port = target.port or (443 if target.scheme == "https" else 80)
         try:

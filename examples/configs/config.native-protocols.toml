@@ -1,0 +1,44 @@
+# Replace the example addresses/serial number with the installed equipment.
+# These rows open real hardware; they are not simulation fixtures.
+
+[equipment.eload]
+eload_id = 1
+model = "bk-8500" # Original 8500, not 8500B.
+resource = "COM7"
+driver = "serial"
+baudrate = 9600 # Must match the front-panel setting; 8N1.
+device_address = 0
+timeout = 5.0
+
+[equipment.attn]
+attn_id = 1
+model = "minicircuits-rcm-ztm"
+driver = "http"
+resource = "http://192.0.2.10/"
+block = 2 # Two-digit native block address 02.
+channel = 3 # Channel within that block, not a mesh endpoint pair.
+channels_per_block = 4 # Use 8 only for an installed RS8DAT block.
+timeout = 5.0
+# Set min_attenuation_db/max_attenuation_db/step_db from your module's datasheet
+# if procedures use those getters. Limits vary with the installed module.
+# For native Telnet, replace these two lines in the attn row:
+# driver = "minicircuits-telnet"
+# resource = "telnet://192.0.2.10:23"
+# For direct USB HID, use:
+# driver = "minicircuits-usb"
+# resource = "11302120001" # Controller serial; "auto" requires one HID path.
+# For password-protected HTTP/Telnet, set password locally (do not commit it).
+# Configure additional attn rows only when addressing additional blocks; USB rows
+# for the same controller share one session until all rows are closed.
+
+[equipment.rtsa]
+rtsa_id = 1
+model = "tektronix-rsa306b"
+driver = "rsa-api"
+resource = "ABC123" # Exact device serial; "auto" requires one connected RSA.
+rsa_api_library = "C:/Tektronix/RSA_API/lib/x64/RSA_API.dll"
+center_freq = 1e9
+reference_level_dbm = 0.0
+iq_bandwidth_hz = 40e6
+num_samples = 1024
+timeout = 10.0

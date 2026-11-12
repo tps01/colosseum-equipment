@@ -8,8 +8,8 @@ docstring is the manual link.
 from __future__ import annotations
 
 from colosseum_equipment.instruments.psu.generic import GenericPSU
-from colosseum_equipment.instruments.psu.rigol_dp800 import RigolDp800
-from colosseum_equipment.instruments.psu.siglent_spd_single import SiglentSpdSingle
+from colosseum_equipment.instruments.psu.rigol_dp800 import RigolDp700, RigolDp800
+from colosseum_equipment.instruments.psu.siglent_spd_single import SiglentSpd3303, SiglentSpdSingle
 from colosseum_equipment.instruments.registry import instrument_model
 
 
@@ -55,13 +55,13 @@ class RigolDp832a(RigolDp800):
 # TODO: Validate rigol-dp711 inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp711")
-class RigolDp711(GenericPSU):
+class RigolDp711(RigolDp700):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
 # TODO: Validate rigol-dp712 inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "rigol-dp712")
-class RigolDp712(GenericPSU):
+class RigolDp712(RigolDp700):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
 # TODO: Validate rigol-dp932u inherited commands against its vendor manual and hardware.
@@ -91,13 +91,13 @@ class RigolDp1116a(GenericPSU):
 # TODO: Validate siglent-spd3303x inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "siglent-spd3303x")
-class SiglentSpd3303x(GenericPSU):
+class SiglentSpd3303x(SiglentSpd3303):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
 # TODO: Validate siglent-spd3303x-e inherited commands against its vendor manual and hardware.
 
 @instrument_model("psu", "siglent-spd3303x-e")
-class SiglentSpd3303xE(GenericPSU):
+class SiglentSpd3303xE(SiglentSpd3303):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
 # TODO: Validate siglent-spd3303c inherited commands against its vendor manual and hardware.

@@ -20,7 +20,15 @@ Common VISA keys
 VISA kinds require ``resource``. ``address="either"`` kinds (``serial``,
 ``gnss``, ``rfswitch``, ``attn``) accept ``port`` or ``resource`` and require
 neither. ``open_transport`` accepts an explicit ``driver`` of ``sim``,
-``visa``, ``serial``, or ``http``. With no driver, kind ``serial`` or a
+``visa``, ``serial``, ``http``, ``rsa-api``, ``minicircuits-usb`` or
+``minicircuits-telnet``. The Mini-Circuits transports require the explicit
+``minicircuits-rcm-ztm`` attenuator model. Their resources are a controller serial
+number (USB) or ``telnet://host[:port]``; HTTP uses a rack origin URL.
+The ``rsa-api`` path requires an
+explicit supported USB RSA model and the installed vendor runtime; its resource
+is a serial number rather than a VISA address. See
+:doc:`guides/transports_support` for the native protocol configuration.
+With no driver, kind ``serial`` or a
 ``port`` without ``resource`` selects serial; an HTTP kind or an ``http://``
 or ``https://`` resource selects HTTP; otherwise the driver is ``visa``.
 ``driver = "serial"`` still opens through pyVISA.
@@ -47,6 +55,18 @@ becomes ``ASRL5::INSTR``. Line mode (serial driver or a ``COM`` address) sets
 the baud rate from ``baudrate``, default ``115200``, or ``9600`` for kind
 ``gnss``. An ``ASRL`` resource that is not line mode sets the baud only when
 ``baudrate`` is present.
+
+RCM/ZTM rows also require an integer ``block`` (1–99) and default ``channel`` or
+``path`` within that block. ``channels_per_block`` is 4 by default, or 8 for an
+installed RS8DAT module. ``password`` supplies native HTTP/Telnet authentication;
+the adapter accepts at most 20 printable ASCII characters without semicolons.
+``timeout`` controls HTTP socket I/O, the full Telnet transaction deadline, or
+the USB reply read (seconds; default 5, maximum 3600).
+See :doc:`guides/transports_support` for shared USB ownership and recovery after
+a timeout. These transports never treat USB HID as VISA SCPI.
+
+The original ``bk-8500`` model uses raw binary serial at 9600 baud by default
+and disables CR/LF termination. Its explicit ``baudrate`` overrides that default.
 
 HTTP relay keys
 ---------------

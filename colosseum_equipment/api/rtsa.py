@@ -251,7 +251,8 @@ def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None
 def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str = "") -> None:
     """Download IQ data as ``bin``, ``mat``, or ``iq.tar`` under the run directory.
 
-    Writes the opaque instrument binary block (no sample reinterpretation).
+    Generic drivers write an opaque instrument binary block. Native adapters
+    may decode samples; USB RSA writes interleaved little-endian float64 IQ.
     For decoded length-mode IQ records with ``f32`` / ``i16`` / ``c64`` encodings,
     use :func:`capture_iq`.
 
@@ -290,7 +291,9 @@ def capture_iq(
     ``bandwidth_hz`` is the IQ acquisition bandwidth, not spectrum resolution
     bandwidth. Supported models (for example ``tektronix-rsa5100b`` and
     ``tektronix-rsa5115b``) set up an IQ vs Time measurement, wait for
-    completion, decode the wire samples, and export them.
+    completion, decode the wire samples, and export them. USB RSA306/500A/600A
+    models acquire a finite block through the direct RSA API. Their sample rate
+    follows the requested IQ bandwidth; spectrum span is configured separately.
 
     :param rtsa_id: Configured ``equipment.rtsa`` ID.
 
