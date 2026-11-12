@@ -10,8 +10,11 @@ First-party Colosseum plugin providing `col.equipment.*` and `col.io.*`
 (instruments, transports, DIO, I2C, SPI). NI USB-6501 and USB-845x adapters
 load the installed NI-DAQmx / NI-845x runtimes via ctypes.
 
-Instrument resources open through pyVISA, including COM ports normalized to
-ASRL. When `model` is omitted, identity queries select a matching driver or the
+Most instrument resources open through pyVISA, including COM ports normalized to
+ASRL. Native exceptions include B&K 8500 binary serial, Mini-Circuits RCM/ZTM
+HTTP/Telnet/USB HID, and Tektronix USB RSA through `driver="rsa-api"` with the separately
+installed vendor runtime. See `examples/configs/config.native-protocols.toml`.
+When `model` is omitted, identity queries select a matching driver or the
 generic driver for the equipment kind. See the
 [transport and driver guide](https://tps01.github.io/colosseum-equipment/guides/transports_support.html)
 for fallback behavior and qualification status. Vendor adapter runtimes are

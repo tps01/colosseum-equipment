@@ -1,10 +1,11 @@
-"""Rigol DP800-series supply commands.
+"""Rigol DP700 output-state and DP800-series supply commands.
 
 Command strings from python-ivi ``ivi.scpi.dcpwr`` / ``ivi.rigol.rigolDP800``.
 """
 
 from __future__ import annotations
 
+from colosseum_equipment.instruments.psu.multi_range import _binary
 from colosseum_equipment.instruments.psu.generic import GenericPSU
 
 
@@ -79,3 +80,11 @@ class RigolDp800(GenericPSU):
     def clear_protection(self, *, channel: int = 1) -> None:
         self._apply_channel(channel)
         self._scpi.write("output:protection:clear")
+
+
+class RigolDp700(GenericPSU):
+    """DP700 programming guide, p.2-21: OUTPut? returns ON or OFF."""
+
+    def get_output(self, *, channel: int = 1) -> bool:
+        self._require_channel(channel)
+        return _binary(self._scpi.query("OUTP?"), "DP700 output state", textual=True)

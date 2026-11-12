@@ -1,14 +1,14 @@
 """Catalog models from the programming-manual spreadsheet.
 
-Each class inherits the generic driver. Inherited commands are sent as
-generic SCPI and log one warning per model and command. The class
-docstring is the manual link.
+Unverified SCPI classes retain generic warning-and-send behavior. USB RSA
+models use the direct RSA API finite-acquisition adapter instead of SCPI.
 """
 
 from __future__ import annotations
 
 from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
+from colosseum_equipment.instruments.rtsa.tektronix_usb import TekUsbRsa
 
 # TODO: Validate rigol-rsa3030 inherited commands against its vendor manual and hardware.
 
@@ -64,38 +64,38 @@ class SiglentSsa3032xR(GenericRtsa):
 class SiglentSsa3075xR(GenericRtsa):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
-# TODO: Validate tektronix-rsa306 inherited commands against its vendor manual and hardware.
+# Direct RSA API finite acquisition subset; hardware qualification remains outstanding.
 
 @instrument_model("rtsa", "tektronix-rsa306")
-class TektronixRsa306(GenericRtsa):
-    """Manual: https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306"""
+class TektronixRsa306(TekUsbRsa):
+    """Manual: https://www.tek.com/en/spectrum-analyzer/rsa306-manual/rsa306-rsa306b-and-rsa500a-600a-0"""
 
-# TODO: Validate tektronix-rsa306b inherited commands against its vendor manual and hardware.
+# Direct RSA API; see the transport guide for runtime and serial selection.
 
 @instrument_model("rtsa", "tektronix-rsa306b")
-class TektronixRsa306b(GenericRtsa):
-    """Manual: https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306"""
+class TektronixRsa306b(TekUsbRsa):
+    """Manual: https://www.tek.com/en/spectrum-analyzer/rsa306-manual/rsa306-rsa306b-and-rsa500a-600a-0"""
 
-# TODO: Validate tektronix-rsa503a inherited commands against its vendor manual and hardware.
+# Direct RSA API; hardware qualification remains outstanding.
 
 @instrument_model("rtsa", "tektronix-rsa503a")
-class TektronixRsa503a(GenericRtsa):
-    """Manual: https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306"""
+class TektronixRsa503a(TekUsbRsa):
+    """Manual: https://www.tek.com/en/spectrum-analyzer/rsa306-manual/rsa306-rsa306b-and-rsa500a-600a-0"""
 
-# TODO: Validate tektronix-rsa507a inherited commands against its vendor manual and hardware.
+# Direct RSA API; hardware qualification remains outstanding.
 
 @instrument_model("rtsa", "tektronix-rsa507a")
-class TektronixRsa507a(GenericRtsa):
-    """Manual: https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306"""
+class TektronixRsa507a(TekUsbRsa):
+    """Manual: https://www.tek.com/en/spectrum-analyzer/rsa306-manual/rsa306-rsa306b-and-rsa500a-600a-0"""
 
-# TODO: Validate tektronix-rsa603a inherited commands against its vendor manual and hardware.
+# Direct RSA API; hardware qualification remains outstanding.
 
 @instrument_model("rtsa", "tektronix-rsa603a")
-class TektronixRsa603a(GenericRtsa):
-    """Manual: https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306"""
+class TektronixRsa603a(TekUsbRsa):
+    """Manual: https://www.tek.com/en/spectrum-analyzer/rsa306-manual/rsa306-rsa306b-and-rsa500a-600a-0"""
 
-# TODO: Validate tektronix-rsa607a inherited commands against its vendor manual and hardware.
+# Direct RSA API; hardware qualification remains outstanding.
 
 @instrument_model("rtsa", "tektronix-rsa607a")
-class TektronixRsa607a(GenericRtsa):
-    """Manual: https://www.tek.com/en/manual/spectrum-analyzer/rsa306-rsa306b-and-rsa500a600a-programmer-manual-rsa306"""
+class TektronixRsa607a(TekUsbRsa):
+    """Manual: https://www.tek.com/en/spectrum-analyzer/rsa306-manual/rsa306-rsa306b-and-rsa500a-600a-0"""
