@@ -10,9 +10,7 @@ from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.instruments.vna.trace_export import (
     frequency_axis,
-    parse_vna_sdata,
     parse_vna_trace_values,
-    write_s2p,
     write_trace_csv,
 )
 from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
@@ -205,6 +203,8 @@ class GenericVna(ScpiInstrumentMixin):
     ) -> Path:
         self._ensure_scpi_vna("save_trace_data")
         export_format = "s2p" if file_format.lower() == "s2p" or path.lower().endswith(".s2p") else "csv"
+        if export_format == "s2p":
+            raise ValueError("S2P export requires a complete two-port matrix; single-trace export supports CSV only")
 
         display_was_enabled = True
         try:
@@ -217,26 +217,15 @@ class GenericVna(ScpiInstrumentMixin):
         frequencies = self._query_frequencies()
         artifact_path = resolve_artifact_path(path)
 
-        if export_format == "s2p":
-            raw = self._scpi.query(f"{self._calc()}:PAR{trace}:DATA:SDATA?")
-            reals, imags = parse_vna_sdata(raw)
-            if len(frequencies) != len(reals):
-                frequencies = frequency_axis(
-                    self._scpi.query_float(f"{self._sens()}:FREQ:STAR?"),
-                    self._scpi.query_float(f"{self._sens()}:FREQ:STOP?"),
-                    len(reals),
-                )
-            write_s2p(artifact_path, frequencies, reals, imags, parameter=parameter)
-        else:
-            raw = self._scpi.query(f"{self._calc()}:PAR{trace}:DATA:FDATA?")
-            values = parse_vna_trace_values(raw)
-            if len(frequencies) != len(values):
-                frequencies = frequency_axis(
-                    self._scpi.query_float(f"{self._sens()}:FREQ:STAR?"),
-                    self._scpi.query_float(f"{self._sens()}:FREQ:STOP?"),
-                    len(values),
-                )
-            write_trace_csv(artifact_path, frequencies, values)
+        raw = self._scpi.query(f"{self._calc()}:PAR{trace}:DATA:FDATA?")
+        values = parse_vna_trace_values(raw)
+        if len(frequencies) != len(values):
+            frequencies = frequency_axis(
+                self._scpi.query_float(f"{self._sens()}:FREQ:STAR?"),
+                self._scpi.query_float(f"{self._sens()}:FREQ:STOP?"),
+                len(values),
+            )
+        write_trace_csv(artifact_path, frequencies, values)
 
         if display_was_enabled:
             self.toggle_display(True)
