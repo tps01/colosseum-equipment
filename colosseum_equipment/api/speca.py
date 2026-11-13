@@ -447,6 +447,17 @@ def measure_center_frequency_hz(
     """Measure the midpoint of the trace's bandwidth threshold crossings in hertz.
 
     Uses the same bounds, threshold, smoothing and trace selection as ``measure_bw``.
+
+    :param speca_id: Configured spectrum analyzer ID.
+    :param start_hz: Lower frequency bound in hertz.
+    :param stop_hz: Upper frequency bound in hertz.
+    :param key: Unique measurement key in the equipment domain.
+    :param threshold_db: Power drop from the peak defining the edges, in dB.
+    :param smoothing_order: Smoothing order applied before edge detection.
+    :param trace: Trace number used for a live sweep.
+    :param trace_path: Optional path to a previously saved trace CSV.
+    :returns: Center frequency in hertz.
+    :rtype: float
     """
     _ = key
     inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
