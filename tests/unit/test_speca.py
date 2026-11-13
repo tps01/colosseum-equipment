@@ -133,3 +133,21 @@ def test_generic_speca_save_screenshot(unit_runtime_context) -> None:
     assert path.exists()
     assert path.read_bytes() == b"PNG!"
     assert "HCOP:SDUM:DATA?" in transport.written
+
+
+def test_center_frequency_uses_bandwidth_crossings() -> None:
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    left, right = bandwidth_edges_hz(
+        [0.0, 10.0, 20.0, 30.0], [-10.0, 0.0, -2.0, -10.0],
+        start_hz=0.0, stop_hz=30.0, threshold_db=3.0,
+    )
+    assert left == 7.0
+    assert right == 21.25
+    from unittest.mock import Mock
+
+    from colosseum_equipment.instruments.speca.generic import GenericSpecA
+
+    instrument = object.__new__(GenericSpecA)
+    instrument._fetch_trace = Mock(return_value=([0.0, 10.0, 20.0, 30.0], [-10.0, 0.0, -2.0, -10.0]))
+    assert instrument.measure_center_frequency_hz(0.0, 30.0) == 14.125

@@ -9,7 +9,7 @@ from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentTimeoutError
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
-from colosseum_equipment.instruments.speca.bandwidth import measure_bandwidth_hz
+from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
     parse_trace_amplitudes,
@@ -279,7 +279,7 @@ class GenericSpecA:
         )
         return artifact_path
 
-    def measure_bw(
+    def _bandwidth_edges(
         self,
         start_hz: float,
         stop_hz: float,
@@ -288,13 +288,13 @@ class GenericSpecA:
         smoothing_order: int = 0,
         trace: int = 1,
         trace_path: str | Path | None = None,
-    ) -> float:
+    ) -> tuple[float, float]:
         path = Path(trace_path) if trace_path is not None else getattr(self, "_last_trace_path", None)
         if path is not None:
             frequencies, amplitudes = read_trace_csv(path)
         else:
             frequencies, amplitudes = self._fetch_trace(trace, include_frequency=True)
-        return measure_bandwidth_hz(
+        return bandwidth_edges_hz(
             frequencies,
             amplitudes,
             start_hz=start_hz,
@@ -302,6 +302,26 @@ class GenericSpecA:
             threshold_db=threshold_db,
             smoothing_order=smoothing_order,
         )
+
+    def measure_bw(
+        self, start_hz: float, stop_hz: float, *, threshold_db: float = 3.0,
+        smoothing_order: int = 0, trace: int = 1, trace_path: str | Path | None = None,
+    ) -> float:
+        left, right = self._bandwidth_edges(
+            start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
+            trace=trace, trace_path=trace_path,
+        )
+        return max(0.0, right - left)
+
+    def measure_center_frequency_hz(
+        self, start_hz: float, stop_hz: float, *, threshold_db: float = 3.0,
+        smoothing_order: int = 0, trace: int = 1, trace_path: str | Path | None = None,
+    ) -> float:
+        left, right = self._bandwidth_edges(
+            start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
+            trace=trace, trace_path=trace_path,
+        )
+        return (left + right) / 2.0
 
     def measure_trace_power_at_frequency(
         self,

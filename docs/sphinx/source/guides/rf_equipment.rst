@@ -64,3 +64,11 @@ API reference
 
 Public ``col.equipment.*`` RF APIs are documented in Python docstrings on the
 ``colosseum_equipment.api`` modules (``vsg``, ``asg``, ``speca``, ``rtsa``, ``vna``).
+
+Trace center frequency
+----------------------
+
+``col.equipment.speca.measure_center_frequency_hz`` measures the midpoint of
+threshold crossings using the same bounds, smoothing, and trace selection as
+``measure_bw``. Use ``verify_center_frequency`` to check the recorded value
+against an expected frequency and tolerance.

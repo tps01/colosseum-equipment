@@ -438,6 +438,41 @@ def measure_bw(
     )
 
 
+@measurement
+def measure_center_frequency_hz(
+    *, speca_id: int, start_hz: float, stop_hz: float, key: str,
+    threshold_db: float = 3.0, smoothing_order: int = 0, trace: int = 1,
+    trace_path: str | None = None,
+) -> float:
+    """Measure the midpoint of the trace's bandwidth threshold crossings in hertz.
+
+    Uses the same bounds, threshold, smoothing and trace selection as ``measure_bw``.
+
+    :param speca_id: Configured spectrum analyzer ID.
+    :param start_hz: Lower frequency bound in hertz.
+    :param stop_hz: Upper frequency bound in hertz.
+    :param key: Unique measurement key in the equipment domain.
+    :param threshold_db: Power drop from the peak defining the edges, in dB.
+    :param smoothing_order: Smoothing order applied before edge detection.
+    :param trace: Trace number used for a live sweep.
+    :param trace_path: Optional path to a previously saved trace CSV.
+    :returns: Center frequency in hertz.
+    :rtype: float
+    """
+    _ = key
+    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
+    return float(inst.measure_center_frequency_hz(
+        start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
+        trace=trace, trace_path=trace_path,
+    ))
+
+
+verify_center_frequency = tolerance_verifier(
+    "measure_center_frequency_hz", module=__name__,
+    name="verify_center_frequency", default_tolerance=1000.0,
+)
+
+
 verify_bandwidth = tolerance_verifier(
     "measure_bw", module=__name__,
     name="verify_bandwidth",

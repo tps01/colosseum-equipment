@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     "wait_complete",
     "save_trace_data",
     "measure_bw",
+    "measure_center_frequency_hz",
     "measure_trace_power_at_frequency",
 )
 class RohdeFpc1500(GenericSpecA):

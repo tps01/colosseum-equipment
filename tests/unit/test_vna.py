@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 
+import pytest
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.vna.generic import GenericVna
 from colosseum_equipment.instruments.vna.rohde_znb import RohdeZnbVna
@@ -78,7 +79,7 @@ def test_save_trace_data_csv(unit_runtime_context) -> None:
     assert rows[0]["value"] == "-10.500000"
 
 
-def test_save_trace_data_s2p(unit_runtime_context) -> None:
+def test_save_trace_data_s2p(unit_runtime_context, tmp_path) -> None:
     transport = RfStubTransport(
         {
             "*OPC?": "1",
@@ -87,8 +88,8 @@ def test_save_trace_data_s2p(unit_runtime_context) -> None:
         },
     )
     inst = build_instrument("vna", 1, {"model": "generic"}, transport)
-    path = inst.save_trace_data("traces/vna.s2p", trace=1, file_format="s2p", parameter="S11")
-    text = path.read_text(encoding="utf-8")
-    assert "# Hz S RI R 50" in text
-    assert "1000000000.000000 1.000000 0.000000" in text
-    assert "2000000000.000000 0.500000 0.100000" in text
+    path = tmp_path / "vna.s2p"
+    with pytest.raises(ValueError, match="complete two-port matrix"):
+        inst.save_trace_data(str(path), trace=1, file_format="s2p", parameter="S11")
+    assert not path.exists()
+    assert not transport.written

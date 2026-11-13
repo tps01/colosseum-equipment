@@ -39,23 +39,3 @@ def write_trace_csv(path: Path, frequencies_hz: list[float], values: list[float]
         writer.writerow(["frequency_hz", "value"])
         for frequency, value in zip(frequencies_hz, values, strict=True):
             writer.writerow([f"{frequency:.6f}", f"{value:.6f}"])
-
-
-def write_s2p(
-    path: Path,
-    frequencies_hz: list[float],
-    reals: list[float],
-    imags: list[float],
-    *,
-    parameter: str = "S11",
-    impedance: float = 50.0,
-) -> None:
-    if not (len(frequencies_hz) == len(reals) == len(imags)):
-        raise ValueError("frequency, real, and imag arrays must have equal length")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        handle.write("! Colosseum VNA export\n")
-        handle.write(f"! Parameter {parameter}\n")
-        handle.write(f"# Hz S RI R {impedance:g}\n")
-        for frequency, real, imag in zip(frequencies_hz, reals, imags, strict=True):
-            handle.write(f"{frequency:.6f} {real:.6f} {imag:.6f}\n")
