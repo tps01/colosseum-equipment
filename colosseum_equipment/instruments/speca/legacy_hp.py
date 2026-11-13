@@ -79,7 +79,7 @@ class Hp8593e(HpLegacySpectrum):
 
 
 @instrument_model("speca", "keysight-8563ec")
-@supported_commands(*_CONTROLS, "save_trace_data", "measure_bw", "measure_trace_power_at_frequency")
+@supported_commands(*_CONTROLS, "save_trace_data", "measure_bw", "measure_center_frequency_hz", "measure_trace_power_at_frequency")
 class Hp8563ec(HpLegacySpectrum):
     """Native SNGLS;TS and TDF P trace A transfer, 601 dBm points.
 

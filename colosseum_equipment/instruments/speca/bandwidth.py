@@ -43,7 +43,7 @@ def _crossing_frequency(
     return frequencies_hz[max(0, min(len(frequencies_hz) - 1, index - step))]
 
 
-def measure_bandwidth_hz(
+def bandwidth_edges_hz(
     frequencies_hz: list[float],
     amplitudes_dbm: list[float],
     *,
@@ -51,7 +51,7 @@ def measure_bandwidth_hz(
     stop_hz: float,
     threshold_db: float = 3.0,
     smoothing_order: int = 0,
-) -> float:
+) -> tuple[float, float]:
     if len(frequencies_hz) != len(amplitudes_dbm):
         raise ValueError("frequency and amplitude arrays must have equal length")
     if start_hz > stop_hz:
@@ -86,4 +86,15 @@ def measure_bandwidth_hz(
         step=1,
         threshold_dbm=threshold_dbm,
     )
-    return max(0.0, right_hz - left_hz)
+    return left_hz, right_hz
+
+
+def measure_bandwidth_hz(
+    frequencies_hz: list[float], amplitudes_dbm: list[float], *, start_hz: float,
+    stop_hz: float, threshold_db: float = 3.0, smoothing_order: int = 0,
+) -> float:
+    left, right = bandwidth_edges_hz(
+        frequencies_hz, amplitudes_dbm, start_hz=start_hz, stop_hz=stop_hz,
+        threshold_db=threshold_db, smoothing_order=smoothing_order,
+    )
+    return max(0.0, right - left)

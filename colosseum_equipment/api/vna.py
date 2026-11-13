@@ -321,7 +321,7 @@ def save_trace_data(
     file_format: str = "csv",
     parameter: str = "S11",
 ) -> None:
-    """Export trace data to CSV or Touchstone S2P under the run directory.
+    """Export a single trace to CSV under the run directory.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
@@ -329,9 +329,9 @@ def save_trace_data(
 
     :param trace: Trace number to export (default ``1``).
 
-    :param file_format: Export format, ``csv`` or ``s2p`` (default ``csv``).
+    :param file_format: Export format; only ``csv`` is supported for a single trace.
 
-    :param parameter: S-parameter name for S2P export (default ``S11``).
+    :param parameter: S-parameter name used in artifact evidence (default ``S11``).
     """
     _logger.info("Saving trace data from VNA %s to %s", vna_id, path)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).save_trace_data(
