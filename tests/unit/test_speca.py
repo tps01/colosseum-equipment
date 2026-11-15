@@ -200,11 +200,18 @@ def test_annotated_measurement_plot(unit_runtime_context, monkeypatch, tmp_path,
     assert list(axis.lines[0].get_ydata()) == amplitudes
     if measurement == "measure_bw":
         assert [line.get_xdata()[0] for line in axis.lines[1:]] == pytest.approx([left, right])
+        assert f"Lower: {left:.3e} Hz" in axis.texts[0].get_text()
+        assert f"Upper: {right:.3e} Hz" in axis.texts[0].get_text()
+        assert f"Bandwidth: {right - left:.3e} Hz" in axis.texts[0].get_text()
     else:
         dot = axis.lines[1]
         assert dot.get_marker() == "o"
         assert dot.get_xdata()[0] == pytest.approx(result)
         assert dot.get_ydata()[0] == pytest.approx(np.interp(result, frequencies, amplitudes))
+        assert axis.texts[0].get_text() == f"Center: {result:.3e} Hz"
+    assert axis.texts[0].get_position() == (.02, .97)
+    assert axis.xaxis.get_minor_locator().__class__.__name__ == "AutoMinorLocator"
+    assert axis.yaxis.get_minor_locator().__class__.__name__ == "AutoMinorLocator"
     assert artifacts[0]["value"]["source_key"] == "signal"
     assert artifacts[0]["value"]["value"] == pytest.approx(result)
     assert artifacts[0]["value"]["ref_pwr_meas_method"] == (reference if method is None else None)
@@ -214,6 +221,53 @@ def test_annotated_measurement_plot(unit_runtime_context, monkeypatch, tmp_path,
     assert artifacts[0]["path"] != artifacts[1]["path"]
     getattr(inst, measurement)(0, 40, method=method, ref_pwr_meas_method=reference, key="signal")
     assert len(artifacts) == len(figures) == 2
+
+
+@pytest.mark.plot
+def test_close_frequency_plot_labels_are_distinguishable(tmp_path, monkeypatch):
+    from matplotlib.figure import Figure
+    from colosseum_equipment.instruments.speca.trace_plot import _write_trace_plot
+
+    figures = []
+    original_save = Figure.savefig
+
+    def save(figure, *args, **kwargs):
+        figures.append(figure)
+        return original_save(figure, *args, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", save)
+    _write_trace_plot([999_999_000, 1_000_000_000, 1_000_001_000], [-30, -10, -30],
+                      tmp_path / "close.png", edges_hz=(1_000_000_001, 1_000_000_002))
+    labels = figures[0].axes[0].texts[0].get_text().splitlines()
+    assert float(labels[0].split()[1]) == 1_000_000_001
+    assert float(labels[1].split()[1]) == 1_000_000_002
+    assert (tmp_path / "close.png").exists()
+
+
+@pytest.mark.plot
+def test_index_only_plot_preserves_global_style(tmp_path, monkeypatch):
+    import matplotlib as mpl
+    from matplotlib.figure import Figure
+    from colosseum_equipment.instruments.speca.trace_plot import write_trace_plot
+
+    csv_path = tmp_path / "index.csv"
+    csv_path.write_text("index,amplitude_dbm\n0,-30\n1,-10\n2,-30\n")
+    figures = []
+    original_save = Figure.savefig
+
+    def save(figure, *args, **kwargs):
+        figures.append(figure)
+        return original_save(figure, *args, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", save)
+    font_before = list(mpl.rcParams["font.family"])
+    write_trace_plot(csv_path, tmp_path / "index.png")
+    axis = figures[0].axes[0]
+    assert axis.get_xlabel() == "Index"
+    assert axis.get_ylabel() == "Value"
+    assert list(axis.lines[0].get_xdata()) == [0, 1, 2]
+    assert not axis.texts
+    assert mpl.rcParams["font.family"] == font_before
 
 
 def test_saved_trace_analysis_does_not_acquire(tmp_path):

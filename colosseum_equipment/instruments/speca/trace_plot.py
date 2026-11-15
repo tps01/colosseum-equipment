@@ -55,25 +55,48 @@ def _write_trace_plot(
 
     mpl.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.ticker import AutoMinorLocator
 
     x_values = frequencies if frequencies else list(range(len(amplitudes)))
     x_label = "Frequency (Hz)" if frequencies else "Index"
     y_label = "Amplitude (dBm)" if frequencies else "Value"
 
     plot_path.parent.mkdir(parents=True, exist_ok=True)
-    figure, axis = plt.subplots(figsize=(8, 4))
-    try:
-        axis.plot(x_values, amplitudes)
-        if center_hz is not None:
-            import numpy as np
+    with mpl.rc_context({"font.family": "DejaVu Sans", "font.size": 10, "axes.linewidth": 0.8}):
+        figure, axis = plt.subplots(figsize=(8, 4))
+        try:
+            axis.plot(x_values, amplitudes, color="black", linewidth=1.35, zorder=3)
+            label = ""
+            if center_hz is not None:
+                import numpy as np
 
-            axis.plot(center_hz, float(np.interp(center_hz, frequencies, amplitudes)), "o", color="tab:red")
-        if edges_hz is not None:
-            for edge in edges_hz:
-                axis.axvline(edge, color="tab:red")
-        axis.set_xlabel(x_label)
-        axis.set_ylabel(y_label)
-        axis.grid(True, alpha=0.3)
-        figure.savefig(plot_path, dpi=120, bbox_inches="tight")
-    finally:
-        plt.close(figure)
+                axis.plot(center_hz, float(np.interp(center_hz, frequencies, amplitudes)),
+                          "o", color="black", markersize=5, zorder=4)
+                label = f"Center: {center_hz:.3e} Hz"
+            if edges_hz is not None:
+                left, right = edges_hz
+                for edge in edges_hz:
+                    axis.axvline(edge, color="0.15", linestyle="--", linewidth=1.15, zorder=2)
+                precision = 3
+                while left != right and f"{left:.{precision}e}" == f"{right:.{precision}e}" and precision < 16:
+                    precision += 1
+                label = (f"Lower: {left:.{precision}e} Hz\nUpper: {right:.{precision}e} Hz\n"
+                         f"Bandwidth: {right - left:.3e} Hz")
+            if label:
+                axis.text(0.02, 0.97, label, transform=axis.transAxes, va="top", ha="left", fontsize=9,
+                          bbox={"facecolor": "white", "edgecolor": "0.75", "pad": 5})
+            axis.set_xlabel(x_label, fontsize=10, labelpad=7)
+            axis.set_ylabel(y_label, fontsize=10, labelpad=7)
+            axis.spines["top"].set_visible(False)
+            axis.spines["right"].set_visible(False)
+            axis.spines["left"].set_color("0.25")
+            axis.spines["bottom"].set_color("0.25")
+            axis.grid(True, which="major", color="0.87", linewidth=0.6)
+            axis.set_axisbelow(True)
+            axis.xaxis.set_minor_locator(AutoMinorLocator())
+            axis.yaxis.set_minor_locator(AutoMinorLocator())
+            axis.tick_params(which="major", colors="0.2", direction="out", length=3, width=0.7, labelsize=9)
+            axis.tick_params(which="minor", colors="0.2", direction="out", length=1.8, width=0.6)
+            figure.savefig(plot_path, dpi=120, bbox_inches="tight", facecolor="white")
+        finally:
+            plt.close(figure)

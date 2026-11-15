@@ -238,6 +238,9 @@ class _LogCapture:
     def info(self, msg: str, *args: object) -> None:
         self.messages.append(("info", msg % args if args else msg))
 
+    def debug(self, msg: str, *args: object) -> None:
+        self.messages.append(("debug", msg % args if args else msg))
+
     def warning(self, msg: str, *args: object) -> None:
         self.messages.append(("warning", msg % args if args else msg))
 
@@ -618,6 +621,17 @@ def test_live_log_order() -> None:
     assert any(msg.startswith("Autoconfig probing") for msg in texts)
     assert any("assigned" in msg for msg in texts)
     assert texts[-1].startswith("Autoconfig summary")
+    assert log.messages[0][0] == "info"
+    assert all(level == "debug" for level, msg in log.messages if msg.startswith("Autoconfig probing"))
+    assert all(level == "info" for level, msg in log.messages if msg.startswith("Autoconfig assigned"))
+
+
+def test_serial_probe_log_is_debug() -> None:
+    from colosseum_equipment.autoconfig.logging import log_probing
+
+    log = _LogCapture()
+    log_probing(log, "COM5", baud=9600)
+    assert log.messages == [("debug", "Autoconfig probing COM5 baud=9600")]
 
 
 def test_autoconfig_populates_config_store(monkeypatch: pytest.MonkeyPatch) -> None:
