@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 class AutoconfigProgress(Protocol):
+    def debug(self, msg: str, *args: object) -> None: ...
     def info(self, msg: str, *args: object) -> None: ...
     def warning(self, msg: str, *args: object) -> None: ...
 
@@ -26,9 +27,9 @@ def log_probing(logger: AutoconfigProgress | None, target: str, *, baud: int | N
     if logger is None:
         return
     if baud is None:
-        logger.info("Autoconfig probing %s", target)
+        logger.debug("Autoconfig probing %s", target)
     else:
-        logger.info("Autoconfig probing %s baud=%s", target, baud)
+        logger.debug("Autoconfig probing %s baud=%s", target, baud)
 
 
 def log_assignment(logger: AutoconfigProgress | None, assignment: AutoconfigAssignment) -> None:

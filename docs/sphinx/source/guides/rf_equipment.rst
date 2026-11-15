@@ -113,9 +113,10 @@ For example::
 
 ``save_plot`` defaults to false. When true, a PNG under the run's ``plots/``
 directory uses the same style as ``save_trace_data``: the full source trace
-in dBm against frequency in Hz. Center measurements add a red dot on the trace
-at the calculated center; bandwidth measurements add two red vertical lines
-at the calculated edges. The displayed trace remains unsmoothed even when
+in dBm against frequency in Hz. Center measurements add a black dot on the trace
+at the calculated center; bandwidth measurements add two dashed vertical lines
+at the calculated edges. The upper-left box displays the measured frequencies
+in scientific notation. The displayed trace remains unsmoothed even when
 analysis uses smoothing. Each image has a unique filename and a separate plot
 evidence key with source-key, method, edges and result metadata. Numeric
 measurements and their verification keys remain unchanged.
