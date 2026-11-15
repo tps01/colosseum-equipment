@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import csv
+from unittest.mock import Mock
 
+import numpy as np
 import pytest
 from colosseum_equipment.instruments.factory import build_instrument
 from colosseum_equipment.instruments.speca.bandwidth import measure_bandwidth_hz
@@ -12,6 +14,217 @@ from colosseum_equipment.instruments.speca.keysight_e4407b import KeysightE4407B
 from colosseum_equipment.instruments.speca.trace_csv import frequency_axis
 
 from tests.support.stubs import RfStubTransport
+
+
+@pytest.mark.parametrize("reference, expected", [
+    ("max", (12.5, 25)), ("mean", (4.375, 43)), ("median", (5.625, 41)),
+])
+def test_threshold_reference_power(reference, expected):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    frequencies = [-10, 0, 10, 20, 30, 40, 50, 60]
+    amplitudes = [-100, -20, -4, 0, -6, -10, -20, -100]
+    edges = bandwidth_edges_hz(frequencies, amplitudes, start_hz=0, stop_hz=50,
+                               threshold_db=3, ref_pwr_meas_method=reference)
+    assert edges == pytest.approx(expected)
+    inst = object.__new__(GenericSpecA)
+    inst._fetch_trace = Mock(return_value=(frequencies, amplitudes))
+    assert inst.measure_bw(0, 50, ref_pwr_meas_method=reference) == pytest.approx(expected[1] - expected[0])
+    assert inst.measure_center_frequency_hz(0, 50, ref_pwr_meas_method=reference) == pytest.approx(sum(expected) / 2)
+    assert measure_bandwidth_hz(frequencies, amplitudes, start_hz=0, stop_hz=50,
+                                ref_pwr_meas_method=reference) == pytest.approx(expected[1] - expected[0])
+
+
+@pytest.mark.parametrize("options", [
+    {"ref_pwr_meas_method": "rms"},
+    *[{"method": method, "ref_pwr_meas_method": reference}
+      for method in ["fwhm", "occupied_power", "half_prominence"] for reference in ["mean", "median"]],
+])
+def test_invalid_reference_power_selection(options):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    with pytest.raises(ValueError, match="ref_pwr_meas_method"):
+        bandwidth_edges_hz([0, 1, 2], [-10, 0, -10], start_hz=0, stop_hz=2, **options)
+
+
+def test_reference_power_uses_smoothed_dbm_samples():
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    assert bandwidth_edges_hz([0, 10, 20, 30, 40], [-40, 0, 0, 0, -40],
+                              start_hz=0, stop_hz=40, smoothing_order=1, threshold_db=3,
+                              ref_pwr_meas_method="mean") == pytest.approx((5.5, 34.5))
+
+
+@pytest.mark.parametrize("method, expected", [("fwhm", (10, 30)), ("half_prominence", (11, 29))])
+def test_power_bandwidth_edges(method, expected):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    amplitude = (10 * np.log10([.1, .5, 1, .5, .1])).tolist()
+    edges = bandwidth_edges_hz([0, 10, 20, 30, 40], amplitude, start_hz=0, stop_hz=40, method=method)
+    assert edges == pytest.approx(expected)
+    # The same relative shape at large dBm values remains numerically stable.
+    assert bandwidth_edges_hz([0, 10, 20, 30, 40], [a + 4000 for a in amplitude],
+                              start_hz=0, stop_hz=40, method=method) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("percent, expected", [(None, (.05, 9.95)), (80, (1, 9))])
+def test_occupied_power_nonuniform_axis(percent, expected):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    edges = bandwidth_edges_hz([0, 2, 5, 10], [-20] * 4, start_hz=0, stop_hz=10,
+                               method="occupied_power", occupied_power_pct=percent)
+    assert edges == pytest.approx(expected)
+
+
+def test_fwhm_asymmetry_plateaus_and_tied_peaks():
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    for power, expected in [([.1, 1, .6, .1], (40 / 9, 22)),
+                            ([.1, 1, 1, .1], (40 / 9, 230 / 9))]:
+        assert bandwidth_edges_hz([0, 10, 20, 30], (10 * np.log10(power)).tolist(),
+                                  start_hz=0, stop_hz=30, method="fwhm") == pytest.approx(expected)
+    edges = bandwidth_edges_hz([0, 1, 2, 3, 4], [-20, 0, -20, 0, -20],
+                               start_hz=0, stop_hz=4, method="half_prominence")
+    assert edges == pytest.approx((.5, 1.5))
+
+
+def test_power_methods_use_frequency_spacing_and_linear_smoothing():
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    assert bandwidth_edges_hz([0, 1, 4], [-10, 0, -10], start_hz=0, stop_hz=4,
+                              method="half_prominence") == pytest.approx((.5, 2.5))
+    assert bandwidth_edges_hz([0, 10, 20, 30, 40], [-10, -10, 0, -10, -10],
+                              start_hz=0, stop_hz=40, smoothing_order=1,
+                              method="fwhm") == pytest.approx((10 / 3, 110 / 3))
+    assert bandwidth_edges_hz([0, 1, 2], (10 * np.log10([.1, 1, .5])).tolist(),
+                              start_hz=0, stop_hz=2, method="occupied_power",
+                              occupied_power_pct=80) == pytest.approx((.13 / .55, 1 + .62 / .75))
+
+
+@pytest.mark.parametrize("options", [
+    {"method": "unknown"}, {"method": "fwhm", "threshold_db": 3},
+    {"occupied_power_pct": 99}, {"method": "half_prominence", "occupied_power_pct": 99},
+    *[{"method": "occupied_power", "occupied_power_pct": p} for p in [0, 100, -1, float("nan"), float("inf")]],
+])
+def test_invalid_bandwidth_selectors(options):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    with pytest.raises(ValueError):
+        bandwidth_edges_hz([0, 1, 2], [-10, 0, -10], start_hz=0, stop_hz=2, **options)
+
+
+@pytest.mark.parametrize("frequencies, amplitudes", [
+    ([0, 0, 2], [-10, 0, -10]), ([0, 2, 1], [-10, 0, -10]),
+    ([0, 1, 2], [-10, float("nan"), -10]), ([0, 1, float("inf")], [-10, 0, -10]),
+    ([1], [0]),
+])
+def test_new_methods_reject_invalid_trace(frequencies, amplitudes):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    with pytest.raises(ValueError):
+        bandwidth_edges_hz(frequencies, amplitudes, start_hz=0, stop_hz=3, method="fwhm")
+
+
+@pytest.mark.parametrize("method", ["fwhm", "half_prominence"])
+def test_missing_peak_edges_are_not_clipped(method):
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    with pytest.raises(ValueError):
+        bandwidth_edges_hz([0, 1, 2], [0, 0, 0], start_hz=0, stop_hz=2, method=method)
+
+
+@pytest.mark.parametrize("method", ["fwhm", "half_prominence", "occupied_power"])
+@pytest.mark.parametrize("measurement", ["measure_bw", "measure_center_frequency_hz"])
+def test_measurement_api_method_forwarding(unit_runtime_context, monkeypatch, method, measurement):
+    from colosseum_equipment.api import speca
+
+    inst = Mock()
+    getattr(inst, measurement).return_value = 10.0
+    monkeypatch.setattr(speca, "get_cached_instrument", lambda *args: inst)
+    percent = 95 if method == "occupied_power" else None
+    assert getattr(speca, measurement)(speca_id=1, start_hz=0, stop_hz=40, key="signal",
+                                      method=method, occupied_power_pct=percent, save_plot=True) == 10
+    kwargs = getattr(inst, measurement).call_args.kwargs
+    assert kwargs["method"] == method
+    assert kwargs["occupied_power_pct"] == percent
+    assert kwargs["threshold_db"] is None
+    assert kwargs["save_plot"] is True
+    assert kwargs["key"] == "signal"
+
+
+@pytest.mark.parametrize("measurement", ["measure_bw", "measure_center_frequency_hz"])
+def test_measurement_api_reference_power_forwarding(unit_runtime_context, monkeypatch, measurement):
+    from colosseum_equipment.api import speca
+
+    inst = Mock()
+    getattr(inst, measurement).return_value = 10.0
+    monkeypatch.setattr(speca, "get_cached_instrument", lambda *args: inst)
+    getattr(speca, measurement)(speca_id=1, start_hz=0, stop_hz=50, key="signal",
+                                threshold_db=6, ref_pwr_meas_method="median")
+    assert getattr(inst, measurement).call_args.kwargs["ref_pwr_meas_method"] == "median"
+
+
+@pytest.mark.plot
+@pytest.mark.parametrize("measurement", ["measure_bw", "measure_center_frequency_hz"])
+@pytest.mark.parametrize("method, reference", [
+    (None, "max"), (None, "mean"), (None, "median"),
+    ("fwhm", "max"), ("occupied_power", "max"), ("half_prominence", "max"),
+])
+def test_annotated_measurement_plot(unit_runtime_context, monkeypatch, tmp_path, measurement, method, reference):
+    from matplotlib.figure import Figure
+    from colosseum_equipment.instruments.speca import generic
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+
+    frequencies = [0, 10, 20, 30, 40]
+    amplitudes = [-10, -3.01029995664, 0, -3.01029995664, -10]
+    inst = object.__new__(GenericSpecA)
+    inst._fetch_trace = Mock(return_value=(frequencies, amplitudes))
+    artifacts = []
+    figures = []
+    original_save = Figure.savefig
+
+    def save(figure, *args, **kwargs):
+        figures.append(figure)
+        return original_save(figure, *args, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", save)
+    monkeypatch.setattr(generic, "record_artifact", lambda **kwargs: artifacts.append(kwargs))
+    monkeypatch.setattr(generic, "resolve_artifact_path", lambda path: tmp_path / path)
+    left, right = bandwidth_edges_hz(frequencies, amplitudes, start_hz=0, stop_hz=40, method=method,
+                                          ref_pwr_meas_method=reference)
+    result = getattr(inst, measurement)(0, 40, method=method, ref_pwr_meas_method=reference, key="signal", save_plot=True)
+    inst._fetch_trace.assert_called_once()  # Plotting must not trigger a second acquisition.
+    assert result == pytest.approx(right - left if measurement == "measure_bw" else (left + right) / 2)
+    axis = figures[0].axes[0]
+    assert list(axis.lines[0].get_xdata()) == frequencies
+    assert list(axis.lines[0].get_ydata()) == amplitudes
+    if measurement == "measure_bw":
+        assert [line.get_xdata()[0] for line in axis.lines[1:]] == pytest.approx([left, right])
+    else:
+        dot = axis.lines[1]
+        assert dot.get_marker() == "o"
+        assert dot.get_xdata()[0] == pytest.approx(result)
+        assert dot.get_ydata()[0] == pytest.approx(np.interp(result, frequencies, amplitudes))
+    assert artifacts[0]["value"]["source_key"] == "signal"
+    assert artifacts[0]["value"]["value"] == pytest.approx(result)
+    assert artifacts[0]["value"]["ref_pwr_meas_method"] == (reference if method is None else None)
+    assert artifacts[0]["key"] != "signal"
+    assert artifacts[0]["path"].read_bytes().startswith(b"\x89PNG")
+    getattr(inst, measurement)(0, 40, method=method, ref_pwr_meas_method=reference, key="signal", save_plot=True)
+    assert artifacts[0]["path"] != artifacts[1]["path"]
+    getattr(inst, measurement)(0, 40, method=method, ref_pwr_meas_method=reference, key="signal")
+    assert len(artifacts) == len(figures) == 2
+
+
+def test_saved_trace_analysis_does_not_acquire(tmp_path):
+    path = tmp_path / "trace.csv"
+    path.write_text("frequency_hz,amplitude_dbm\n0,-10\n10,0\n20,-10\n")
+    inst = object.__new__(GenericSpecA)
+    inst._fetch_trace = Mock(side_effect=AssertionError("unexpected sweep"))
+    width = inst.measure_bw(0, 20, method="fwhm", trace_path=path)
+    center = inst.measure_center_frequency_hz(0, 20, method="fwhm", trace_path=path)
+    assert width == pytest.approx(100 / 9)
+    assert center == 10
 
 
 def test_generic_speca_control_commands_write_scpi() -> None:

@@ -30,6 +30,7 @@ from colosseum_equipment.transports.tektronix_rsa import IqAcquisitionInfo, RsaA
 
 
 @supported_commands(
+    "set_sample_rate",
     "preset", "set_center_freq", "set_span", "set_bandwidth", "set_acq_time",
     "set_continuous_run", "set_num_samples", "get_num_samples", "set_trigger_source",
     "set_trigger_level", "set_trigger_position", "run", "wait_complete", "abort",

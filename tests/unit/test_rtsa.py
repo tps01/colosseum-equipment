@@ -47,6 +47,70 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+@pytest.mark.parametrize("model", ["signalhound-bb60c-spike", "signalhound-sm200c-spike"])
+def test_spike_sample_rate_config_and_runtime(model):
+    transport = RfStubTransport()
+    inst = build_instrument("rtsa", 1, {"model": model, "sample_rate_hz": 1e6}, transport)
+    assert transport.written.count("SENS:ZS:CAP:SRAT 1000000.0") == 1
+    inst.set_sample_rate(2e6)
+    assert transport.written[-1] == "SENS:ZS:CAP:SRAT 2000000.0"
+
+
+@pytest.mark.parametrize("rate", [0, -1, float("nan"), float("inf"), -float("inf")])
+def test_invalid_sample_rate_never_writes(rate, unit_runtime_context, monkeypatch):
+    from colosseum_equipment.api import rtsa
+
+    transport = RfStubTransport()
+    inst = build_instrument("rtsa", 1, {"model": "signalhound-bb60c-spike"}, transport)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: inst)
+    before = list(transport.written)
+    with pytest.raises(ValueError, match="finite and positive"):
+        rtsa.set_sample_rate(rtsa_id=1, sample_rate_hz=rate)
+    with pytest.raises(ValueError, match="finite and positive"):
+        inst.set_sample_rate(rate)
+    assert transport.written == before
+    with pytest.raises(ValueError, match="finite and positive"):
+        build_instrument("rtsa", 1, {"model": "signalhound-bb60c-spike", "sample_rate_hz": rate}, transport)
+    assert not any("SRAT" in cmd for cmd in transport.written)
+
+
+@pytest.mark.parametrize("model", [
+    "generic", "rigol-rsa3030", "siglent-ssa3032x-r", "tektronix-rsa5100b",
+    "tektronix-rsa5115b", "tektronix-rsa6114a",
+])
+def test_unsupported_sample_rate_refuses_without_writes(model):
+    transport = RfStubTransport()
+    inst = build_instrument("rtsa", 1, {"model": model}, transport)
+    before = list(transport.written)
+    with pytest.raises(EquipmentCapabilityError, match="set_sample_rate") as error:
+        inst.set_sample_rate(1e6)
+    if model.startswith("tektronix"):
+        assert "acquisition bandwidth" in str(error.value)
+    assert transport.written == before
+    with pytest.raises(EquipmentCapabilityError, match="set_sample_rate"):
+        build_instrument("rtsa", 1, {"model": model, "sample_rate_hz": 1e6}, transport)
+
+
+def test_sample_rate_parameters_and_broadcast(unit_runtime_context, monkeypatch):
+    from colosseum_equipment.api import rtsa
+    from colosseum_equipment.api import _broadcast
+    from colosseum_equipment.exceptions import EquipmentError
+
+    transports = [RfStubTransport() for _ in range(3)]
+    instruments = [build_instrument("rtsa", i + 1, {"model": model}, transport)
+                   for i, (model, transport) in enumerate(zip(
+                       ["signalhound-bb60c-spike", "generic", "signalhound-sm200c-spike"], transports))]
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda kind, index: instruments[index - 1])
+    monkeypatch.setattr(_broadcast, "resolve_equipment_ids", lambda *args: [1, 2, 3])
+    unit_runtime_context.parameters_map = {"iq_rate": {"sample_rate_hz": 2e6}}
+    rtsa.set_sample_rate(rtsa_id=1, sample_rate_hz=1e6, key="iq_rate")
+    assert transports[0].written[-1] == "SENS:ZS:CAP:SRAT 2000000.0"
+    with pytest.raises(EquipmentError, match="failed ids 2"):
+        rtsa.set_sample_rate(rtsa_id="all", sample_rate_hz=3e6)
+    assert transports[0].written[-1] == transports[2].written[-1] == "SENS:ZS:CAP:SRAT 3000000.0"
+    assert not transports[1].written
+
+
 def test_generic_rtsa_control_commands_write_scpi() -> None:
     transport = RfStubTransport({"*OPC?": "1", "TRAC:IQ:POIN?": "1024"})
     inst = build_instrument(

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     "set_acq_time",
     "set_continuous_run",
     "set_num_samples",
+    "set_sample_rate",
     "get_num_samples",
     "set_trigger_source",
     "set_trigger_level",
@@ -50,8 +51,6 @@ class SignalHoundSpikeIq(GenericRtsa):
             raise EquipmentCapabilityError("use sample_rate_hz for IQ rate; span is not sample rate")
         transport.write("INST:SEL ZS")
         super().__init__(transport, config)
-        if "sample_rate_hz" in config:
-            self._scpi.write(f"SENS:ZS:CAP:SRAT {float(config['sample_rate_hz'])}")
         if "reference_level_dbm" in config:
             self._scpi.write(f"SENS:ZS:CAP:RLEV {float(config['reference_level_dbm'])}DBM")
 
@@ -66,6 +65,11 @@ class SignalHoundSpikeIq(GenericRtsa):
         if not math.isfinite(seconds) or seconds <= 0:
             raise ValueError("capture duration must be positive")
         self._scpi.write(f"SENS:ZS:CAP:SWE:TIME {seconds:.12f}")
+
+    def set_sample_rate(self, sample_rate_hz: float) -> None:
+        if not math.isfinite(sample_rate_hz) or sample_rate_hz <= 0:
+            raise ValueError("sample rate must be finite and positive")
+        self._scpi.write(f"SENS:ZS:CAP:SRAT {sample_rate_hz}")
 
     def set_num_samples(self, count: int) -> None:
         if count < 1:

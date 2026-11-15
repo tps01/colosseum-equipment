@@ -18,6 +18,8 @@ sequentially and failures aggregate. Measurements require numeric IDs.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from colosseum.decorators import VerificationResult, command, measurement, verification
 from colosseum.logging import get_logger
 
@@ -28,162 +30,267 @@ from colosseum_equipment.connections import get_cached_instrument
 from colosseum_equipment.tools.mask_apply import apply_speca_mask_setup
 from colosseum_equipment.tools.mask_verify import verification_from_mask
 
+if TYPE_CHECKING:
+    from colosseum_equipment.instruments.speca.bandwidth import BandwidthMethod, RefPowerMethod
+
 _logger = get_logger("colosseum.equipment")
 
 
 @command
 @broadcastable("speca", "speca_id")
-def set_center_frequency(
-    *,
-    speca_id: EquipmentId,
-    frequency: float,
-    calibration: str | None = None,
-) -> None:
-    """Set spectrum center frequency in hertz.
+def abort(*, speca_id: EquipmentId) -> None:
+    """Cancel an in-progress sweep.
 
-    ``calibration`` binds the frequency for later measure/trace path-loss lookups.
+    :param speca_id: Configured ``equipment.speca`` ID.
+    """
+    _logger.info("Aborting sweep on SpecA %s", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).abort()
+
+
+@command
+@broadcastable("speca", "speca_id")
+def apply_mask_setup(*, speca_id: EquipmentId, mask: str, key: str = "") -> None:
+    """Apply mask JSON ``setup`` fields (center/span/ref/RBW) to this SpecA.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+    :param mask: Path to mask JSON (or from ``parameters.toml`` via ``key=``).
+    :param key: Optional parameters / evidence key for this step.
+    """
+    _logger.info("Applying mask setup to SpecA %s", speca_id)
+    _ = key
+    apply_speca_mask_setup(mask, speca_id=require_int_id(speca_id, kind="speca"))
+
+
+@command
+@broadcastable("speca", "speca_id")
+def arm_sweep(*, speca_id: EquipmentId) -> None:
+    """Arm a single sweep without blocking for completion.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+    """
+    _logger.info("Arming single sweep on SpecA %s", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).arm_sweep()
+
+
+@measurement
+def measure_acpr_db(*, speca_id: int, key: str, side: str = "both") -> float:
+    """Read adjacent-channel power ratio in dB when ACP CALC exists (fetch).
 
     :param speca_id: Configured ``equipment.speca`` ID.
 
-    :param frequency: Center frequency in hertz.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :param side: ``upper``, ``lower``, or ``both``.
+
+    :returns: ACPR in dB.
+    :rtype: float
+    """
+    _logger.info("Reading ACPR from SpecA %s side %s", speca_id, side)
+    _ = key
+    return float(get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_acpr_db(side=side))
+
+
+@measurement
+def measure_bw(
+    *,
+    speca_id: int,
+    start_hz: float,
+    stop_hz: float,
+    key: str,
+    threshold_db: float | None = None,
+    smoothing_order: int = 0,
+    trace: int = 1,
+    trace_path: str | None = None,
+    method: BandwidthMethod | None = None,
+    occupied_power_pct: float | None = None,
+    save_plot: bool = False,
+    ref_pwr_meas_method: RefPowerMethod = "max",
+) -> float:
+    """Measure bandwidth in hertz from a trace CSV or live sweep.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param start_hz: Lower frequency bound for bandwidth analysis in hertz.
+
+    :param stop_hz: Upper frequency bound for bandwidth analysis in hertz.
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+        Must not collide with another instrument's measurement using the same command name.
+
+    :param threshold_db: Power drop from the selected reference power, in dB.
+
+    :param ref_pwr_meas_method: Threshold reference: ``max`` (default), ``mean`` or
+        ``median`` of the smoothed dBm samples inside the analysis window. Crossings
+        are still searched outward from the maximum. Non-default values require
+        threshold analysis (no named ``method``); an omitted threshold uses 3 dB.
+    :param smoothing_order: Moving-average half-window; dBm for threshold, linear power for named methods.
+
+    :param trace: Trace number (1-based) when reading from the instrument.
+
+    :param trace_path: Optional relative path to a prior trace CSV under the run directory.
+
+    :param method: ``fwhm`` (half peak linear power), ``occupied_power`` (equal-tail
+        integrated power), or ``half_prominence`` (half the dominant peak's prominence).
+        Mutually exclusive with ``threshold_db``. Omitting both retains the 3 dB method.
+    :param occupied_power_pct: Percent integrated power, default 99; only for
+        ``occupied_power`` and strictly between 0 and 100.
+    :param save_plot: Save an annotated trace PNG under the run's ``plots/`` directory.
+        Bandwidth plots mark both edges; center-frequency plots mark the center on
+        the source trace. No extra sweep is taken. Plot evidence uses a separate key.
+    :returns: Bandwidth in hertz.
+    :rtype: float
+    """
+    _logger.info("Measuring bandwidth on SpecA %s", speca_id)
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_bw(
+            start_hz,
+            stop_hz,
+            threshold_db=threshold_db,
+            smoothing_order=smoothing_order,
+            trace=trace,
+            trace_path=trace_path,
+            method=method, occupied_power_pct=occupied_power_pct, save_plot=save_plot, key=key,
+            ref_pwr_meas_method=ref_pwr_meas_method,
+        ),
+    )
+
+
+@measurement
+def measure_center_frequency_hz(
+    *, speca_id: int, start_hz: float, stop_hz: float, key: str,
+    threshold_db: float | None = None, smoothing_order: int = 0, trace: int = 1,
+    trace_path: str | None = None,
+    method: BandwidthMethod | None = None,
+    occupied_power_pct: float | None = None,
+    save_plot: bool = False,
+    ref_pwr_meas_method: RefPowerMethod = "max",
+) -> float:
+    """Measure the midpoint of the trace's calculated bandwidth edges in hertz.
+
+    Uses the same bounds, threshold, smoothing and trace selection as ``measure_bw``.
+
+    :param speca_id: Configured spectrum analyzer ID.
+    :param start_hz: Lower frequency bound in hertz.
+    :param stop_hz: Upper frequency bound in hertz.
+    :param key: Unique measurement key in the equipment domain.
+    :param threshold_db: Power drop from the selected reference power, in dB.
+    :param ref_pwr_meas_method: Threshold reference: ``max`` (default), ``mean`` or
+        ``median`` of the smoothed dBm samples inside the analysis window. Crossings
+        are still searched outward from the maximum. Non-default values require
+        threshold analysis (no named ``method``); an omitted threshold uses 3 dB.
+    :param smoothing_order: Moving-average half-window; dBm for threshold, linear power for named methods.
+    :param trace: Trace number used for a live sweep.
+    :param trace_path: Optional path to a previously saved trace CSV.
+    :param method: ``fwhm`` (half peak linear power), ``occupied_power`` (equal-tail
+        integrated power), or ``half_prominence`` (half the dominant peak's prominence).
+        Mutually exclusive with ``threshold_db``. Omitting both retains the 3 dB method.
+    :param occupied_power_pct: Percent integrated power, default 99; only for
+        ``occupied_power`` and strictly between 0 and 100.
+    :param save_plot: Save an annotated trace PNG under the run's ``plots/`` directory.
+        Bandwidth plots mark both edges; center-frequency plots mark the center on
+        the source trace. No extra sweep is taken. Plot evidence uses a separate key.
+    :returns: Center frequency in hertz.
+    :rtype: float
+    """
+    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
+    return float(inst.measure_center_frequency_hz(
+        start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
+        trace=trace, trace_path=trace_path,
+        method=method, occupied_power_pct=occupied_power_pct, save_plot=save_plot, key=key,
+        ref_pwr_meas_method=ref_pwr_meas_method,
+    ))
+
+
+@measurement
+def measure_channel_power_dbm(
+    *,
+    speca_id: int,
+    marker: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
+    """Read channel power in dBm when instrument CALC supports it (fetch; no new sweep).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker tied to the channel-power measurement.
+
+    :param key: Unique measurement key within domain ``equipment``.
 
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+
+    :returns: Channel power in dBm.
+    :rtype: float
     """
-    _ = calibration
-    _logger.info("Setting center frequency on SpecA %s to %s Hz", speca_id, frequency)
+    _logger.info("Reading channel power from SpecA %s marker %s", speca_id, marker)
+    _ = key
     inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
-    inst.set_center_frequency(frequency)
-    _cal.bind_frequency(inst, frequency)
+    raw = float(inst.measure_channel_power_dbm(marker))
+    if calibration is None:
+        return raw
+    frequency = _cal.require_frequency(inst, what="measure_channel_power_dbm")
+    return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=frequency)
 
 
-@command
-@broadcastable("speca", "speca_id")
-def set_span(*, speca_id: EquipmentId, span: float) -> None:
-    """Set frequency span in hertz.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param span: Frequency span in hertz.
-    """
-    _logger.info("Setting span on SpecA %s to %s Hz", speca_id, span)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_span(span)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_start_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
-    """Set the start frequency of the span in hertz.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param frequency_hz: Start frequency in hertz.
-    """
-    _logger.info("Setting start frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_start_frequency(frequency_hz)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_stop_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
-    """Set the stop frequency of the span in hertz.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param frequency_hz: Stop frequency in hertz.
-    """
-    _logger.info("Setting stop frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_stop_frequency(frequency_hz)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_rbw(*, speca_id: EquipmentId, rbw: float) -> None:
-    """Set resolution bandwidth in hertz.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param rbw: Resolution bandwidth in hertz.
-    """
-    _logger.info("Setting RBW on SpecA %s to %s Hz", speca_id, rbw)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_rbw(rbw)
-
-
-@command
-def peak_search(*, speca_id: int, marker: int = 1) -> None:
-    """Run a peak search and move the given marker to the peak.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-    """
-    _logger.info("Searching for peak on SpecA %s marker %s", speca_id, marker)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).peak_search(marker)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def toggle_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
-    """Enable or disable a marker by id.
+@measurement
+def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
+    """Read delta-marker frequency offset in hertz (last sweep; does not re-arm).
 
     :param speca_id: Configured ``equipment.speca`` ID.
 
     :param marker: Marker number (1-based).
 
-    :param enabled: ``True`` to enable the marker, ``False`` to disable.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Delta frequency in hertz.
+    :rtype: float
     """
-    _logger.info("%s marker %s on SpecA %s", "Enabling" if enabled else "Disabling", marker, speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_marker(marker, enabled)
+    _logger.info("Reading delta frequency from SpecA %s marker %s", speca_id, marker)
+    _ = key
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_frequency(marker),
+    )
 
 
-@command
-def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
-    """Move the marker to the next peak to the right.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-    """
-    _logger.info("Moving SpecA %s marker %s to next peak right", speca_id, marker)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_right(marker)
-
-
-@command
-def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
-    """Move the marker to the next peak to the left.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-    """
-    _logger.info("Moving SpecA %s marker %s to next peak left", speca_id, marker)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_left(marker)
-
-
-@command
-def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
-    """Move the marker to the highest peak in the current span.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-    """
-    _logger.info("Moving SpecA %s marker %s to highest peak", speca_id, marker)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_highest_peak(marker)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_marker_frequency(*, speca_id: EquipmentId, marker: int, frequency_hz: float) -> None:
-    """Place a marker at the given frequency in hertz.
+@measurement
+def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> float:
+    """Read delta-marker amplitude in dB (last sweep; does not re-arm).
 
     :param speca_id: Configured ``equipment.speca`` ID.
 
     :param marker: Marker number (1-based).
 
-    :param frequency_hz: Marker frequency in hertz.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Delta amplitude in dB.
+    :rtype: float
     """
-    _logger.info("Setting SpecA %s marker %s to %s Hz", speca_id, marker, frequency_hz)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_frequency(marker, frequency_hz)
+    _logger.info("Reading delta power from SpecA %s marker %s", speca_id, marker)
+    _ = key
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_power(marker),
+    )
+
+
+@measurement
+def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
+    """Read marker frequency in hertz from the last completed sweep (does not re-arm).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+        Must not collide with another instrument's measurement using the same command name.
+
+    :returns: Marker frequency in hertz.
+    :rtype: float
+    """
+    _logger.info("Reading marker frequency from SpecA %s marker %s", speca_id, marker)
+    _ = key
+    return float(
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_frequency(marker),
+    )
 
 
 @measurement
@@ -219,39 +326,50 @@ def measure_marker_power(
 
 
 @measurement
-def measure_marker_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
-    """Read marker frequency in hertz from the last completed sweep (does not re-arm).
+def measure_obw_hz(
+    *,
+    speca_id: int,
+    start_hz: float,
+    stop_hz: float,
+    key: str,
+    threshold_db: float = 3.0,
+    smoothing_order: int = 0,
+    trace: int = 1,
+    trace_path: str | None = None,
+) -> float:
+    """Measure occupied bandwidth in hertz (instrument OBW when available, else host trace).
 
     :param speca_id: Configured ``equipment.speca`` ID.
 
-    :param marker: Marker number (1-based).
+    :param start_hz: Lower analysis bound in hertz (host fallback).
 
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
+    :param stop_hz: Upper analysis bound in hertz (host fallback).
 
-    :returns: Marker frequency in hertz.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :param threshold_db: Host fallback threshold below peak in dB.
+
+    :param smoothing_order: Host fallback moving-average half-window.
+
+    :param trace: Trace number when a live sweep is required for fallback.
+
+    :param trace_path: Optional prior trace CSV under the run directory.
+
+    :returns: Occupied bandwidth in hertz.
     :rtype: float
     """
-    _logger.info("Reading marker frequency from SpecA %s marker %s", speca_id, marker)
+    _logger.info("Measuring occupied bandwidth on SpecA %s", speca_id)
     _ = key
     return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_frequency(marker),
+        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_obw_hz(
+            start_hz,
+            stop_hz,
+            threshold_db=threshold_db,
+            smoothing_order=smoothing_order,
+            trace=trace,
+            trace_path=trace_path,
+        ),
     )
-
-
-verify_marker_frequency = tolerance_verifier(
-    "measure_marker_frequency", module=__name__,
-    name="verify_marker_frequency",
-    default_tolerance=1000.0,
-)
-
-
-verify_marker_power = tolerance_verifier(
-    "measure_marker_power", module=__name__,
-    name="verify_marker_power",
-    default_tolerance=0.5,
-    unit="dBm",
-)
 
 
 @measurement
@@ -294,12 +412,77 @@ def measure_trace_power_at_frequency(
     return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=float(actual_hz))
 
 
-verify_trace_power_at_frequency = tolerance_verifier(
-    "measure_trace_power_at_frequency", module=__name__,
-    name="verify_trace_power_at_frequency",
-    default_tolerance=0.5,
-    unit="dBm",
-)
+@command
+def next_highest_peak(*, speca_id: int, marker: int = 1) -> None:
+    """Move the marker to the highest peak in the current span.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+    """
+    _logger.info("Moving SpecA %s marker %s to highest peak", speca_id, marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_highest_peak(marker)
+
+
+@command
+def next_peak_left(*, speca_id: int, marker: int = 1) -> None:
+    """Move the marker to the next peak to the left.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+    """
+    _logger.info("Moving SpecA %s marker %s to next peak left", speca_id, marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_left(marker)
+
+
+@command
+def next_peak_right(*, speca_id: int, marker: int = 1) -> None:
+    """Move the marker to the next peak to the right.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+    """
+    _logger.info("Moving SpecA %s marker %s to next peak right", speca_id, marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).next_peak_right(marker)
+
+
+@command
+def peak_search(*, speca_id: int, marker: int = 1) -> None:
+    """Run a peak search and move the given marker to the peak.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+    """
+    _logger.info("Searching for peak on SpecA %s marker %s", speca_id, marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).peak_search(marker)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def preset(*, speca_id: EquipmentId) -> None:
+    """Return the instrument to a default preset state.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+    """
+    _logger.info("Presetting SpecA %s", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).preset()
+
+
+@command
+def save_screenshot(*, speca_id: int, path: str, key: str = "") -> None:
+    """Save a display screenshot and register an artifact (vendor-specific).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param path: Relative path under the output directory for the screenshot file.
+
+    :param key: Evidence key (default ``speca_screenshot_<sweep>``).
+    """
+    _logger.info("Saving screenshot from SpecA %s to %s", speca_id, path)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).save_screenshot(path, key=key)
 
 
 @command
@@ -349,16 +532,414 @@ def save_trace_data(
 
 @command
 @broadcastable("speca", "speca_id")
-def apply_mask_setup(*, speca_id: EquipmentId, mask: str, key: str = "") -> None:
-    """Apply mask JSON ``setup`` fields (center/span/ref/RBW) to this SpecA.
+def set_attenuation_db(*, speca_id: EquipmentId, attenuation_db: float) -> None:
+    """Set input attenuation in dB.
 
     :param speca_id: Configured ``equipment.speca`` ID.
-    :param mask: Path to mask JSON (or from ``parameters.toml`` via ``key=``).
-    :param key: Optional parameters / evidence key for this step.
+
+    :param attenuation_db: Input attenuation in dB.
     """
-    _logger.info("Applying mask setup to SpecA %s", speca_id)
-    _ = key
-    apply_speca_mask_setup(mask, speca_id=require_int_id(speca_id, kind="speca"))
+    _logger.info("Setting attenuation on SpecA %s to %s dB", speca_id, attenuation_db)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_attenuation_db(attenuation_db)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_auto_attenuation(*, speca_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable automatic input attenuation.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param enabled: ``True`` to enable auto attenuation.
+    """
+    _logger.info(
+        "%s auto attenuation on SpecA %s",
+        "Enabling" if enabled else "Disabling",
+        speca_id,
+    )
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_auto_attenuation(enabled)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_average_type(*, speca_id: EquipmentId, average_type: str) -> None:
+    """Set trace averaging type (model-specific, for example ``VID`` or ``POW``).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param average_type: Averaging type string accepted by the configured model.
+    """
+    _logger.info("Setting average type on SpecA %s to %s", speca_id, average_type)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_average_type(average_type)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_averaging_count(*, speca_id: EquipmentId, count: int) -> None:
+    """Set sweep averaging count.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param count: Number of sweeps to average.
+    """
+    _logger.info("Setting averaging count on SpecA %s to %s", speca_id, count)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_averaging_count(count)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_center_frequency(
+    *,
+    speca_id: EquipmentId,
+    frequency: float,
+    calibration: str | None = None,
+) -> None:
+    """Set spectrum center frequency in hertz.
+
+    ``calibration`` binds the frequency for later measure/trace path-loss lookups.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param frequency: Center frequency in hertz.
+
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    """
+    _ = calibration
+    _logger.info("Setting center frequency on SpecA %s to %s Hz", speca_id, frequency)
+    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
+    inst.set_center_frequency(frequency)
+    _cal.bind_frequency(inst, frequency)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_continuous_sweep(*, speca_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable continuous sweep.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param enabled: ``True`` for continuous sweep, ``False`` for single-sweep mode.
+    """
+    _logger.info("%s continuous sweep on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_continuous_sweep(enabled)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_detector(*, speca_id: EquipmentId, detector: str) -> None:
+    """Set trace detector mode (model-specific, for example ``APEak``).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param detector: Detector mode string accepted by the configured model.
+    """
+    _logger.info("Setting detector on SpecA %s to %s", speca_id, detector)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_detector(detector)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_marker_delta_reference(*, speca_id: EquipmentId, marker: int, reference_marker: int) -> None:
+    """Set which marker is the delta reference for ``marker``.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Delta marker number.
+
+    :param reference_marker: Reference marker number.
+    """
+    _logger.info(
+        "Setting SpecA %s marker %s delta reference to marker %s",
+        speca_id,
+        marker,
+        reference_marker,
+    )
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_delta_reference(
+        marker, reference_marker,
+    )
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_marker_frequency(*, speca_id: EquipmentId, marker: int, frequency_hz: float) -> None:
+    """Place a marker at the given frequency in hertz.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+
+    :param frequency_hz: Marker frequency in hertz.
+    """
+    _logger.info("Setting SpecA %s marker %s to %s Hz", speca_id, marker, frequency_hz)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_frequency(marker, frequency_hz)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_marker_to_center(*, speca_id: EquipmentId, marker: int = 1) -> None:
+    """Move a marker to the spectrum center frequency.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+    """
+    _logger.info("Moving SpecA %s marker %s to center", speca_id, marker)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_to_center(marker)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_rbw(*, speca_id: EquipmentId, rbw: float) -> None:
+    """Set resolution bandwidth in hertz.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param rbw: Resolution bandwidth in hertz.
+    """
+    _logger.info("Setting RBW on SpecA %s to %s Hz", speca_id, rbw)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_rbw(rbw)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_reference_level(*, speca_id: EquipmentId, level_dbm: float) -> None:
+    """Set display reference level in dBm.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param level_dbm: Reference level in dBm.
+    """
+    _logger.info("Setting reference level on SpecA %s to %s dBm", speca_id, level_dbm)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_reference_level(level_dbm)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_span(*, speca_id: EquipmentId, span: float) -> None:
+    """Set frequency span in hertz.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param span: Frequency span in hertz.
+    """
+    _logger.info("Setting span on SpecA %s to %s Hz", speca_id, span)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_span(span)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_start_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
+    """Set the start frequency of the span in hertz.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param frequency_hz: Start frequency in hertz.
+    """
+    _logger.info("Setting start frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_start_frequency(frequency_hz)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_stop_frequency(*, speca_id: EquipmentId, frequency_hz: float) -> None:
+    """Set the stop frequency of the span in hertz.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param frequency_hz: Stop frequency in hertz.
+    """
+    _logger.info("Setting stop frequency on SpecA %s to %s Hz", speca_id, frequency_hz)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_stop_frequency(frequency_hz)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_sweep_points(*, speca_id: EquipmentId, count: int) -> None:
+    """Set the number of sweep points.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param count: Number of sweep points.
+    """
+    _logger.info("Setting sweep points on SpecA %s to %s", speca_id, count)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_points(count)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_sweep_time(*, speca_id: EquipmentId, seconds: float) -> None:
+    """Set sweep time in seconds.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param seconds: Sweep time in seconds.
+    """
+    _logger.info("Setting sweep time on SpecA %s to %s s", speca_id, seconds)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_time(seconds)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_trace_mode(*, speca_id: EquipmentId, trace: int, mode: str) -> None:
+    """Set trace mode (for example ``WRIT``, ``MAXH``, ``AVER``).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param trace: Trace number (1-based).
+
+    :param mode: Trace mode string accepted by the configured model.
+    """
+    _logger.info("Setting SpecA %s trace %s mode to %s", speca_id, trace, mode)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trace_mode(trace, mode)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_trigger_delay(*, speca_id: EquipmentId, delay_s: float) -> None:
+    """Set trigger delay in seconds.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param delay_s: Trigger delay in seconds.
+    """
+    _logger.info("Setting trigger delay on SpecA %s to %s s", speca_id, delay_s)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_delay(delay_s)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_trigger_source(*, speca_id: EquipmentId, source: str) -> None:
+    """Set trigger source (for example ``IMM``, ``VID``, ``LINE``, ``EXT``, ``RFB``, ``TV``).
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param source: Trigger source string accepted by the configured model.
+    """
+    _logger.info("Setting trigger source on SpecA %s to %s", speca_id, source)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_source(source)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def set_vbw(*, speca_id: EquipmentId, vbw: float) -> None:
+    """Set video bandwidth in hertz.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param vbw: Video bandwidth in hertz.
+    """
+    _logger.info("Setting VBW on SpecA %s to %s Hz", speca_id, vbw)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_vbw(vbw)
+
+
+@command
+def single_sweep(*, speca_id: int) -> None:
+    """Trigger a single sweep and wait for completion.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+    """
+    _logger.info("Running single sweep on SpecA %s", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).single_sweep()
+
+
+@command
+@broadcastable("speca", "speca_id")
+def toggle_delta_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
+    """Enable or disable delta-marker mode on a marker.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+
+    :param enabled: ``True`` to enable delta mode.
+    """
+    _logger.info(
+        "%s delta marker %s on SpecA %s",
+        "Enabling" if enabled else "Disabling",
+        marker,
+        speca_id,
+    )
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_delta_marker(marker, enabled)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def toggle_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
+    """Enable or disable a marker by id.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param marker: Marker number (1-based).
+
+    :param enabled: ``True`` to enable the marker, ``False`` to disable.
+    """
+    _logger.info("%s marker %s on SpecA %s", "Enabling" if enabled else "Disabling", marker, speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_marker(marker, enabled)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def toggle_preamp(*, speca_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable the input preamplifier.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param enabled: ``True`` to enable the preamp.
+    """
+    _logger.info("%s preamp on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_preamp(enabled)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def toggle_trigger_delay(*, speca_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable trigger delay.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+
+    :param enabled: ``True`` to enable trigger delay, ``False`` to disable.
+    """
+    _logger.info("%s trigger delay on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_trigger_delay(enabled)
+
+
+@command
+@broadcastable("speca", "speca_id")
+def user_preset(*, speca_id: EquipmentId) -> None:
+    """Recall user preset 1.
+
+    :param speca_id: Configured ``equipment.speca`` ID.
+    """
+    _logger.info("Recalling user preset on SpecA %s", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).user_preset()
+
+
+verify_bandwidth = tolerance_verifier(
+    "measure_bw", module=__name__,
+    name="verify_bandwidth",
+    default_tolerance=1000.0,
+)
+
+
+verify_center_frequency = tolerance_verifier(
+    "measure_center_frequency_hz", module=__name__,
+    name="verify_center_frequency", default_tolerance=1000.0,
+)
+
+
+verify_marker_frequency = tolerance_verifier(
+    "measure_marker_frequency", module=__name__,
+    name="verify_marker_frequency",
+    default_tolerance=1000.0,
+)
+
+
+verify_marker_power = tolerance_verifier(
+    "measure_marker_power", module=__name__,
+    name="verify_marker_power",
+    default_tolerance=0.5,
+    unit="dBm",
+)
 
 
 @verification
@@ -390,259 +971,12 @@ def verify_mask(
     )
 
 
-@measurement
-def measure_bw(
-    *,
-    speca_id: int,
-    start_hz: float,
-    stop_hz: float,
-    key: str,
-    threshold_db: float = 3.0,
-    smoothing_order: int = 0,
-    trace: int = 1,
-    trace_path: str | None = None,
-) -> float:
-    """Measure occupied bandwidth in hertz from a trace CSV or live sweep.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param start_hz: Lower frequency bound for bandwidth analysis in hertz.
-
-    :param stop_hz: Upper frequency bound for bandwidth analysis in hertz.
-
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
-
-    :param threshold_db: Power drop from peak used to define bandwidth edges in dB.
-
-    :param smoothing_order: Savitzky-Golay smoothing order applied before edge detection.
-
-    :param trace: Trace number (1-based) when reading from the instrument.
-
-    :param trace_path: Optional relative path to a prior trace CSV under the run directory.
-
-    :returns: Occupied bandwidth in hertz.
-    :rtype: float
-    """
-    _logger.info("Measuring bandwidth on SpecA %s", speca_id)
-    _ = key
-    return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_bw(
-            start_hz,
-            stop_hz,
-            threshold_db=threshold_db,
-            smoothing_order=smoothing_order,
-            trace=trace,
-            trace_path=trace_path,
-        ),
-    )
-
-
-@measurement
-def measure_center_frequency_hz(
-    *, speca_id: int, start_hz: float, stop_hz: float, key: str,
-    threshold_db: float = 3.0, smoothing_order: int = 0, trace: int = 1,
-    trace_path: str | None = None,
-) -> float:
-    """Measure the midpoint of the trace's bandwidth threshold crossings in hertz.
-
-    Uses the same bounds, threshold, smoothing and trace selection as ``measure_bw``.
-
-    :param speca_id: Configured spectrum analyzer ID.
-    :param start_hz: Lower frequency bound in hertz.
-    :param stop_hz: Upper frequency bound in hertz.
-    :param key: Unique measurement key in the equipment domain.
-    :param threshold_db: Power drop from the peak defining the edges, in dB.
-    :param smoothing_order: Smoothing order applied before edge detection.
-    :param trace: Trace number used for a live sweep.
-    :param trace_path: Optional path to a previously saved trace CSV.
-    :returns: Center frequency in hertz.
-    :rtype: float
-    """
-    _ = key
-    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
-    return float(inst.measure_center_frequency_hz(
-        start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
-        trace=trace, trace_path=trace_path,
-    ))
-
-
-verify_center_frequency = tolerance_verifier(
-    "measure_center_frequency_hz", module=__name__,
-    name="verify_center_frequency", default_tolerance=1000.0,
+verify_trace_power_at_frequency = tolerance_verifier(
+    "measure_trace_power_at_frequency", module=__name__,
+    name="verify_trace_power_at_frequency",
+    default_tolerance=0.5,
+    unit="dBm",
 )
-
-
-verify_bandwidth = tolerance_verifier(
-    "measure_bw", module=__name__,
-    name="verify_bandwidth",
-    default_tolerance=1000.0,
-)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def preset(*, speca_id: EquipmentId) -> None:
-    """Return the instrument to a default preset state.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-    """
-    _logger.info("Presetting SpecA %s", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).preset()
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_reference_level(*, speca_id: EquipmentId, level_dbm: float) -> None:
-    """Set display reference level in dBm.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param level_dbm: Reference level in dBm.
-    """
-    _logger.info("Setting reference level on SpecA %s to %s dBm", speca_id, level_dbm)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_reference_level(level_dbm)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_vbw(*, speca_id: EquipmentId, vbw: float) -> None:
-    """Set video bandwidth in hertz.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param vbw: Video bandwidth in hertz.
-    """
-    _logger.info("Setting VBW on SpecA %s to %s Hz", speca_id, vbw)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_vbw(vbw)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_sweep_time(*, speca_id: EquipmentId, seconds: float) -> None:
-    """Set sweep time in seconds.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param seconds: Sweep time in seconds.
-    """
-    _logger.info("Setting sweep time on SpecA %s to %s s", speca_id, seconds)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_time(seconds)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_sweep_points(*, speca_id: EquipmentId, count: int) -> None:
-    """Set the number of sweep points.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param count: Number of sweep points.
-    """
-    _logger.info("Setting sweep points on SpecA %s to %s", speca_id, count)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_sweep_points(count)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def toggle_trigger_delay(*, speca_id: EquipmentId, enabled: bool) -> None:
-    """Enable or disable trigger delay.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param enabled: ``True`` to enable trigger delay, ``False`` to disable.
-    """
-    _logger.info("%s trigger delay on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_trigger_delay(enabled)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_trigger_delay(*, speca_id: EquipmentId, delay_s: float) -> None:
-    """Set trigger delay in seconds.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param delay_s: Trigger delay in seconds.
-    """
-    _logger.info("Setting trigger delay on SpecA %s to %s s", speca_id, delay_s)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_delay(delay_s)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_trigger_source(*, speca_id: EquipmentId, source: str) -> None:
-    """Set trigger source (for example ``IMM``, ``VID``, ``LINE``, ``EXT``, ``RFB``, ``TV``).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param source: Trigger source string accepted by the configured model.
-    """
-    _logger.info("Setting trigger source on SpecA %s to %s", speca_id, source)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trigger_source(source)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def user_preset(*, speca_id: EquipmentId) -> None:
-    """Recall user preset 1.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-    """
-    _logger.info("Recalling user preset on SpecA %s", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).user_preset()
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_detector(*, speca_id: EquipmentId, detector: str) -> None:
-    """Set trace detector mode (model-specific, for example ``APEak``).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param detector: Detector mode string accepted by the configured model.
-    """
-    _logger.info("Setting detector on SpecA %s to %s", speca_id, detector)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_detector(detector)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_trace_mode(*, speca_id: EquipmentId, trace: int, mode: str) -> None:
-    """Set trace mode (for example ``WRIT``, ``MAXH``, ``AVER``).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param trace: Trace number (1-based).
-
-    :param mode: Trace mode string accepted by the configured model.
-    """
-    _logger.info("Setting SpecA %s trace %s mode to %s", speca_id, trace, mode)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_trace_mode(trace, mode)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_continuous_sweep(*, speca_id: EquipmentId, enabled: bool) -> None:
-    """Enable or disable continuous sweep.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param enabled: ``True`` for continuous sweep, ``False`` for single-sweep mode.
-    """
-    _logger.info("%s continuous sweep on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_continuous_sweep(enabled)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def arm_sweep(*, speca_id: EquipmentId) -> None:
-    """Arm a single sweep without blocking for completion.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-    """
-    _logger.info("Arming single sweep on SpecA %s", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).arm_sweep()
 
 
 @command
@@ -657,298 +991,3 @@ def wait_complete(*, speca_id: int, timeout_s: float = 60.0) -> None:
     """
     _logger.info("Waiting for SpecA %s sweep to complete", speca_id)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).wait_complete(timeout_s=timeout_s)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def abort(*, speca_id: EquipmentId) -> None:
-    """Cancel an in-progress sweep.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-    """
-    _logger.info("Aborting sweep on SpecA %s", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).abort()
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_attenuation_db(*, speca_id: EquipmentId, attenuation_db: float) -> None:
-    """Set input attenuation in dB.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param attenuation_db: Input attenuation in dB.
-    """
-    _logger.info("Setting attenuation on SpecA %s to %s dB", speca_id, attenuation_db)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_attenuation_db(attenuation_db)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_auto_attenuation(*, speca_id: EquipmentId, enabled: bool) -> None:
-    """Enable or disable automatic input attenuation.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param enabled: ``True`` to enable auto attenuation.
-    """
-    _logger.info(
-        "%s auto attenuation on SpecA %s",
-        "Enabling" if enabled else "Disabling",
-        speca_id,
-    )
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_auto_attenuation(enabled)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def toggle_preamp(*, speca_id: EquipmentId, enabled: bool) -> None:
-    """Enable or disable the input preamplifier.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param enabled: ``True`` to enable the preamp.
-    """
-    _logger.info("%s preamp on SpecA %s", "Enabling" if enabled else "Disabling", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_preamp(enabled)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_averaging_count(*, speca_id: EquipmentId, count: int) -> None:
-    """Set sweep averaging count.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param count: Number of sweeps to average.
-    """
-    _logger.info("Setting averaging count on SpecA %s to %s", speca_id, count)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_averaging_count(count)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_average_type(*, speca_id: EquipmentId, average_type: str) -> None:
-    """Set trace averaging type (model-specific, for example ``VID`` or ``POW``).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param average_type: Averaging type string accepted by the configured model.
-    """
-    _logger.info("Setting average type on SpecA %s to %s", speca_id, average_type)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_average_type(average_type)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_marker_to_center(*, speca_id: EquipmentId, marker: int = 1) -> None:
-    """Move a marker to the spectrum center frequency.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-    """
-    _logger.info("Moving SpecA %s marker %s to center", speca_id, marker)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_to_center(marker)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def toggle_delta_marker(*, speca_id: EquipmentId, marker: int, enabled: bool) -> None:
-    """Enable or disable delta-marker mode on a marker.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-
-    :param enabled: ``True`` to enable delta mode.
-    """
-    _logger.info(
-        "%s delta marker %s on SpecA %s",
-        "Enabling" if enabled else "Disabling",
-        marker,
-        speca_id,
-    )
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).toggle_delta_marker(marker, enabled)
-
-
-@command
-@broadcastable("speca", "speca_id")
-def set_marker_delta_reference(*, speca_id: EquipmentId, marker: int, reference_marker: int) -> None:
-    """Set which marker is the delta reference for ``marker``.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Delta marker number.
-
-    :param reference_marker: Reference marker number.
-    """
-    _logger.info(
-        "Setting SpecA %s marker %s delta reference to marker %s",
-        speca_id,
-        marker,
-        reference_marker,
-    )
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_marker_delta_reference(
-        marker, reference_marker,
-    )
-
-
-@measurement
-def measure_marker_delta_frequency(*, speca_id: int, marker: int = 1, key: str) -> float:
-    """Read delta-marker frequency offset in hertz (last sweep; does not re-arm).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :returns: Delta frequency in hertz.
-    :rtype: float
-    """
-    _logger.info("Reading delta frequency from SpecA %s marker %s", speca_id, marker)
-    _ = key
-    return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_frequency(marker),
-    )
-
-
-@measurement
-def measure_marker_delta_power(*, speca_id: int, marker: int = 1, key: str) -> float:
-    """Read delta-marker amplitude in dB (last sweep; does not re-arm).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker number (1-based).
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :returns: Delta amplitude in dB.
-    :rtype: float
-    """
-    _logger.info("Reading delta power from SpecA %s marker %s", speca_id, marker)
-    _ = key
-    return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_marker_delta_power(marker),
-    )
-
-
-@measurement
-def measure_channel_power_dbm(
-    *,
-    speca_id: int,
-    marker: int = 1,
-    key: str,
-    calibration: str | None = None,
-) -> float:
-    """Read channel power in dBm when instrument CALC supports it (fetch; no new sweep).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param marker: Marker tied to the channel-power measurement.
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-
-    :returns: Channel power in dBm.
-    :rtype: float
-    """
-    _logger.info("Reading channel power from SpecA %s marker %s", speca_id, marker)
-    _ = key
-    inst = get_cached_instrument("speca", require_int_id(speca_id, kind="speca"))
-    raw = float(inst.measure_channel_power_dbm(marker))
-    if calibration is None:
-        return raw
-    frequency = _cal.require_frequency(inst, what="measure_channel_power_dbm")
-    return _cal.correct_power_dbm(raw, key=calibration, frequency_hz=frequency)
-
-
-@measurement
-def measure_acpr_db(*, speca_id: int, key: str, side: str = "both") -> float:
-    """Read adjacent-channel power ratio in dB when ACP CALC exists (fetch).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :param side: ``upper``, ``lower``, or ``both``.
-
-    :returns: ACPR in dB.
-    :rtype: float
-    """
-    _logger.info("Reading ACPR from SpecA %s side %s", speca_id, side)
-    _ = key
-    return float(get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_acpr_db(side=side))
-
-
-@measurement
-def measure_obw_hz(
-    *,
-    speca_id: int,
-    start_hz: float,
-    stop_hz: float,
-    key: str,
-    threshold_db: float = 3.0,
-    smoothing_order: int = 0,
-    trace: int = 1,
-    trace_path: str | None = None,
-) -> float:
-    """Measure occupied bandwidth in hertz (instrument OBW when available, else host trace).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param start_hz: Lower analysis bound in hertz (host fallback).
-
-    :param stop_hz: Upper analysis bound in hertz (host fallback).
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :param threshold_db: Host fallback threshold below peak in dB.
-
-    :param smoothing_order: Host fallback Savitzky-Golay order.
-
-    :param trace: Trace number when a live sweep is required for fallback.
-
-    :param trace_path: Optional prior trace CSV under the run directory.
-
-    :returns: Occupied bandwidth in hertz.
-    :rtype: float
-    """
-    _logger.info("Measuring occupied bandwidth on SpecA %s", speca_id)
-    _ = key
-    return float(
-        get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).measure_obw_hz(
-            start_hz,
-            stop_hz,
-            threshold_db=threshold_db,
-            smoothing_order=smoothing_order,
-            trace=trace,
-            trace_path=trace_path,
-        ),
-    )
-
-
-@command
-def single_sweep(*, speca_id: int) -> None:
-    """Trigger a single sweep and wait for completion.
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-    """
-    _logger.info("Running single sweep on SpecA %s", speca_id)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).single_sweep()
-
-
-@command
-def save_screenshot(*, speca_id: int, path: str, key: str = "") -> None:
-    """Save a display screenshot and register an artifact (vendor-specific).
-
-    :param speca_id: Configured ``equipment.speca`` ID.
-
-    :param path: Relative path under the output directory for the screenshot file.
-
-    :param key: Evidence key (default ``speca_screenshot_<sweep>``).
-    """
-    _logger.info("Saving screenshot from SpecA %s to %s", speca_id, path)
-    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).save_screenshot(path, key=key)

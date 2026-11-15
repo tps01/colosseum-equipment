@@ -30,205 +30,6 @@ def _inst(eload_id: EquipmentId) -> Any:
 
 @command
 @broadcastable("eload", "eload_id")
-def set_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
-    """Set operating mode (CC, CV, CP, or CR per model).
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param mode: Load mode token: CC, CV, CP, or CR, subject to the selected driver's
-        capabilities.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting mode on ELoad %s channel %s to %s", eload_id, channel, mode)
-    _inst(eload_id).set_mode(mode, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_current(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
-    """Set constant-current level.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param current: Current in amperes. Valid settings and protection limits depend on the
-        instrument model and range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting current on ELoad %s channel %s to %s A", eload_id, channel, current)
-    _inst(eload_id).set_current(current, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_voltage(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
-    """Set constant-voltage level.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param voltage: Voltage in volts. Valid settings and protection limits depend on the
-        instrument model and output range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting voltage on ELoad %s channel %s to %s V", eload_id, channel, voltage)
-    _inst(eload_id).set_voltage(voltage, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
-    """Set constant-power level (use when load is in CP mode).
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param power: Power in watts. Supported settings depend on the configured load and range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting power on ELoad %s channel %s to %s W", eload_id, channel, power)
-    _inst(eload_id).set_power(power, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1) -> None:
-    """Set constant-resistance level (use when load is in CR mode).
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param resistance: Resistance in ohms. Supported settings depend on the configured load and
-        range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info(
-        "Setting resistance on ELoad %s channel %s to %s ohms",
-        eload_id,
-        channel,
-        resistance,
-    )
-    _inst(eload_id).set_resistance(resistance, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def engage(*, eload_id: EquipmentId, channel: int = 1) -> None:
-    """Connect the load input.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Engaging ELoad %s channel %s", eload_id, channel)
-    _inst(eload_id).engage(channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def disengage(*, eload_id: EquipmentId, channel: int = 1) -> None:
-    """Disconnect the load input.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Disengaging ELoad %s channel %s", eload_id, channel)
-    _inst(eload_id).disengage(channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def preset(*, eload_id: EquipmentId) -> None:
-    """Return the instrument to a default preset.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    """
-    _logger.info("Presetting ELoad %s", eload_id)
-    _inst(eload_id).preset()
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1) -> None:
-    """Set current slew rate.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param amps_per_s: Current slew rate in amperes per second; availability and range depend on
-        the model.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info(
-        "Setting slew rate on ELoad %s channel %s to %s A/s",
-        eload_id,
-        channel,
-        amps_per_s,
-    )
-    _inst(eload_id).set_slew_rate(amps_per_s, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def toggle_short(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
-    """Enable or disable input short.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param enabled: True to enable the named feature; false to disable it.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info(
-        "%s short on ELoad %s channel %s",
-        "Enabling" if enabled else "Disabling",
-        eload_id,
-        channel,
-    )
-    _inst(eload_id).toggle_short(enabled, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
-    """Set over-voltage protection level.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param voltage: Voltage in volts. Valid settings and protection limits depend on the
-        instrument model and output range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting OVP on ELoad %s channel %s to %s V", eload_id, channel, voltage)
-    _inst(eload_id).set_ovp_v(voltage, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
-    """Set over-current protection level.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param current: Current in amperes. Valid settings and protection limits depend on the
-        instrument model and range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting OCP on ELoad %s channel %s to %s A", eload_id, channel, current)
-    _inst(eload_id).set_ocp_a(current, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
-    """Set over-power protection level.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param power: Power in watts. Supported settings depend on the configured load and range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting OPP on ELoad %s channel %s to %s W", eload_id, channel, power)
-    _inst(eload_id).set_opp_w(power, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
 def clear_protection(*, eload_id: EquipmentId, channel: int = 1) -> None:
     """Clear latched protection state.
 
@@ -238,79 +39,6 @@ def clear_protection(*, eload_id: EquipmentId, channel: int = 1) -> None:
     """
     _logger.info("Clearing protection on ELoad %s channel %s", eload_id, channel)
     _inst(eload_id).clear_protection(channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_transient_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
-    """Set transient generator mode.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param mode: Model-specific transient mode token; consult the load's command set before
-        enabling transients.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info("Setting transient mode on ELoad %s channel %s to %s", eload_id, channel, mode)
-    _inst(eload_id).set_transient_mode(mode, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_transient_level_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
-    """Set transient alternate current level.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param current: Current in amperes. Valid settings and protection limits depend on the
-        instrument model and range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info(
-        "Setting transient level on ELoad %s channel %s to %s A",
-        eload_id,
-        channel,
-        current,
-    )
-    _inst(eload_id).set_transient_level_a(current, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def set_transient_timer_s(*, eload_id: EquipmentId, seconds: float, channel: int = 1) -> None:
-    """Set transient dwell / timer in seconds.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param seconds: Time in seconds. The configured model determines the accepted range.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info(
-        "Setting transient timer on ELoad %s channel %s to %s s",
-        eload_id,
-        channel,
-        seconds,
-    )
-    _inst(eload_id).set_transient_timer_s(seconds, channel=channel)
-
-
-@command
-@broadcastable("eload", "eload_id")
-def toggle_transient(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
-    """Enable or disable transient mode.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param enabled: True to enable the named feature; false to disable it.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    """
-    _logger.info(
-        "%s transient on ELoad %s channel %s",
-        "Enabling" if enabled else "Disabling",
-        eload_id,
-        channel,
-    )
-    _inst(eload_id).toggle_transient(enabled, channel=channel)
 
 
 @command
@@ -352,6 +80,139 @@ def configure_list_step(
 
 @command
 @broadcastable("eload", "eload_id")
+def disengage(*, eload_id: EquipmentId, channel: int = 1) -> None:
+    """Disconnect the load input.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Disengaging ELoad %s channel %s", eload_id, channel)
+    _inst(eload_id).disengage(channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def engage(*, eload_id: EquipmentId, channel: int = 1) -> None:
+    """Connect the load input.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Engaging ELoad %s channel %s", eload_id, channel)
+    _inst(eload_id).engage(channel=channel)
+
+
+@measurement
+def measure_current(*, eload_id: int, channel: int = 1, key: str) -> float:
+    """Read input current.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded current in amperes.
+    """
+    _logger.info("Reading current from ELoad %s channel %s", eload_id, channel)
+    _ = key
+    return float(_inst(eload_id).measure_current(channel=channel))
+
+
+@measurement
+def measure_input_state(*, eload_id: int, channel: int = 1, key: str) -> float:
+    """Read whether load input is engaged (``1.0`` / ``0.0``).
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded input state: 1.0 engaged, 0.0 disengaged.
+    """
+    _logger.info("Reading input state from ELoad %s channel %s", eload_id, channel)
+    _ = key
+    engaged = _inst(eload_id).measure_input_state(channel=channel)
+    return 1.0 if engaged else 0.0
+
+
+@measurement
+def measure_power_w(*, eload_id: int, channel: int = 1, key: str) -> float:
+    """Read input power in watts.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded power w in watts.
+    """
+    _logger.info("Reading power from ELoad %s channel %s", eload_id, channel)
+    _ = key
+    return float(_inst(eload_id).measure_power_w(channel=channel))
+
+
+@measurement
+def measure_resistance_ohm(*, eload_id: int, channel: int = 1, key: str) -> float:
+    """Read input resistance in ohms.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded resistance ohm in ohms.
+    """
+    _logger.info("Reading resistance from ELoad %s channel %s", eload_id, channel)
+    _ = key
+    return float(_inst(eload_id).measure_resistance_ohm(channel=channel))
+
+
+@measurement
+def measure_voltage(*, eload_id: int, channel: int = 1, key: str) -> float:
+    """Read input voltage.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded voltage in volts.
+    """
+    _logger.info("Reading voltage from ELoad %s channel %s", eload_id, channel)
+    _ = key
+    return float(_inst(eload_id).measure_voltage(channel=channel))
+
+
+@command
+@broadcastable("eload", "eload_id")
+def preset(*, eload_id: EquipmentId) -> None:
+    """Return the instrument to a default preset.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    """
+    _logger.info("Presetting ELoad %s", eload_id)
+    _inst(eload_id).preset()
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_current(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
+    """Set constant-current level.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param current: Current in amperes. Valid settings and protection limits depend on the
+        instrument model and range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting current on ELoad %s channel %s to %s A", eload_id, channel, current)
+    _inst(eload_id).set_current(current, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
 def set_list_count(*, eload_id: EquipmentId, count: int, channel: int = 1) -> None:
     """Set list sequence step count.
 
@@ -362,6 +223,188 @@ def set_list_count(*, eload_id: EquipmentId, count: int, channel: int = 1) -> No
     """
     _logger.info("Setting list count on ELoad %s channel %s to %s", eload_id, channel, count)
     _inst(eload_id).set_list_count(count, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
+    """Set operating mode (CC, CV, CP, or CR per model).
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param mode: Load mode token: CC, CV, CP, or CR, subject to the selected driver's
+        capabilities.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting mode on ELoad %s channel %s to %s", eload_id, channel, mode)
+    _inst(eload_id).set_mode(mode, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
+    """Set over-current protection level.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param current: Current in amperes. Valid settings and protection limits depend on the
+        instrument model and range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting OCP on ELoad %s channel %s to %s A", eload_id, channel, current)
+    _inst(eload_id).set_ocp_a(current, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
+    """Set over-power protection level.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param power: Power in watts. Supported settings depend on the configured load and range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting OPP on ELoad %s channel %s to %s W", eload_id, channel, power)
+    _inst(eload_id).set_opp_w(power, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
+    """Set over-voltage protection level.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param voltage: Voltage in volts. Valid settings and protection limits depend on the
+        instrument model and output range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting OVP on ELoad %s channel %s to %s V", eload_id, channel, voltage)
+    _inst(eload_id).set_ovp_v(voltage, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
+    """Set constant-power level (use when load is in CP mode).
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param power: Power in watts. Supported settings depend on the configured load and range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting power on ELoad %s channel %s to %s W", eload_id, channel, power)
+    _inst(eload_id).set_power(power, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1) -> None:
+    """Set constant-resistance level (use when load is in CR mode).
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param resistance: Resistance in ohms. Supported settings depend on the configured load and
+        range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info(
+        "Setting resistance on ELoad %s channel %s to %s ohms",
+        eload_id,
+        channel,
+        resistance,
+    )
+    _inst(eload_id).set_resistance(resistance, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1) -> None:
+    """Set current slew rate.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param amps_per_s: Current slew rate in amperes per second; availability and range depend on
+        the model.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info(
+        "Setting slew rate on ELoad %s channel %s to %s A/s",
+        eload_id,
+        channel,
+        amps_per_s,
+    )
+    _inst(eload_id).set_slew_rate(amps_per_s, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_transient_level_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
+    """Set transient alternate current level.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param current: Current in amperes. Valid settings and protection limits depend on the
+        instrument model and range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info(
+        "Setting transient level on ELoad %s channel %s to %s A",
+        eload_id,
+        channel,
+        current,
+    )
+    _inst(eload_id).set_transient_level_a(current, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_transient_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
+    """Set transient generator mode.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param mode: Model-specific transient mode token; consult the load's command set before
+        enabling transients.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting transient mode on ELoad %s channel %s to %s", eload_id, channel, mode)
+    _inst(eload_id).set_transient_mode(mode, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_transient_timer_s(*, eload_id: EquipmentId, seconds: float, channel: int = 1) -> None:
+    """Set transient dwell / timer in seconds.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param seconds: Time in seconds. The configured model determines the accepted range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info(
+        "Setting transient timer on ELoad %s channel %s to %s s",
+        eload_id,
+        channel,
+        seconds,
+    )
+    _inst(eload_id).set_transient_timer_s(seconds, channel=channel)
+
+
+@command
+@broadcastable("eload", "eload_id")
+def set_voltage(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
+    """Set constant-voltage level.
+
+    :param eload_id: Configured ``equipment.eload`` ID.
+    :param voltage: Voltage in volts. Valid settings and protection limits depend on the
+        instrument model and output range.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    """
+    _logger.info("Setting voltage on ELoad %s channel %s to %s V", eload_id, channel, voltage)
+    _inst(eload_id).set_voltage(voltage, channel=channel)
 
 
 @command
@@ -383,77 +426,55 @@ def toggle_list(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> No
     _inst(eload_id).toggle_list(enabled, channel=channel)
 
 
-@measurement
-def measure_voltage(*, eload_id: int, channel: int = 1, key: str) -> float:
-    """Read input voltage.
+@command
+@broadcastable("eload", "eload_id")
+def toggle_short(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
+    """Enable or disable input short.
 
     :param eload_id: Configured ``equipment.eload`` ID.
+    :param enabled: True to enable the named feature; false to disable it.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded voltage in volts.
     """
-    _logger.info("Reading voltage from ELoad %s channel %s", eload_id, channel)
-    _ = key
-    return float(_inst(eload_id).measure_voltage(channel=channel))
+    _logger.info(
+        "%s short on ELoad %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        eload_id,
+        channel,
+    )
+    _inst(eload_id).toggle_short(enabled, channel=channel)
 
 
-verify_voltage = tolerance_verifier("measure_voltage", module=__name__, name="verify_voltage", unit="V")
-
-
-@measurement
-def measure_current(*, eload_id: int, channel: int = 1, key: str) -> float:
-    """Read input current.
+@command
+@broadcastable("eload", "eload_id")
+def toggle_transient(*, eload_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
+    """Enable or disable transient mode.
 
     :param eload_id: Configured ``equipment.eload`` ID.
+    :param enabled: True to enable the named feature; false to disable it.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded current in amperes.
     """
-    _logger.info("Reading current from ELoad %s channel %s", eload_id, channel)
-    _ = key
-    return float(_inst(eload_id).measure_current(channel=channel))
+    _logger.info(
+        "%s transient on ELoad %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        eload_id,
+        channel,
+    )
+    _inst(eload_id).toggle_transient(enabled, channel=channel)
 
 
 verify_current = tolerance_verifier("measure_current", module=__name__, name="verify_current", unit="A")
 
 
-@measurement
-def measure_power_w(*, eload_id: int, channel: int = 1, key: str) -> float:
-    """Read input power in watts.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded power w in watts.
-    """
-    _logger.info("Reading power from ELoad %s channel %s", eload_id, channel)
-    _ = key
-    return float(_inst(eload_id).measure_power_w(channel=channel))
+verify_input_state = tolerance_verifier(
+    "measure_input_state", module=__name__,
+    name="verify_input_state",
+    default_tolerance=0.0,
+)
 
 
 verify_power_w = tolerance_verifier("measure_power_w", module=__name__, name="verify_power_w", unit="W")
-
-
-@measurement
-def measure_resistance_ohm(*, eload_id: int, channel: int = 1, key: str) -> float:
-    """Read input resistance in ohms.
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded resistance ohm in ohms.
-    """
-    _logger.info("Reading resistance from ELoad %s channel %s", eload_id, channel)
-    _ = key
-    return float(_inst(eload_id).measure_resistance_ohm(channel=channel))
 
 
 verify_resistance_ohm = tolerance_verifier(
@@ -463,25 +484,4 @@ verify_resistance_ohm = tolerance_verifier(
 )
 
 
-@measurement
-def measure_input_state(*, eload_id: int, channel: int = 1, key: str) -> float:
-    """Read whether load input is engaged (``1.0`` / ``0.0``).
-
-    :param eload_id: Configured ``equipment.eload`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded input state: 1.0 engaged, 0.0 disengaged.
-    """
-    _logger.info("Reading input state from ELoad %s channel %s", eload_id, channel)
-    _ = key
-    engaged = _inst(eload_id).measure_input_state(channel=channel)
-    return 1.0 if engaged else 0.0
-
-
-verify_input_state = tolerance_verifier(
-    "measure_input_state", module=__name__,
-    name="verify_input_state",
-    default_tolerance=0.0,
-)
+verify_voltage = tolerance_verifier("measure_voltage", module=__name__, name="verify_voltage", unit="V")

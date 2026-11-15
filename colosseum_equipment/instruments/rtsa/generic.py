@@ -49,6 +49,8 @@ class GenericRtsa(ScpiInstrumentMixin):
             self.set_span(float(config["span"]))
         if "rbw" in config:
             self.set_bandwidth(float(config["rbw"]))
+        if "sample_rate_hz" in config:
+            self.set_sample_rate(float(config["sample_rate_hz"]))
 
     def preset(self) -> None:
         self._scpi.write("*RST")
@@ -68,6 +70,12 @@ class GenericRtsa(ScpiInstrumentMixin):
 
     def set_continuous_run(self, enabled: bool) -> None:
         self._scpi.write("INIT:CONT ON" if enabled else "INIT:CONT OFF")
+
+    def set_sample_rate(self, sample_rate_hz: float) -> None:
+        detail = "no documented independent IQ sample-rate setting"
+        if self._model.startswith("tektronix-"):
+            detail = "IQ sample rate follows acquisition bandwidth"
+        unsupported(self._model, "set_sample_rate", detail=detail)
 
     def set_num_samples(self, count: int) -> None:
         self._scpi.write(f"TRAC:IQ:POIN {int(count)}")
