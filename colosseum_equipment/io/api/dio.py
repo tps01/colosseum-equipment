@@ -52,31 +52,27 @@ def configure_pin(*, dio_id: int, line: int, output: bool) -> None:
     get_backend("dio", dio_id).configure_pin(line, output)
 
 
-@command
-def set_pull(*, dio_id: int, line: int, pull: PullMode) -> None:
-    """Configure pull-up, pull-down, or floating on an input line when supported.
+@measurement
+def read_pin(
+    *,
+    dio_id: int,
+    key: str,
+    line: int | None = None,
+    name: str | None = None,
+) -> bool:
+    """Read one GPIO line.
 
     :param dio_id: Configured ``io.dio`` ID.
-    :param line: Zero-based line index.
-    :param pull: ``up``, ``down``, or ``float``.
+    :param key: Unique measurement key within domain ``equipment``.
+    :param line: Line index (mutually exclusive with ``name``).
+    :param name: Named pin from bench ``pins`` map (mutually exclusive with ``line``).
+
+    :returns: Measured line level as bool.
     """
-    _logger.info("Setting pull on DIO %s line %s to %s", dio_id, line, pull)
-    get_backend("dio", dio_id).set_pull(line, pull)
-
-
-@command
-def write_port(*, dio_id: int, value: int) -> None:
-    """Write a port value.
-
-    Bits outside ``port_lines`` or configured outputs are rejected (not masked).
-
-    :param dio_id: Configured ``io.dio`` ID.
-    :param value: Port output bitmask.
-
-    :raises IoConfigError: Value has illegal bits for the current direction.
-    """
-    _logger.info("Writing %s to DIO %s port", value, dio_id)
-    get_backend("dio", dio_id).write_port(value)
+    _logger.info("Reading DIO %s line %s", dio_id, name if name is not None else line)
+    _ = key
+    resolved = resolve_pin_line(get_config("dio", dio_id), line=line, name=name)
+    return bool(get_backend("dio", dio_id).read_pin(resolved))
 
 
 @measurement
@@ -91,6 +87,18 @@ def read_port(*, dio_id: int, key: str) -> int:
     _logger.info("Reading DIO %s port", dio_id)
     _ = key
     return int(get_backend("dio", dio_id).read_port())
+
+
+@command
+def set_pull(*, dio_id: int, line: int, pull: PullMode) -> None:
+    """Configure pull-up, pull-down, or floating on an input line when supported.
+
+    :param dio_id: Configured ``io.dio`` ID.
+    :param line: Zero-based line index.
+    :param pull: ``up``, ``down``, or ``float``.
+    """
+    _logger.info("Setting pull on DIO %s line %s to %s", dio_id, line, pull)
+    get_backend("dio", dio_id).set_pull(line, pull)
 
 
 @command
@@ -120,24 +128,16 @@ def write_pin(
     get_backend("dio", dio_id).write_pin(resolved, value)
 
 
-@measurement
-def read_pin(
-    *,
-    dio_id: int,
-    key: str,
-    line: int | None = None,
-    name: str | None = None,
-) -> bool:
-    """Read one GPIO line.
+@command
+def write_port(*, dio_id: int, value: int) -> None:
+    """Write a port value.
+
+    Bits outside ``port_lines`` or configured outputs are rejected (not masked).
 
     :param dio_id: Configured ``io.dio`` ID.
-    :param key: Unique measurement key within domain ``equipment``.
-    :param line: Line index (mutually exclusive with ``name``).
-    :param name: Named pin from bench ``pins`` map (mutually exclusive with ``line``).
+    :param value: Port output bitmask.
 
-    :returns: Measured line level as bool.
+    :raises IoConfigError: Value has illegal bits for the current direction.
     """
-    _logger.info("Reading DIO %s line %s", dio_id, name if name is not None else line)
-    _ = key
-    resolved = resolve_pin_line(get_config("dio", dio_id), line=line, name=name)
-    return bool(get_backend("dio", dio_id).read_pin(resolved))
+    _logger.info("Writing %s to DIO %s port", value, dio_id)
+    get_backend("dio", dio_id).write_port(value)

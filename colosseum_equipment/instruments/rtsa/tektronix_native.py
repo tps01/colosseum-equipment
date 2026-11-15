@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 _SPECTRUM = (
+    "set_sample_rate",
     "set_center_freq",
     "set_span",
     "set_bandwidth",

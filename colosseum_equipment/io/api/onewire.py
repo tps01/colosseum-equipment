@@ -31,6 +31,20 @@ def configure(*, onewire_id: int, speed: str | None = None) -> dict[str, Any]:
     return dict(get_backend("onewire", onewire_id).configure(speed=speed))
 
 
+@measurement
+def read(*, onewire_id: int, nbytes: int, key: str) -> bytes:
+    """Read ``nbytes`` from the 1-Wire bus.
+
+    :param onewire_id: Configured ``io.onewire`` ID.
+    :param nbytes: Number of bytes to read.
+    :param key: Unique measurement key within domain ``equipment``.
+    :returns: Bytes read from the bus.
+    """
+    _logger.info("Reading %s bytes from 1-Wire %s", nbytes, onewire_id)
+    _ = key
+    return bytes(get_backend("onewire", onewire_id).read(nbytes))
+
+
 @command
 def reset(*, onewire_id: int, required: bool = False) -> bool:
     """Issue a 1-Wire reset and return whether a presence pulse was seen.
@@ -76,20 +90,6 @@ def write(*, onewire_id: int, data: bytes) -> None:
     """
     _logger.info("Writing %s bytes to 1-Wire %s", len(data), onewire_id)
     get_backend("onewire", onewire_id).write(bytes(data))
-
-
-@measurement
-def read(*, onewire_id: int, nbytes: int, key: str) -> bytes:
-    """Read ``nbytes`` from the 1-Wire bus.
-
-    :param onewire_id: Configured ``io.onewire`` ID.
-    :param nbytes: Number of bytes to read.
-    :param key: Unique measurement key within domain ``equipment``.
-    :returns: Bytes read from the bus.
-    """
-    _logger.info("Reading %s bytes from 1-Wire %s", nbytes, onewire_id)
-    _ = key
-    return bytes(get_backend("onewire", onewire_id).read(nbytes))
 
 
 @measurement

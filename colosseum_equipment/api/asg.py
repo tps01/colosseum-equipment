@@ -32,6 +32,89 @@ def _inst(asg_id: EquipmentId) -> Any:
     return get_cached_instrument("asg", require_int_id(asg_id, kind="asg"))
 
 
+@measurement
+def get_load_ohms(*, asg_id: int, channel: int = 1, key: str) -> float:
+    """Read configured output load impedance in ohms.
+
+    :param asg_id: Configured ``equipment.asg`` ID.
+
+    :param channel: Source channel index (1-based).
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+
+    :returns: Load resistance in ohms.
+    :rtype: float
+    """
+    _logger.info("Reading load from ASG %s channel %s", asg_id, channel)
+    _ = key
+    return float(_inst(asg_id).get_load_ohms(channel=channel))
+
+
+@command
+@broadcastable("asg", "asg_id")
+def set_amplitude_vpp(*, asg_id: EquipmentId, vpp: float, channel: int = 1) -> None:
+    """Set output amplitude in volts peak-to-peak.
+
+    :param asg_id: Configured ``equipment.asg`` ID.
+
+    :param vpp: Amplitude in Vpp.
+
+    :param channel: Source channel index (1-based).
+    """
+    _logger.info("Setting amplitude on ASG %s channel %s to %s Vpp", asg_id, channel, vpp)
+    _inst(asg_id).set_amplitude_vpp(vpp, channel=channel)
+
+
+@command
+@broadcastable("asg", "asg_id")
+def set_amplitude_vrms(*, asg_id: EquipmentId, vrms: float, channel: int = 1) -> None:
+    """Set output amplitude in volts RMS.
+
+    :param asg_id: Configured ``equipment.asg`` ID.
+
+    :param vrms: Amplitude in Vrms.
+
+    :param channel: Source channel index (1-based).
+    """
+    _logger.info("Setting amplitude on ASG %s channel %s to %s Vrms", asg_id, channel, vrms)
+    _inst(asg_id).set_amplitude_vrms(vrms, channel=channel)
+
+
+@command
+@broadcastable("asg", "asg_id")
+def set_burst_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
+    """Enable or disable burst mode on a source channel.
+
+    :param asg_id: Configured ``equipment.asg`` ID.
+
+    :param enabled: ``True`` to enable burst.
+
+    :param channel: Source channel index (1-based).
+    """
+    _logger.info(
+        "%s burst on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
+    _inst(asg_id).set_burst_state(enabled, channel=channel)
+
+
+@command
+@broadcastable("asg", "asg_id")
+def set_duty_cycle_pct(*, asg_id: EquipmentId, pct: float, channel: int = 1) -> None:
+    """Set square-wave duty cycle in percent.
+
+    :param asg_id: Configured ``equipment.asg`` ID.
+
+    :param pct: Duty cycle 0–100.
+
+    :param channel: Source channel index (1-based).
+    """
+    _logger.info("Setting duty cycle on ASG %s channel %s to %s %%", asg_id, channel, pct)
+    _inst(asg_id).set_duty_cycle_pct(pct, channel=channel)
+
+
 @command
 @broadcastable("asg", "asg_id")
 def set_frequency(
@@ -68,47 +151,37 @@ def set_frequency(
 
 @command
 @broadcastable("asg", "asg_id")
-def set_waveform(*, asg_id: EquipmentId, waveform: str, channel: int = 1) -> None:
-    """Set output waveform (``sine``, ``square``, ``ramp``, ``pulse``, ``noise``, ``arb``).
+def set_load_ohms(*, asg_id: EquipmentId, ohms: float, channel: int = 1) -> None:
+    """Set output load impedance in ohms.
 
     :param asg_id: Configured ``equipment.asg`` ID.
 
-    :param waveform: Waveform name.
+    :param ohms: Load resistance in ohms.
 
     :param channel: Source channel index (1-based).
     """
-    _logger.info("Setting waveform on ASG %s channel %s to %s", asg_id, channel, waveform)
-    _inst(asg_id).set_waveform(waveform, channel=channel)
+    _logger.info("Setting load on ASG %s channel %s to %s ohms", asg_id, channel, ohms)
+    _inst(asg_id).set_load_ohms(ohms, channel=channel)
 
 
 @command
 @broadcastable("asg", "asg_id")
-def set_amplitude_vpp(*, asg_id: EquipmentId, vpp: float, channel: int = 1) -> None:
-    """Set output amplitude in volts peak-to-peak.
+def set_modulation_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
+    """Enable or disable AM modulation on a source channel.
 
     :param asg_id: Configured ``equipment.asg`` ID.
 
-    :param vpp: Amplitude in Vpp.
+    :param enabled: ``True`` to enable modulation.
 
     :param channel: Source channel index (1-based).
     """
-    _logger.info("Setting amplitude on ASG %s channel %s to %s Vpp", asg_id, channel, vpp)
-    _inst(asg_id).set_amplitude_vpp(vpp, channel=channel)
-
-
-@command
-@broadcastable("asg", "asg_id")
-def set_amplitude_vrms(*, asg_id: EquipmentId, vrms: float, channel: int = 1) -> None:
-    """Set output amplitude in volts RMS.
-
-    :param asg_id: Configured ``equipment.asg`` ID.
-
-    :param vrms: Amplitude in Vrms.
-
-    :param channel: Source channel index (1-based).
-    """
-    _logger.info("Setting amplitude on ASG %s channel %s to %s Vrms", asg_id, channel, vrms)
-    _inst(asg_id).set_amplitude_vrms(vrms, channel=channel)
+    _logger.info(
+        "%s modulation on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
+    _inst(asg_id).set_modulation_state(enabled, channel=channel)
 
 
 @command
@@ -128,35 +201,22 @@ def set_offset_v(*, asg_id: EquipmentId, offset_v: float, channel: int = 1) -> N
 
 @command
 @broadcastable("asg", "asg_id")
-def set_load_ohms(*, asg_id: EquipmentId, ohms: float, channel: int = 1) -> None:
-    """Set output load impedance in ohms.
+def set_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
+    """Enable or disable RF output.
 
     :param asg_id: Configured ``equipment.asg`` ID.
 
-    :param ohms: Load resistance in ohms.
+    :param enabled: ``True`` to enable RF output, ``False`` to disable.
 
     :param channel: Source channel index (1-based).
     """
-    _logger.info("Setting load on ASG %s channel %s to %s ohms", asg_id, channel, ohms)
-    _inst(asg_id).set_load_ohms(ohms, channel=channel)
-
-
-@measurement
-def get_load_ohms(*, asg_id: int, channel: int = 1, key: str) -> float:
-    """Read configured output load impedance in ohms.
-
-    :param asg_id: Configured ``equipment.asg`` ID.
-
-    :param channel: Source channel index (1-based).
-
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-
-    :returns: Load resistance in ohms.
-    :rtype: float
-    """
-    _logger.info("Reading load from ASG %s channel %s", asg_id, channel)
-    _ = key
-    return float(_inst(asg_id).get_load_ohms(channel=channel))
+    _logger.info(
+        "%s output on ASG %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        asg_id,
+        channel,
+    )
+    _inst(asg_id).set_output(enabled, channel=channel)
 
 
 @command
@@ -195,77 +255,32 @@ def set_power(
 
 @command
 @broadcastable("asg", "asg_id")
-def set_duty_cycle_pct(*, asg_id: EquipmentId, pct: float, channel: int = 1) -> None:
-    """Set square-wave duty cycle in percent.
+def set_pulse_period(*, asg_id: EquipmentId, period_s: float, channel: int = 1) -> None:
+    """Set pulse period in seconds.
 
     :param asg_id: Configured ``equipment.asg`` ID.
 
-    :param pct: Duty cycle 0–100.
+    :param period_s: Pulse period in seconds.
 
     :param channel: Source channel index (1-based).
     """
-    _logger.info("Setting duty cycle on ASG %s channel %s to %s %%", asg_id, channel, pct)
-    _inst(asg_id).set_duty_cycle_pct(pct, channel=channel)
+    _logger.info("Setting pulse period on ASG %s channel %s to %s s", asg_id, channel, period_s)
+    _inst(asg_id).set_pulse_period(period_s, channel=channel)
 
 
 @command
 @broadcastable("asg", "asg_id")
-def set_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
-    """Enable or disable RF output.
+def set_pulse_width(*, asg_id: EquipmentId, width_s: float, channel: int = 1) -> None:
+    """Set pulse width in seconds.
 
     :param asg_id: Configured ``equipment.asg`` ID.
 
-    :param enabled: ``True`` to enable RF output, ``False`` to disable.
+    :param width_s: Pulse width in seconds.
 
     :param channel: Source channel index (1-based).
     """
-    _logger.info(
-        "%s output on ASG %s channel %s",
-        "Enabling" if enabled else "Disabling",
-        asg_id,
-        channel,
-    )
-    _inst(asg_id).set_output(enabled, channel=channel)
-
-
-@command
-@broadcastable("asg", "asg_id")
-def set_modulation_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
-    """Enable or disable AM modulation on a source channel.
-
-    :param asg_id: Configured ``equipment.asg`` ID.
-
-    :param enabled: ``True`` to enable modulation.
-
-    :param channel: Source channel index (1-based).
-    """
-    _logger.info(
-        "%s modulation on ASG %s channel %s",
-        "Enabling" if enabled else "Disabling",
-        asg_id,
-        channel,
-    )
-    _inst(asg_id).set_modulation_state(enabled, channel=channel)
-
-
-@command
-@broadcastable("asg", "asg_id")
-def set_burst_state(*, asg_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
-    """Enable or disable burst mode on a source channel.
-
-    :param asg_id: Configured ``equipment.asg`` ID.
-
-    :param enabled: ``True`` to enable burst.
-
-    :param channel: Source channel index (1-based).
-    """
-    _logger.info(
-        "%s burst on ASG %s channel %s",
-        "Enabling" if enabled else "Disabling",
-        asg_id,
-        channel,
-    )
-    _inst(asg_id).set_burst_state(enabled, channel=channel)
+    _logger.info("Setting pulse width on ASG %s channel %s to %s s", asg_id, channel, width_s)
+    _inst(asg_id).set_pulse_width(width_s, channel=channel)
 
 
 @command
@@ -310,29 +325,14 @@ def set_pulsemod_output(*, asg_id: EquipmentId, enabled: bool, channel: int = 1)
 
 @command
 @broadcastable("asg", "asg_id")
-def set_pulse_period(*, asg_id: EquipmentId, period_s: float, channel: int = 1) -> None:
-    """Set pulse period in seconds.
+def set_waveform(*, asg_id: EquipmentId, waveform: str, channel: int = 1) -> None:
+    """Set output waveform (``sine``, ``square``, ``ramp``, ``pulse``, ``noise``, ``arb``).
 
     :param asg_id: Configured ``equipment.asg`` ID.
 
-    :param period_s: Pulse period in seconds.
+    :param waveform: Waveform name.
 
     :param channel: Source channel index (1-based).
     """
-    _logger.info("Setting pulse period on ASG %s channel %s to %s s", asg_id, channel, period_s)
-    _inst(asg_id).set_pulse_period(period_s, channel=channel)
-
-
-@command
-@broadcastable("asg", "asg_id")
-def set_pulse_width(*, asg_id: EquipmentId, width_s: float, channel: int = 1) -> None:
-    """Set pulse width in seconds.
-
-    :param asg_id: Configured ``equipment.asg`` ID.
-
-    :param width_s: Pulse width in seconds.
-
-    :param channel: Source channel index (1-based).
-    """
-    _logger.info("Setting pulse width on ASG %s channel %s to %s s", asg_id, channel, width_s)
-    _inst(asg_id).set_pulse_width(width_s, channel=channel)
+    _logger.info("Setting waveform on ASG %s channel %s to %s", asg_id, channel, waveform)
+    _inst(asg_id).set_waveform(waveform, channel=channel)

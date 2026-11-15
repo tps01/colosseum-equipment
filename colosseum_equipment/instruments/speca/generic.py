@@ -4,19 +4,20 @@ import contextlib
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentTimeoutError
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
-from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+from colosseum_equipment.instruments.speca.bandwidth import BandwidthMethod, RefPowerMethod, bandwidth_edges_hz
 from colosseum_equipment.instruments.speca.trace_csv import (
     frequency_axis,
     parse_trace_amplitudes,
     read_trace_power_at_frequency,
     write_trace_csv,
 )
-from colosseum_equipment.instruments.speca.trace_plot import read_trace_csv, write_trace_plot
+from colosseum_equipment.instruments.speca.trace_plot import _write_trace_plot, read_trace_csv, write_trace_plot
 from colosseum_equipment.protocols.scpi import SCPIHelper, prepare_fast_sweep, wait_opc
 
 if TYPE_CHECKING:
@@ -284,42 +285,81 @@ class GenericSpecA:
         start_hz: float,
         stop_hz: float,
         *,
-        threshold_db: float = 3.0,
+        threshold_db: float | None = None,
         smoothing_order: int = 0,
         trace: int = 1,
         trace_path: str | Path | None = None,
+        method: BandwidthMethod | None = None,
+        occupied_power_pct: float | None = None,
+        ref_pwr_meas_method: RefPowerMethod = "max",
+        plot_kind: str = "",
+        key: str = "",
     ) -> tuple[float, float]:
         path = Path(trace_path) if trace_path is not None else getattr(self, "_last_trace_path", None)
         if path is not None:
             frequencies, amplitudes = read_trace_csv(path)
         else:
             frequencies, amplitudes = self._fetch_trace(trace, include_frequency=True)
-        return bandwidth_edges_hz(
+        left, right = bandwidth_edges_hz(
             frequencies,
             amplitudes,
             start_hz=start_hz,
             stop_hz=stop_hz,
             threshold_db=threshold_db,
             smoothing_order=smoothing_order,
+            method=method,
+            occupied_power_pct=occupied_power_pct,
+            ref_pwr_meas_method=ref_pwr_meas_method,
         )
+        if plot_kind:
+            token = uuid4().hex
+            png_path = resolve_artifact_path(f"plots/speca_{plot_kind}_{token}.png")
+            center = (left + right) / 2
+            _write_trace_plot(
+                frequencies, amplitudes, png_path,
+                center_hz=center if plot_kind == "center_frequency" else None,
+                edges_hz=(left, right) if plot_kind == "bandwidth" else None,
+            )
+            record_artifact(
+                domain="equipment", command=f"speca_{plot_kind}_plot", key=f"{key}_plot_{token}", path=png_path,
+                value={"source_key": key, "method": method or "threshold", "left_hz": left, "right_hz": right,
+                       "ref_pwr_meas_method": ref_pwr_meas_method if method is None else None,
+                       "threshold_db": (3.0 if threshold_db is None else threshold_db) if method is None else None,
+                       "occupied_power_pct": (99.0 if occupied_power_pct is None else occupied_power_pct)
+                       if method == "occupied_power" else None,
+                       "value": center if plot_kind == "center_frequency" else right - left},
+            )
+        return left, right
 
     def measure_bw(
-        self, start_hz: float, stop_hz: float, *, threshold_db: float = 3.0,
+        self, start_hz: float, stop_hz: float, *, threshold_db: float | None = None,
         smoothing_order: int = 0, trace: int = 1, trace_path: str | Path | None = None,
+        method: BandwidthMethod | None = None, occupied_power_pct: float | None = None,
+        save_plot: bool = False, key: str = "",
+        ref_pwr_meas_method: RefPowerMethod = "max",
     ) -> float:
         left, right = self._bandwidth_edges(
             start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
             trace=trace, trace_path=trace_path,
+            method=method, occupied_power_pct=occupied_power_pct,
+            ref_pwr_meas_method=ref_pwr_meas_method,
+            plot_kind="bandwidth" if save_plot else "", key=key,
         )
         return max(0.0, right - left)
 
     def measure_center_frequency_hz(
-        self, start_hz: float, stop_hz: float, *, threshold_db: float = 3.0,
+        self, start_hz: float, stop_hz: float, *, threshold_db: float | None = None,
         smoothing_order: int = 0, trace: int = 1, trace_path: str | Path | None = None,
+        method: BandwidthMethod | None = None, occupied_power_pct: float | None = None,
+        save_plot: bool = False, key: str = "",
+        ref_pwr_meas_method: RefPowerMethod = "max",
     ) -> float:
         left, right = self._bandwidth_edges(
             start_hz, stop_hz, threshold_db=threshold_db, smoothing_order=smoothing_order,
             trace=trace, trace_path=trace_path,
+            method=method, occupied_power_pct=occupied_power_pct,
+            ref_pwr_meas_method=ref_pwr_meas_method,
+            plot_kind="center_frequency" if save_plot else "", key=key,
         )
         return (left + right) / 2.0
 

@@ -47,6 +47,21 @@ def configure(
     )
 
 
+@measurement
+def read(*, i2c_id: int, nbytes: int, key: str) -> bytes:
+    """Read bytes from the configured I2C slave.
+
+    :param i2c_id: Configured ``io.i2c`` ID.
+    :param nbytes: Number of bytes to read.
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :returns: Received payload bytes.
+    """
+    _logger.info("Reading %s bytes from I2C %s", nbytes, i2c_id)
+    _ = key
+    return bytes(get_backend("i2c", i2c_id).read(nbytes))
+
+
 @command
 def set_pullup(*, i2c_id: int, enabled: bool) -> None:
     """Enable or disable the adapter I2C pull-ups when supported.
@@ -67,21 +82,6 @@ def write(*, i2c_id: int, data: bytes) -> None:
     """
     _logger.info("Writing %s bytes to I2C %s", len(data), i2c_id)
     get_backend("i2c", i2c_id).write(bytes(data))
-
-
-@measurement
-def read(*, i2c_id: int, nbytes: int, key: str) -> bytes:
-    """Read bytes from the configured I2C slave.
-
-    :param i2c_id: Configured ``io.i2c`` ID.
-    :param nbytes: Number of bytes to read.
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :returns: Received payload bytes.
-    """
-    _logger.info("Reading %s bytes from I2C %s", nbytes, i2c_id)
-    _ = key
-    return bytes(get_backend("i2c", i2c_id).read(nbytes))
 
 
 @measurement

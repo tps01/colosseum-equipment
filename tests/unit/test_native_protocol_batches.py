@@ -239,6 +239,23 @@ def open_rsa(monkeypatch, tmp_path, library=None, **config):
     return dev, library
 
 
+@pytest.mark.parametrize("configured_rate", [None, 1000.0, 2000.0])
+def test_rsa_sample_rate_setting_refused_and_config_remains_a_check(monkeypatch, tmp_path, configured_rate):
+    config = {} if configured_rate is None else {"sample_rate_hz": configured_rate}
+    if configured_rate == 2000.0:
+        with pytest.raises(EquipmentCapabilityError, match="IQ bandwidth"):
+            open_rsa(monkeypatch, tmp_path, **config)
+        return
+    dev, library = open_rsa(monkeypatch, tmp_path, **config)
+    try:
+        before = list(library.calls)
+        with pytest.raises(EquipmentCapabilityError, match="acquisition bandwidth"):
+            dev.set_sample_rate(2000.0)
+        assert library.calls == before
+    finally:
+        dev.close()
+
+
 def test_rsa_direct_api_captures_actual_iq_and_preserves_float64_save_contract(monkeypatch, tmp_path, unit_runtime_context):
     dev, library = open_rsa(monkeypatch, tmp_path, num_samples=4)
     try:

@@ -21,6 +21,34 @@ from colosseum_equipment.connections import get_cached_instrument
 _logger = get_logger("colosseum.equipment")
 
 
+@measurement
+def measure_path(*, rfswitch_id: int, key: str) -> str:
+    """Read the active routing path string.
+
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+        Must not collide with another instrument's measurement using the same command name.
+
+    :returns: Measured path string.
+    :rtype: str
+    """
+    _logger.info("Reading path from RF switch %s", rfswitch_id)
+    _ = key
+    return str(get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).measure_path())
+
+
+@command
+@broadcastable("rfswitch", "rfswitch_id")
+def preset(*, rfswitch_id: EquipmentId) -> None:
+    """Return the switch to a default preset.
+
+    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
+    """
+    _logger.info("Presetting RF switch %s", rfswitch_id)
+    get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).preset()
+
+
 @command
 @broadcastable("rfswitch", "rfswitch_id")
 def set_path(*, rfswitch_id: EquipmentId, path: str, wait_settle_s: float | None = None) -> None:
@@ -75,31 +103,3 @@ def wait_settle(*, rfswitch_id: int, settle_s: float | None = None) -> None:
     """
     _logger.info("Waiting for RF switch %s to settle", rfswitch_id)
     get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).wait_settle(settle_s=settle_s)
-
-
-@command
-@broadcastable("rfswitch", "rfswitch_id")
-def preset(*, rfswitch_id: EquipmentId) -> None:
-    """Return the switch to a default preset.
-
-    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
-    """
-    _logger.info("Presetting RF switch %s", rfswitch_id)
-    get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).preset()
-
-
-@measurement
-def measure_path(*, rfswitch_id: int, key: str) -> str:
-    """Read the active routing path string.
-
-    :param rfswitch_id: Configured ``equipment.rfswitch`` ID.
-
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
-
-    :returns: Measured path string.
-    :rtype: str
-    """
-    _logger.info("Reading path from RF switch %s", rfswitch_id)
-    _ = key
-    return str(get_cached_instrument("rfswitch", require_int_id(rfswitch_id, kind="rfswitch")).measure_path())
