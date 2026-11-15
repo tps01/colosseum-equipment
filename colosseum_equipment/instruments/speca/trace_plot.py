@@ -43,12 +43,19 @@ def read_trace_csv(path: Path) -> tuple[list[float], list[float]]:
 
 
 def write_trace_plot(csv_path: Path, plot_path: Path) -> None:
+    frequencies, amplitudes = read_trace_csv(csv_path)
+    _write_trace_plot(frequencies, amplitudes, plot_path)
+
+
+def _write_trace_plot(
+    frequencies: list[float], amplitudes: list[float], plot_path: Path, *,
+    center_hz: float | None = None, edges_hz: tuple[float, float] | None = None,
+) -> None:
     import matplotlib as mpl
 
     mpl.use("Agg")
     import matplotlib.pyplot as plt
 
-    frequencies, amplitudes = read_trace_csv(csv_path)
     x_values = frequencies if frequencies else list(range(len(amplitudes)))
     x_label = "Frequency (Hz)" if frequencies else "Index"
     y_label = "Amplitude (dBm)" if frequencies else "Value"
@@ -57,6 +64,13 @@ def write_trace_plot(csv_path: Path, plot_path: Path) -> None:
     figure, axis = plt.subplots(figsize=(8, 4))
     try:
         axis.plot(x_values, amplitudes)
+        if center_hz is not None:
+            import numpy as np
+
+            axis.plot(center_hz, float(np.interp(center_hz, frequencies, amplitudes)), "o", color="tab:red")
+        if edges_hz is not None:
+            for edge in edges_hz:
+                axis.axvline(edge, color="tab:red")
         axis.set_xlabel(x_label)
         axis.set_ylabel(y_label)
         axis.grid(True, alpha=0.3)

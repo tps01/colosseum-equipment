@@ -27,18 +27,6 @@ _logger = get_logger("colosseum.equipment")
 
 
 @command
-def wait_for_fix(*, gnss_id: int, timeout_s: float) -> None:
-    """Block until the receiver reports a valid fix or ``timeout_s`` elapses.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
-        completed.
-    """
-    _logger.info("Waiting up to %s s for a fix on GNSS %s", timeout_s, gnss_id)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).wait_for_fix(timeout_s)
-
-
-@command
 @broadcastable("gnss", "gnss_id")
 def cold_start(*, gnss_id: EquipmentId) -> None:
     """Clear navigation data and force a cold acquisition (vendor-specific).
@@ -50,14 +38,52 @@ def cold_start(*, gnss_id: EquipmentId) -> None:
 
 
 @command
-@broadcastable("gnss", "gnss_id")
-def mark_acquisition_start(*, gnss_id: EquipmentId) -> None:
-    """Mark T0 for TTFF measurement without issuing a cold start.
+def get_constellations_present(*, gnss_id: int, max_age_s: float = 5.0) -> list[str]:
+    """Return constellation names present in the recent sky view.
 
     :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Sorted list of constellation names in the recent sky view.
     """
-    _logger.info("Marking acquisition start on GNSS %s", gnss_id)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).mark_acquisition_start()
+    _logger.info("Reading constellations from GNSS %s", gnss_id)
+    return list(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_constellations_present(
+            max_age_s=max_age_s,
+        ),
+    )
+
+
+@command
+def get_fix_type(*, gnss_id: int, max_age_s: float = 5.0) -> str:
+    """Return fix type string: ``none`` / ``2d`` / ``3d``.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Fix type string: none, 2d, or 3d.
+    """
+    _logger.info("Reading fix type from GNSS %s", gnss_id)
+    return str(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_fix_type(max_age_s=max_age_s))
+
+
+@command
+def get_satellite_snapshot(*, gnss_id: int, max_age_s: float = 5.0) -> list[dict[str, Any]]:
+    """Return the current sky view (works without a position fix).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: List of satellite dictionaries with identity, elevation/azimuth, C/N0, used-in-fix
+        flag, and data age.
+    """
+    _logger.info("Reading satellite snapshot from GNSS %s", gnss_id)
+    return list(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_satellite_snapshot(max_age_s=max_age_s),
+    )
 
 
 @command
@@ -75,6 +101,440 @@ def load_config(*, gnss_id: EquipmentId, path: str) -> None:
     """
     _logger.info("Loading GNSS %s config from %s", gnss_id, path)
     get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).load_config(path)
+
+
+@command
+@broadcastable("gnss", "gnss_id")
+def mark_acquisition_start(*, gnss_id: EquipmentId) -> None:
+    """Mark T0 for TTFF measurement without issuing a cold start.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    """
+    _logger.info("Marking acquisition start on GNSS %s", gnss_id)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).mark_acquisition_start()
+
+
+@measurement
+def measure_altitude_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure altitude in meters MSL when reported.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded altitude m in meters.
+    """
+    _logger.info("Reading altitude from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_altitude_m(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_cn0_dbhz(
+    *,
+    gnss_id: int,
+    key: str,
+    prn: int,
+    constellation: str = "GPS",
+    max_age_s: float = 5.0,
+) -> float:
+    """Measure C/N0 for one PRN within a constellation.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param prn: Satellite PRN identifier used by the receiver constellation.
+    :param constellation: Constellation name used by the receiver; None allows any matching
+        constellation. Default: ``'GPS'``.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded cn0 dbhz in dB-Hz.
+    """
+    _logger.info("Reading C/N0 from GNSS %s %s PRN %s", gnss_id, constellation, prn)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_cn0_dbhz(
+            prn,
+            constellation=constellation,
+            max_age_s=max_age_s,
+        ),
+    )
+
+
+@measurement
+def measure_course_deg(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure true course in degrees.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded course deg in degrees.
+    """
+    _logger.info("Reading course from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_course_deg(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_data_age_s(*, gnss_id: int, key: str) -> float:
+    """Measure age of the cached fix in seconds.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded data age s in seconds.
+    """
+    _logger.info("Reading data age from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_data_age_s())
+
+
+@measurement
+def measure_fix_availability(*, gnss_id: int, key: str) -> float:
+    """Measure fraction of logging epochs with a valid fix (0..1).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded fix availability in a fraction from 0 to 1.
+    """
+    _logger.info("Reading fix availability from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_availability())
+
+
+@measurement
+def measure_fix_quality(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure NMEA GGA quality / UBX fix type code.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded NMEA quality or UBX fix-type code as a float; interpret it according to
+        the receiver protocol.
+    """
+    _logger.info("Reading fix quality from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_quality(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_gdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure geometric dilution of precision when the model reports it.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded geometric dilution of precision (dimensionless).
+    """
+    _logger.info("Reading GDOP from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_gdop(max_age_s=max_age_s))
+
+
+@measurement
+def measure_geoid_separation_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure geoid separation in meters from GGA when present.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded geoid separation m in meters.
+    """
+    _logger.info("Reading geoid separation from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_geoid_separation_m(
+            max_age_s=max_age_s,
+        ),
+    )
+
+
+@measurement
+def measure_h_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure horizontal accuracy estimate in meters (binary protocols).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded h acc m in meters.
+    """
+    _logger.info("Reading horizontal accuracy from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_h_acc_m(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_hdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure true horizontal dilution of precision (GSA / NAV-DOP / GGA).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded horizontal dilution of precision (dimensionless).
+    """
+    _logger.info("Reading HDOP from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_hdop(max_age_s=max_age_s))
+
+
+@measurement
+def measure_latitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure latitude in decimal degrees (freshness-gated).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded latitude in degrees north.
+    """
+    _logger.info("Reading latitude from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_latitude(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_longest_outage_s(*, gnss_id: int, key: str) -> float:
+    """Measure longest no-fix outage observed in the logging window.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded longest outage s in seconds.
+    """
+    _logger.info("Reading longest outage from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longest_outage_s())
+
+
+@measurement
+def measure_longitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure longitude in decimal degrees (freshness-gated).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded longitude in degrees east.
+    """
+    _logger.info("Reading longitude from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longitude(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_max_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure maximum C/N0 (dB-Hz) across the recent sky view.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded max cn0 dbhz in dB-Hz.
+    """
+    _logger.info("Reading max C/N0 from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_max_cn0_dbhz(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_mean_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure mean C/N0 (dB-Hz) across satellites with SNR > 0.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded mean cn0 dbhz in dB-Hz.
+    """
+    _logger.info("Reading mean C/N0 from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_mean_cn0_dbhz(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_pdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure position dilution of precision.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded position dilution of precision (dimensionless).
+    """
+    _logger.info("Reading PDOP from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_pdop(max_age_s=max_age_s))
+
+
+@measurement
+def measure_reacquisition_s(*, gnss_id: int, key: str) -> float:
+    """Measure time from first outage end to reacquisition.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded reacquisition s in seconds.
+    """
+    _logger.info("Reading reacquisition time from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_reacquisition_s())
+
+
+@measurement
+def measure_satellites(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure satellites used in the solution.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded number of satellites used in the current solution, as a float.
+    """
+    _logger.info("Reading satellites used from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure satellites visible in the recent sky view (no fix required).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded number of satellites in the recent sky view, as a float.
+    """
+    _logger.info("Reading visible satellites from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites_visible(
+            max_age_s=max_age_s,
+        ),
+    )
+
+
+@measurement
+def measure_speed_m_s(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure ground speed in m/s from RMC/VTG/NAV-PVT.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded speed m s in meters per second.
+    """
+    _logger.info("Reading speed from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_speed_m_s(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_ttff_s(*, gnss_id: int, key: str) -> float:
+    """Measure time-to-first-fix since cold_start / mark_acquisition_start.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded ttff s in seconds.
+    """
+    _logger.info("Reading time to first fix from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_ttff_s())
+
+
+@measurement
+def measure_utc_time(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> str:
+    """Measure UTC time as an ISO-8601 string when available.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded UTC time as an ISO-8601 string.
+    """
+    _logger.info("Reading UTC time from GNSS %s", gnss_id)
+    _ = key
+    return str(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_utc_time(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_v_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure vertical accuracy estimate in meters (binary protocols).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded v acc m in meters.
+    """
+    _logger.info("Reading vertical accuracy from GNSS %s", gnss_id)
+    _ = key
+    return float(
+        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_v_acc_m(max_age_s=max_age_s),
+    )
+
+
+@measurement
+def measure_vdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
+    """Measure vertical dilution of precision.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param key: Unique evidence key for this measurement.
+    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
+        or unavailable data cannot establish a current fix.
+
+    :returns: Recorded vertical dilution of precision (dimensionless).
+    """
+    _logger.info("Reading VDOP from GNSS %s", gnss_id)
+    _ = key
+    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_vdop(max_age_s=max_age_s))
 
 
 @command
@@ -97,6 +557,88 @@ def save_config(*, gnss_id: int, path: str) -> None:
 
 
 @command
+def save_deviation_plot(
+    *,
+    gnss_id: int,
+    path: str,
+    ref_lat: float | None = None,
+    ref_lon: float | None = None,
+) -> None:
+    """Save an east/north deviation scatter about mean or a supplied reference.
+
+    :param gnss_id: Integer ID from the configured equipment.gnss row.
+    :param path: Destination PNG path under the run output directory.
+    :param ref_lat: Optional reference latitude (deg). Default: mean of fix samples.
+    :param ref_lon: Optional reference longitude (deg). Default: mean of fix samples.
+    """
+    _logger.info("Saving deviation plot from GNSS %s to %s", gnss_id, path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_deviation_plot(
+        path,
+        ref_lat=ref_lat,
+        ref_lon=ref_lon,
+    )
+
+
+@command
+def save_quality_plot(*, gnss_id: int, path: str) -> None:
+    """Save DOP / satellite / C/N0 quality PNG.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param path: Destination file path, absolute or relative to the active run output directory;
+        requires artifacts enabled.
+    """
+    _logger.info("Saving quality plot from GNSS %s to %s", gnss_id, path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_quality_plot(path)
+
+
+@command
+def save_signal_levels_plot(*, gnss_id: int, path: str) -> None:
+    """Save a per-satellite C/N0 bar chart from the current sky snapshot.
+
+    :param gnss_id: Integer ID from the configured equipment.gnss row.
+    :param path: Destination PNG path under the run output directory.
+    """
+    _logger.info("Saving signal-level plot from GNSS %s to %s", gnss_id, path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_signal_levels_plot(path)
+
+
+@command
+def save_skyplot(*, gnss_id: int, path: str) -> None:
+    """Save a polar skyplot PNG (marker size/color from C/N0).
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param path: Destination file path, absolute or relative to the active run output directory;
+        requires artifacts enabled.
+    """
+    _logger.info("Saving sky plot from GNSS %s to %s", gnss_id, path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_skyplot(path)
+
+
+@command
+def save_track_plot(*, gnss_id: int, path: str) -> None:
+    """Save a lat/lon track PNG from the current logged session.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param path: Destination file path, absolute or relative to the active run output directory;
+        requires artifacts enabled.
+    """
+    _logger.info("Saving track plot from GNSS %s to %s", gnss_id, path)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_track_plot(path)
+
+
+@command
+@broadcastable("gnss", "gnss_id")
+def set_message_profile(*, gnss_id: EquipmentId, messages: str = "default") -> None:
+    """Enable a named message profile (``default`` / ``nmea`` / ``field`` / ``sat`` / ``all``).
+
+    :param gnss_id: Integer ID from the configured equipment.gnss row.
+    :param messages: Profile name. Default ``default`` is the light fix/DOP/sky baseline.
+    """
+    _logger.info("Setting message profile on GNSS %s to %s", gnss_id, messages)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).set_message_profile(messages)
+
+
+@command
 @broadcastable("gnss", "gnss_id")
 def set_message_rate(*, gnss_id: EquipmentId, message: str, rate_hz: float) -> None:
     """Enable/disable or set the rate of a named receiver message.
@@ -111,18 +653,6 @@ def set_message_rate(*, gnss_id: EquipmentId, message: str, rate_hz: float) -> N
     """
     _logger.info("Setting message %s rate on GNSS %s to %s Hz", message, gnss_id, rate_hz)
     get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).set_message_rate(message, rate_hz)
-
-
-@command
-@broadcastable("gnss", "gnss_id")
-def set_message_profile(*, gnss_id: EquipmentId, messages: str = "default") -> None:
-    """Enable a named message profile (``default`` / ``nmea`` / ``field`` / ``sat`` / ``all``).
-
-    :param gnss_id: Integer ID from the configured equipment.gnss row.
-    :param messages: Profile name. Default ``default`` is the light fix/DOP/sky baseline.
-    """
-    _logger.info("Setting message profile on GNSS %s to %s", gnss_id, messages)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).set_message_profile(messages)
 
 
 @command
@@ -165,709 +695,7 @@ def stop_logging(*, gnss_id: EquipmentId) -> None:
     get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).stop_logging()
 
 
-@command
-def save_track_plot(*, gnss_id: int, path: str) -> None:
-    """Save a lat/lon track PNG from the current logged session.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param path: Destination file path, absolute or relative to the active run output directory;
-        requires artifacts enabled.
-    """
-    _logger.info("Saving track plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_track_plot(path)
-
-
-@command
-def save_skyplot(*, gnss_id: int, path: str) -> None:
-    """Save a polar skyplot PNG (marker size/color from C/N0).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param path: Destination file path, absolute or relative to the active run output directory;
-        requires artifacts enabled.
-    """
-    _logger.info("Saving sky plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_skyplot(path)
-
-
-@command
-def save_quality_plot(*, gnss_id: int, path: str) -> None:
-    """Save DOP / satellite / C/N0 quality PNG.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param path: Destination file path, absolute or relative to the active run output directory;
-        requires artifacts enabled.
-    """
-    _logger.info("Saving quality plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_quality_plot(path)
-
-
-@command
-def save_signal_levels_plot(*, gnss_id: int, path: str) -> None:
-    """Save a per-satellite C/N0 bar chart from the current sky snapshot.
-
-    :param gnss_id: Integer ID from the configured equipment.gnss row.
-    :param path: Destination PNG path under the run output directory.
-    """
-    _logger.info("Saving signal-level plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_signal_levels_plot(path)
-
-
-@command
-def save_deviation_plot(
-    *,
-    gnss_id: int,
-    path: str,
-    ref_lat: float | None = None,
-    ref_lon: float | None = None,
-) -> None:
-    """Save an east/north deviation scatter about mean or a supplied reference.
-
-    :param gnss_id: Integer ID from the configured equipment.gnss row.
-    :param path: Destination PNG path under the run output directory.
-    :param ref_lat: Optional reference latitude (deg). Default: mean of fix samples.
-    :param ref_lon: Optional reference longitude (deg). Default: mean of fix samples.
-    """
-    _logger.info("Saving deviation plot from GNSS %s to %s", gnss_id, path)
-    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).save_deviation_plot(
-        path,
-        ref_lat=ref_lat,
-        ref_lon=ref_lon,
-    )
-
-
-@command
-def get_satellite_snapshot(*, gnss_id: int, max_age_s: float = 5.0) -> list[dict[str, Any]]:
-    """Return the current sky view (works without a position fix).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: List of satellite dictionaries with identity, elevation/azimuth, C/N0, used-in-fix
-        flag, and data age.
-    """
-    _logger.info("Reading satellite snapshot from GNSS %s", gnss_id)
-    return list(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_satellite_snapshot(max_age_s=max_age_s),
-    )
-
-
-@command
-def get_fix_type(*, gnss_id: int, max_age_s: float = 5.0) -> str:
-    """Return fix type string: ``none`` / ``2d`` / ``3d``.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Fix type string: none, 2d, or 3d.
-    """
-    _logger.info("Reading fix type from GNSS %s", gnss_id)
-    return str(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_fix_type(max_age_s=max_age_s))
-
-
-@command
-def get_constellations_present(*, gnss_id: int, max_age_s: float = 5.0) -> list[str]:
-    """Return constellation names present in the recent sky view.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Sorted list of constellation names in the recent sky view.
-    """
-    _logger.info("Reading constellations from GNSS %s", gnss_id)
-    return list(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).get_constellations_present(
-            max_age_s=max_age_s,
-        ),
-    )
-
-
-@measurement
-def measure_latitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure latitude in decimal degrees (freshness-gated).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded latitude in degrees north.
-    """
-    _logger.info("Reading latitude from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_latitude(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_longitude(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure longitude in decimal degrees (freshness-gated).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded longitude in degrees east.
-    """
-    _logger.info("Reading longitude from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longitude(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_altitude_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure altitude in meters MSL when reported.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded altitude m in meters.
-    """
-    _logger.info("Reading altitude from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_altitude_m(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_fix_quality(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure NMEA GGA quality / UBX fix type code.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded NMEA quality or UBX fix-type code as a float; interpret it according to
-        the receiver protocol.
-    """
-    _logger.info("Reading fix quality from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_quality(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_satellites(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure satellites used in the solution.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded number of satellites used in the current solution, as a float.
-    """
-    _logger.info("Reading satellites used from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites(max_age_s=max_age_s),
-    )
-
-
-verify_satellites = limit_verifier("measure_satellites", module=__name__, upper=False, name="verify_satellites")
-
-
-@measurement
-def measure_satellites_visible(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure satellites visible in the recent sky view (no fix required).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded number of satellites in the recent sky view, as a float.
-    """
-    _logger.info("Reading visible satellites from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_satellites_visible(
-            max_age_s=max_age_s,
-        ),
-    )
-
-
-verify_satellites_visible = limit_verifier(
-    "measure_satellites_visible", module=__name__, upper=False,
-    name="verify_satellites_visible",
-)
-
-
-@measurement
-def measure_hdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure true horizontal dilution of precision (GSA / NAV-DOP / GGA).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded horizontal dilution of precision (dimensionless).
-    """
-    _logger.info("Reading HDOP from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_hdop(max_age_s=max_age_s))
-
-
-verify_hdop = limit_verifier("measure_hdop", module=__name__, name="verify_hdop", upper=True)
-
-
-@measurement
-def measure_pdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure position dilution of precision.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded position dilution of precision (dimensionless).
-    """
-    _logger.info("Reading PDOP from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_pdop(max_age_s=max_age_s))
-
-
-verify_pdop = limit_verifier("measure_pdop", module=__name__, name="verify_pdop", upper=True)
-
-
-@measurement
-def measure_vdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure vertical dilution of precision.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded vertical dilution of precision (dimensionless).
-    """
-    _logger.info("Reading VDOP from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_vdop(max_age_s=max_age_s))
-
-
-verify_vdop = limit_verifier("measure_vdop", module=__name__, name="verify_vdop", upper=True)
-
-
-@measurement
-def measure_gdop(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure geometric dilution of precision when the model reports it.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded geometric dilution of precision (dimensionless).
-    """
-    _logger.info("Reading GDOP from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_gdop(max_age_s=max_age_s))
-
-
-verify_gdop = limit_verifier("measure_gdop", module=__name__, name="verify_gdop", upper=True)
-
-
-@measurement
-def measure_max_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure maximum C/N0 (dB-Hz) across the recent sky view.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded max cn0 dbhz in dB-Hz.
-    """
-    _logger.info("Reading max C/N0 from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_max_cn0_dbhz(max_age_s=max_age_s),
-    )
-
-
-verify_max_cn0_dbhz = limit_verifier(
-    "measure_max_cn0_dbhz", module=__name__, upper=False,
-    name="verify_max_cn0_dbhz",
-    unit="dB-Hz",
-)
-
-
-@measurement
-def measure_mean_cn0_dbhz(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure mean C/N0 (dB-Hz) across satellites with SNR > 0.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded mean cn0 dbhz in dB-Hz.
-    """
-    _logger.info("Reading mean C/N0 from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_mean_cn0_dbhz(max_age_s=max_age_s),
-    )
-
-
-verify_mean_cn0_dbhz = limit_verifier(
-    "measure_mean_cn0_dbhz", module=__name__, upper=False,
-    name="verify_mean_cn0_dbhz",
-    unit="dB-Hz",
-)
-
-
-@measurement
-def measure_cn0_dbhz(
-    *,
-    gnss_id: int,
-    key: str,
-    prn: int,
-    constellation: str = "GPS",
-    max_age_s: float = 5.0,
-) -> float:
-    """Measure C/N0 for one PRN within a constellation.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param prn: Satellite PRN identifier used by the receiver constellation.
-    :param constellation: Constellation name used by the receiver; None allows any matching
-        constellation. Default: ``'GPS'``.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded cn0 dbhz in dB-Hz.
-    """
-    _logger.info("Reading C/N0 from GNSS %s %s PRN %s", gnss_id, constellation, prn)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_cn0_dbhz(
-            prn,
-            constellation=constellation,
-            max_age_s=max_age_s,
-        ),
-    )
-
-
-@measurement
-def measure_speed_m_s(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure ground speed in m/s from RMC/VTG/NAV-PVT.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded speed m s in meters per second.
-    """
-    _logger.info("Reading speed from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_speed_m_s(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_course_deg(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure true course in degrees.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded course deg in degrees.
-    """
-    _logger.info("Reading course from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_course_deg(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_h_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure horizontal accuracy estimate in meters (binary protocols).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded h acc m in meters.
-    """
-    _logger.info("Reading horizontal accuracy from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_h_acc_m(max_age_s=max_age_s),
-    )
-
-
-verify_h_acc_m = limit_verifier("measure_h_acc_m", module=__name__, name="verify_h_acc_m", upper=True, unit="m")
-
-
-@measurement
-def measure_v_acc_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure vertical accuracy estimate in meters (binary protocols).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded v acc m in meters.
-    """
-    _logger.info("Reading vertical accuracy from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_v_acc_m(max_age_s=max_age_s),
-    )
-
-
-verify_v_acc_m = limit_verifier("measure_v_acc_m", module=__name__, name="verify_v_acc_m", upper=True, unit="m")
-
-
-@measurement
-def measure_geoid_separation_m(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> float:
-    """Measure geoid separation in meters from GGA when present.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded geoid separation m in meters.
-    """
-    _logger.info("Reading geoid separation from GNSS %s", gnss_id)
-    _ = key
-    return float(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_geoid_separation_m(
-            max_age_s=max_age_s,
-        ),
-    )
-
-
-@measurement
-def measure_data_age_s(*, gnss_id: int, key: str) -> float:
-    """Measure age of the cached fix in seconds.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded data age s in seconds.
-    """
-    _logger.info("Reading data age from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_data_age_s())
-
-
-@measurement
-def measure_utc_time(*, gnss_id: int, key: str, max_age_s: float = 5.0) -> str:
-    """Measure UTC time as an ISO-8601 string when available.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-    :param max_age_s: Maximum age in seconds of cached receiver data; default 5 seconds. Stale
-        or unavailable data cannot establish a current fix.
-
-    :returns: Recorded UTC time as an ISO-8601 string.
-    """
-    _logger.info("Reading UTC time from GNSS %s", gnss_id)
-    _ = key
-    return str(
-        get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_utc_time(max_age_s=max_age_s),
-    )
-
-
-@measurement
-def measure_ttff_s(*, gnss_id: int, key: str) -> float:
-    """Measure time-to-first-fix since cold_start / mark_acquisition_start.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded ttff s in seconds.
-    """
-    _logger.info("Reading time to first fix from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_ttff_s())
-
-
-verify_ttff_s = limit_verifier("measure_ttff_s", module=__name__, name="verify_ttff_s", upper=True, unit="s")
-
-
-@measurement
-def measure_fix_availability(*, gnss_id: int, key: str) -> float:
-    """Measure fraction of logging epochs with a valid fix (0..1).
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded fix availability in a fraction from 0 to 1.
-    """
-    _logger.info("Reading fix availability from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_fix_availability())
-
-
-verify_fix_availability = limit_verifier(
-    "measure_fix_availability", module=__name__, upper=False,
-    name="verify_fix_availability",
-)
-
-
-@measurement
-def measure_longest_outage_s(*, gnss_id: int, key: str) -> float:
-    """Measure longest no-fix outage observed in the logging window.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded longest outage s in seconds.
-    """
-    _logger.info("Reading longest outage from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_longest_outage_s())
-
-
-verify_longest_outage_s = limit_verifier(
-    "measure_longest_outage_s", module=__name__,
-    name="verify_longest_outage_s",
-    upper=True,
-    unit="s",
-)
-
-
-@measurement
-def measure_reacquisition_s(*, gnss_id: int, key: str) -> float:
-    """Measure time from first outage end to reacquisition.
-
-    :param gnss_id: Configured ``equipment.gnss`` ID.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded reacquisition s in seconds.
-    """
-    _logger.info("Reading reacquisition time from GNSS %s", gnss_id)
-    _ = key
-    return float(get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).measure_reacquisition_s())
-
-
-verify_reacquisition_s = limit_verifier(
-    "measure_reacquisition_s", module=__name__,
-    name="verify_reacquisition_s",
-    upper=True,
-    unit="s",
-)
-
-
-verify_latitude = tolerance_verifier("measure_latitude", module=__name__, name="verify_latitude", unit="deg")
-verify_longitude = tolerance_verifier("measure_longitude", module=__name__, name="verify_longitude", unit="deg")
 verify_altitude_m = tolerance_verifier("measure_altitude_m", module=__name__, name="verify_altitude_m", unit="m")
-
-
-def _field_rows(*, key: str, message: str) -> list[dict[str, Any]]:
-    logical = resolve_logical_message(message)
-    rows = get_context().db.list_measurements("equipment", logical, key)
-    out: list[dict[str, Any]] = []
-    for row in rows:
-        value = row.value
-        if isinstance(value, dict):
-            out.append(value)
-        elif value is not None:
-            out.append({"value": value})
-    return out
-
-
-def _field_values(rows: list[dict[str, Any]], field: str) -> list[float]:
-    values: list[float] = []
-    for row in rows:
-        if field not in row:
-            continue
-        try:
-            values.append(float(row[field]))
-        except (TypeError, ValueError):
-            continue
-    return values
-
-
-def _sat_counts(
-    rows: list[dict[str, Any]],
-    *,
-    gnss_id: int | None,
-) -> list[float]:
-    counts: list[float] = []
-    for row in rows:
-        if gnss_id is None:
-            raw = row.get("num_svs", row.get("numSvs", row.get("numMeas", row.get("numSV"))))
-            try:
-                counts.append(float(raw))  # type: ignore[arg-type]
-            except (TypeError, ValueError):
-                continue
-            continue
-        svs = row.get("svs")
-        if not isinstance(svs, list):
-            continue
-        counts.append(float(sum(1 for sv in svs if isinstance(sv, dict) and int(sv.get("gnssId", -1)) == gnss_id)))
-    return counts
-
-
-def _check_bound(
-    actual: float,
-    *,
-    expected_val: float | None,
-    tolerance: float | None,
-    minimum: float | None,
-    maximum: float | None,
-    limit: float | None,
-    optional: bool,
-) -> VerificationResult:
-    if expected_val is not None:
-        tol = 0.0 if tolerance is None else tolerance
-        if abs(actual - expected_val) <= tol:
-            return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
-        return VerificationResult(
-            status="FAIL",
-            message=f"expected {expected_val} +/- {tol}, got {actual}",
-            optional=optional,
-            actual=actual,
-        )
-    lo = minimum
-    hi = maximum if maximum is not None else limit
-    if lo is not None and actual < lo:
-        return VerificationResult(
-            status="FAIL",
-            message=f"expected {actual} >= {lo}",
-            optional=optional,
-            actual=actual,
-        )
-    if hi is not None and actual > hi:
-        return VerificationResult(
-            status="FAIL",
-            message=f"expected {actual} <= {hi}",
-            optional=optional,
-            actual=actual,
-        )
-    if lo is None and hi is None:
-        return VerificationResult(
-            status="ERROR",
-            message="provide expected_val/tolerance and/or minimum/maximum/limit",
-            optional=optional,
-            actual=actual,
-        )
-    return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
 
 
 @verification
@@ -1034,6 +862,60 @@ def verify_field_equal_percent(
     )
 
 
+verify_fix_availability = limit_verifier(
+    "measure_fix_availability", module=__name__, upper=False,
+    name="verify_fix_availability",
+)
+
+
+verify_gdop = limit_verifier("measure_gdop", module=__name__, name="verify_gdop", upper=True)
+
+
+verify_h_acc_m = limit_verifier("measure_h_acc_m", module=__name__, name="verify_h_acc_m", upper=True, unit="m")
+
+
+verify_hdop = limit_verifier("measure_hdop", module=__name__, name="verify_hdop", upper=True)
+
+
+verify_latitude = tolerance_verifier("measure_latitude", module=__name__, name="verify_latitude", unit="deg")
+
+
+verify_longest_outage_s = limit_verifier(
+    "measure_longest_outage_s", module=__name__,
+    name="verify_longest_outage_s",
+    upper=True,
+    unit="s",
+)
+
+
+verify_longitude = tolerance_verifier("measure_longitude", module=__name__, name="verify_longitude", unit="deg")
+
+
+verify_max_cn0_dbhz = limit_verifier(
+    "measure_max_cn0_dbhz", module=__name__, upper=False,
+    name="verify_max_cn0_dbhz",
+    unit="dB-Hz",
+)
+
+
+verify_mean_cn0_dbhz = limit_verifier(
+    "measure_mean_cn0_dbhz", module=__name__, upper=False,
+    name="verify_mean_cn0_dbhz",
+    unit="dB-Hz",
+)
+
+
+verify_pdop = limit_verifier("measure_pdop", module=__name__, name="verify_pdop", upper=True)
+
+
+verify_reacquisition_s = limit_verifier(
+    "measure_reacquisition_s", module=__name__,
+    name="verify_reacquisition_s",
+    upper=True,
+    unit="s",
+)
+
+
 @verification
 def verify_sat_avg_delta(
     *,
@@ -1101,8 +983,6 @@ def verify_sat_avg_delta(
         limit=limit,
         optional=optional,
     )
-
-
 @verification
 def verify_sat_diff(
     *,
@@ -1176,3 +1056,123 @@ def verify_sat_diff(
         limit=limit,
         optional=optional,
     )
+verify_satellites = limit_verifier("measure_satellites", module=__name__, upper=False, name="verify_satellites")
+
+
+def _field_rows(*, key: str, message: str) -> list[dict[str, Any]]:
+    logical = resolve_logical_message(message)
+    rows = get_context().db.list_measurements("equipment", logical, key)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        value = row.value
+        if isinstance(value, dict):
+            out.append(value)
+        elif value is not None:
+            out.append({"value": value})
+    return out
+
+
+def _field_values(rows: list[dict[str, Any]], field: str) -> list[float]:
+    values: list[float] = []
+    for row in rows:
+        if field not in row:
+            continue
+        try:
+            values.append(float(row[field]))
+        except (TypeError, ValueError):
+            continue
+    return values
+
+
+def _sat_counts(
+    rows: list[dict[str, Any]],
+    *,
+    gnss_id: int | None,
+) -> list[float]:
+    counts: list[float] = []
+    for row in rows:
+        if gnss_id is None:
+            raw = row.get("num_svs", row.get("numSvs", row.get("numMeas", row.get("numSV"))))
+            try:
+                counts.append(float(raw))  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+            continue
+        svs = row.get("svs")
+        if not isinstance(svs, list):
+            continue
+        counts.append(float(sum(1 for sv in svs if isinstance(sv, dict) and int(sv.get("gnssId", -1)) == gnss_id)))
+    return counts
+
+
+def _check_bound(
+    actual: float,
+    *,
+    expected_val: float | None,
+    tolerance: float | None,
+    minimum: float | None,
+    maximum: float | None,
+    limit: float | None,
+    optional: bool,
+) -> VerificationResult:
+    if expected_val is not None:
+        tol = 0.0 if tolerance is None else tolerance
+        if abs(actual - expected_val) <= tol:
+            return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
+        return VerificationResult(
+            status="FAIL",
+            message=f"expected {expected_val} +/- {tol}, got {actual}",
+            optional=optional,
+            actual=actual,
+        )
+    lo = minimum
+    hi = maximum if maximum is not None else limit
+    if lo is not None and actual < lo:
+        return VerificationResult(
+            status="FAIL",
+            message=f"expected {actual} >= {lo}",
+            optional=optional,
+            actual=actual,
+        )
+    if hi is not None and actual > hi:
+        return VerificationResult(
+            status="FAIL",
+            message=f"expected {actual} <= {hi}",
+            optional=optional,
+            actual=actual,
+        )
+    if lo is None and hi is None:
+        return VerificationResult(
+            status="ERROR",
+            message="provide expected_val/tolerance and/or minimum/maximum/limit",
+            optional=optional,
+            actual=actual,
+        )
+    return VerificationResult(status="PASS", message="", optional=optional, actual=actual)
+
+
+verify_satellites_visible = limit_verifier(
+    "measure_satellites_visible", module=__name__, upper=False,
+    name="verify_satellites_visible",
+)
+
+
+verify_ttff_s = limit_verifier("measure_ttff_s", module=__name__, name="verify_ttff_s", upper=True, unit="s")
+
+
+verify_v_acc_m = limit_verifier("measure_v_acc_m", module=__name__, name="verify_v_acc_m", upper=True, unit="m")
+
+
+verify_vdop = limit_verifier("measure_vdop", module=__name__, name="verify_vdop", upper=True)
+
+
+@command
+def wait_for_fix(*, gnss_id: int, timeout_s: float) -> None:
+    """Block until the receiver reports a valid fix or ``timeout_s`` elapses.
+
+    :param gnss_id: Configured ``equipment.gnss`` ID.
+    :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
+        completed.
+    """
+    _logger.info("Waiting up to %s s for a fix on GNSS %s", timeout_s, gnss_id)
+    get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).wait_for_fix(timeout_s)

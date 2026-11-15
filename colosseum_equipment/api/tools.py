@@ -25,6 +25,12 @@ __all__ = [
 ]
 
 
+def list_mask_templates() -> list[str]:
+    """Return built-in mask template ids."""
+    _logger.info("Listing built-in mask templates")
+    return _list_mask_templates()
+
+
 def load_mask(*, path: str) -> dict[str, Any]:
     """Parse and validate a mask JSON file (no GUI).
 
@@ -50,9 +56,3 @@ def save_mask(*, path: str, mask: dict[str, Any]) -> str:
     """
     _logger.info("Saving mask to %s", path)
     return str(_save_mask(path, mask))
-
-
-def list_mask_templates() -> list[str]:
-    """Return built-in mask template ids."""
-    _logger.info("Listing built-in mask templates")
-    return _list_mask_templates()

@@ -60,35 +60,6 @@ def configure(
 
 
 @command
-def start(*, analyzer_id: int, path: str | None = None) -> str:
-    """Enable capture before returning, then stream packets to JSON Lines.
-
-    :param analyzer_id: Configured ``io.analyzer`` ID.
-    :param path: New capture file relative to run output. Defaults to a unique name.
-    :returns: Relative capture path used for this session.
-    """
-    _logger.info("Starting capture on analyzer %s", analyzer_id)
-    relative = path or f"captures/analyzer_{analyzer_id}_{uuid4().hex}.jsonl"
-    get_backend("analyzer", analyzer_id).start(
-        resolve_artifact_path(relative),
-        relative_path=relative,
-    )
-    return relative
-
-
-@command
-def stop(*, analyzer_id: int, timeout_s: float = 2.0) -> dict[str, Any]:
-    """Drain until idle or deadline and stop; raise on a capture/SDK failure.
-
-    :param analyzer_id: Configured ``io.analyzer`` ID.
-    :param timeout_s: Drain deadline in seconds after stop is requested.
-    :returns: Summary including limits, detected loss, path, and stop-boundary uncertainty.
-    """
-    _logger.info("Stopping capture on analyzer %s", analyzer_id)
-    return dict(get_backend("analyzer", analyzer_id).stop(timeout_s))
-
-
-@command
 def export(*, analyzer_id: int, path: str, key: str) -> dict[str, Any]:
     """Export a stopped capture and record its summary and artifact in evidence.
 
@@ -127,6 +98,23 @@ def is_running(*, analyzer_id: int) -> bool:
     return bool(get_backend("analyzer", analyzer_id).is_running())
 
 
+@command
+def start(*, analyzer_id: int, path: str | None = None) -> str:
+    """Enable capture before returning, then stream packets to JSON Lines.
+
+    :param analyzer_id: Configured ``io.analyzer`` ID.
+    :param path: New capture file relative to run output. Defaults to a unique name.
+    :returns: Relative capture path used for this session.
+    """
+    _logger.info("Starting capture on analyzer %s", analyzer_id)
+    relative = path or f"captures/analyzer_{analyzer_id}_{uuid4().hex}.jsonl"
+    get_backend("analyzer", analyzer_id).start(
+        resolve_artifact_path(relative),
+        relative_path=relative,
+    )
+    return relative
+
+
 def status(*, analyzer_id: int) -> dict[str, Any]:
     """Return a mid-soak snapshot (running flag, records, stop_reason, path, …).
 
@@ -135,3 +123,15 @@ def status(*, analyzer_id: int) -> dict[str, Any]:
     """
     _logger.info("Reading status from analyzer %s", analyzer_id)
     return dict(get_backend("analyzer", analyzer_id).status())
+
+
+@command
+def stop(*, analyzer_id: int, timeout_s: float = 2.0) -> dict[str, Any]:
+    """Drain until idle or deadline and stop; raise on a capture/SDK failure.
+
+    :param analyzer_id: Configured ``io.analyzer`` ID.
+    :param timeout_s: Drain deadline in seconds after stop is requested.
+    :returns: Summary including limits, detected loss, path, and stop-boundary uncertainty.
+    """
+    _logger.info("Stopping capture on analyzer %s", analyzer_id)
+    return dict(get_backend("analyzer", analyzer_id).stop(timeout_s))

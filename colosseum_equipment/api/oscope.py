@@ -38,351 +38,48 @@ def _inst(oscope_id: EquipmentId) -> Any:
 
 @command
 @broadcastable("oscope", "oscope_id")
-def preset(*, oscope_id: EquipmentId) -> None:
-    """Return the scope to a default preset.
+def abort(*, oscope_id: EquipmentId) -> None:
+    """Abort / stop an in-progress acquisition.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     """
-    _logger.info("Presetting scope %s", oscope_id)
-    _inst(oscope_id).preset()
+    _logger.info("Aborting acquisition on scope %s", oscope_id)
+    _inst(oscope_id).abort()
 
 
 @command
-@broadcastable("oscope", "oscope_id")
-def set_channel_display(*, oscope_id: EquipmentId, channel: int, enabled: bool) -> None:
-    """Enable or disable a channel display.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param enabled: True to enable the named feature; false to disable it.
-    """
-    _logger.info(
-        "%s channel %s on scope %s",
-        "Enabling" if enabled else "Disabling",
-        channel,
-        oscope_id,
-    )
-    _inst(oscope_id).set_channel_display(channel, enabled)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_channel_scale_v(*, oscope_id: EquipmentId, channel: int, volts_per_div: float) -> None:
-    """Set vertical scale in volts per division.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param volts_per_div: Vertical scale in volts per display division; range depends on the
-        scope/channel.
-    """
-    _logger.info(
-        "Setting scale on scope %s channel %s to %s V/div",
-        oscope_id,
-        channel,
-        volts_per_div,
-    )
-    _inst(oscope_id).set_channel_scale_v(channel, volts_per_div)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_channel_offset_v(*, oscope_id: EquipmentId, channel: int, offset_v: float) -> None:
-    """Set vertical offset in volts.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param offset_v: Vertical offset in volts; range depends on the scope/channel.
-    """
-    _logger.info("Setting offset on scope %s channel %s to %s V", oscope_id, channel, offset_v)
-    _inst(oscope_id).set_channel_offset_v(channel, offset_v)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_channel_coupling(*, oscope_id: EquipmentId, channel: int, coupling: str) -> None:
-    """Set channel coupling (``AC`` / ``DC`` / ``GND``).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param coupling: Channel coupling token, typically AC, DC, or GND; only use modes supported
-        by the scope.
-    """
-    _logger.info("Setting coupling on scope %s channel %s to %s", oscope_id, channel, coupling)
-    _inst(oscope_id).set_channel_coupling(channel, coupling)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_channel_probe_attenuation(*, oscope_id: EquipmentId, channel: int, attenuation: float) -> None:
-    """Set probe attenuation factor (e.g. ``10`` for 10x).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param attenuation: Probe attenuation factor (for example 10 for a 10:1 probe), not a value
-        in decibels.
-    """
-    _logger.info(
-        "Setting probe attenuation on scope %s channel %s to %s",
-        oscope_id,
-        channel,
-        attenuation,
-    )
-    _inst(oscope_id).set_channel_probe_attenuation(channel, attenuation)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_channel_bandwidth_limit(*, oscope_id: EquipmentId, channel: int, enabled: bool) -> None:
-    """Enable or disable channel bandwidth limit.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param enabled: True to enable the named feature; false to disable it.
-    """
-    _logger.info(
-        "%s bandwidth limit on scope %s channel %s",
-        "Enabling" if enabled else "Disabling",
-        oscope_id,
-        channel,
-    )
-    _inst(oscope_id).set_channel_bandwidth_limit(channel, enabled)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_channel_impedance(*, oscope_id: EquipmentId, channel: int, ohms: float) -> None:
-    """Set channel termination impedance (``50`` or ``1e6``).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param ohms: Impedance in ohms. The configured model determines the accepted values.
-    """
-    _logger.info("Setting impedance on scope %s channel %s to %s ohms", oscope_id, channel, ohms)
-    _inst(oscope_id).set_channel_impedance(channel, ohms)
-
-
-@measurement
-def get_channel_scale_v(*, oscope_id: int, channel: int, key: str) -> float:
-    """Read configured vertical scale (V/div).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded channel scale v in volts per division.
-    """
-    _logger.info("Reading scale from scope %s channel %s", oscope_id, channel)
-    _ = key
-    return float(_inst(oscope_id).get_channel_scale_v(channel))
-
-
-@measurement
-def get_channel_offset_v(*, oscope_id: int, channel: int, key: str) -> float:
-    """Read configured vertical offset (V).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded channel offset v in volts.
-    """
-    _logger.info("Reading offset from scope %s channel %s", oscope_id, channel)
-    _ = key
-    return float(_inst(oscope_id).get_channel_offset_v(channel))
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_timebase_scale(*, oscope_id: EquipmentId, seconds_per_div: float) -> None:
-    """Set horizontal timebase scale.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param seconds_per_div: Horizontal scale in seconds per display division; range depends on
-        the scope.
-    """
-    _logger.info("Setting timebase on scope %s to %s s/div", oscope_id, seconds_per_div)
-    _inst(oscope_id).set_timebase_scale(seconds_per_div)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_timebase_position_s(*, oscope_id: EquipmentId, position_s: float) -> None:
-    """Set horizontal position / delay.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param position_s: Horizontal trigger position in seconds using the selected scope's
-        reference convention.
-    """
-    _logger.info("Setting timebase position on scope %s to %s s", oscope_id, position_s)
-    _inst(oscope_id).set_timebase_position_s(position_s)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_record_length(*, oscope_id: EquipmentId, points: int) -> None:
-    """Set acquisition record length in points.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param points: Requested record length in sample points; supported lengths depend on the
-        scope and mode.
-    """
-    _logger.info("Setting record length on scope %s to %s points", oscope_id, points)
-    _inst(oscope_id).set_record_length(points)
-
-
-@measurement
-def get_record_length(*, oscope_id: int, key: str) -> float:
-    """Read configured record length.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param key: Unique evidence key for this measurement.
-
-    :returns: Recorded sample count as a float.
-    """
-    _logger.info("Reading record length from scope %s", oscope_id)
-    _ = key
-    return float(_inst(oscope_id).get_record_length())
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_trigger_mode(*, oscope_id: EquipmentId, mode: str) -> None:
-    """Set trigger mode (``auto`` / ``normal`` / ``single``).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param mode: Model-specific acquisition or trigger mode token. Use the configured scope's
-        supported command vocabulary.
-    """
-    _logger.info("Setting trigger mode on scope %s to %s", oscope_id, mode)
-    _inst(oscope_id).set_trigger_mode(mode)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_trigger_source(*, oscope_id: EquipmentId, source: str) -> None:
-    """Set edge trigger source (e.g. ``CH1``).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param source: Trigger source token accepted by the configured scope, such as CHAN1 or EXT.
-    """
-    _logger.info("Setting trigger source on scope %s to %s", oscope_id, source)
-    _inst(oscope_id).set_trigger_source(source)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_trigger_level_v(*, oscope_id: EquipmentId, level_v: float) -> None:
-    """Set edge trigger level in volts.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param level_v: Trigger threshold in volts using the selected trigger source.
-    """
-    _logger.info("Setting trigger level on scope %s to %s V", oscope_id, level_v)
-    _inst(oscope_id).set_trigger_level_v(level_v)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_trigger_slope(*, oscope_id: EquipmentId, slope: str) -> None:
-    """Set edge trigger slope (``rising`` / ``falling``).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param slope: Trigger edge token, such as POS or NEG; supported tokens depend on the
-        selected driver.
-    """
-    _logger.info("Setting trigger slope on scope %s to %s", oscope_id, slope)
-    _inst(oscope_id).set_trigger_slope(slope)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_trigger_holdoff_s(*, oscope_id: EquipmentId, holdoff_s: float) -> None:
-    """Set trigger holdoff time in seconds.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param holdoff_s: Trigger holdoff in seconds; accepted range depends on the scope.
-    """
-    _logger.info("Setting trigger holdoff on scope %s to %s s", oscope_id, holdoff_s)
-    _inst(oscope_id).set_trigger_holdoff_s(holdoff_s)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def force_trigger(*, oscope_id: EquipmentId) -> None:
-    """Force a trigger event.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    """
-    _logger.info("Forcing trigger on scope %s", oscope_id)
-    _inst(oscope_id).force_trigger()
-
-
-@command
-def wait_for_trigger(*, oscope_id: int, timeout_s: float) -> None:
-    """Wait until the scope reports a triggered / complete state.
+def acquire(*, oscope_id: int, timeout_s: float = 10.0) -> str:
+    """Arm single acquisition, wait, return capture id.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
-        completed.
+        completed. Default: ``10.0``.
+
+    :returns: Capture identifier string after single acquisition completes.
     """
-    _logger.info("Waiting for trigger on scope %s", oscope_id)
-    _inst(oscope_id).wait_for_trigger(timeout_s=timeout_s)
+    _logger.info("Acquiring waveform on scope %s", oscope_id)
+    return str(_inst(oscope_id).acquire(timeout_s=timeout_s))
 
 
 @command
 @broadcastable("oscope", "oscope_id")
-def set_acquire_mode(*, oscope_id: EquipmentId, mode: str) -> None:
-    """Set acquire mode (``sample`` / ``peak`` / ``average`` / ``hres``).
+def apply_mask_setup(
+    *,
+    oscope_id: EquipmentId,
+    mask: str,
+    channel: int = 1,
+    key: str = "",
+) -> None:
+    """Apply mask JSON ``setup`` fields (timebase/scale/offset) to this oscilloscope.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param mode: Model-specific acquisition or trigger mode token. Use the configured scope's
-        supported command vocabulary.
+    :param mask: Path to mask JSON (or from ``parameters.toml`` via ``key=``).
+    :param channel: Channel for vertical scale/offset (default 1).
+    :param key: Optional parameters / evidence key for this step.
     """
-    _logger.info("Setting acquire mode on scope %s to %s", oscope_id, mode)
-    _inst(oscope_id).set_acquire_mode(mode)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def set_acquire_averages(*, oscope_id: EquipmentId, count: int) -> None:
-    """Set number of averages when acquire mode is average.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param count: Number of acquisition averages.
-    """
-    _logger.info("Setting acquire averages on scope %s to %s", oscope_id, count)
-    _inst(oscope_id).set_acquire_averages(count)
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def run(*, oscope_id: EquipmentId) -> None:
-    """Start continuous acquisition (arm).
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    """
-    _logger.info("Running scope %s", oscope_id)
-    _inst(oscope_id).run()
-
-
-@command
-@broadcastable("oscope", "oscope_id")
-def stop(*, oscope_id: EquipmentId) -> None:
-    """Stop acquisition.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    """
-    _logger.info("Stopping scope %s", oscope_id)
-    _inst(oscope_id).stop()
+    _logger.info("Applying mask setup to scope %s channel %s", oscope_id, channel)
+    _ = key
+    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind="oscope"), channel=channel)
 
 
 @command
@@ -403,50 +100,14 @@ def arm_single(*, oscope_id: EquipmentId) -> None:
 
 
 @command
-def single_acquire(*, oscope_id: int) -> None:
-    """Arm a single acquisition and wait for OPC completion.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    """
-    _logger.info("Acquiring single waveform on scope %s", oscope_id)
-    _inst(oscope_id).single_acquire()
-
-
-@command
 @broadcastable("oscope", "oscope_id")
-def abort(*, oscope_id: EquipmentId) -> None:
-    """Abort / stop an in-progress acquisition.
+def force_trigger(*, oscope_id: EquipmentId) -> None:
+    """Force a trigger event.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     """
-    _logger.info("Aborting acquisition on scope %s", oscope_id)
-    _inst(oscope_id).abort()
-
-
-@command
-def wait_complete(*, oscope_id: int, timeout_s: float) -> None:
-    """Wait for the current acquisition to complete.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
-        completed.
-    """
-    _logger.info("Waiting for scope %s acquisition to complete", oscope_id)
-    _inst(oscope_id).wait_complete(timeout_s=timeout_s)
-
-
-@command
-def acquire(*, oscope_id: int, timeout_s: float = 10.0) -> str:
-    """Arm single acquisition, wait, return capture id.
-
-    :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
-        completed. Default: ``10.0``.
-
-    :returns: Capture identifier string after single acquisition completes.
-    """
-    _logger.info("Acquiring waveform on scope %s", oscope_id)
-    return str(_inst(oscope_id).acquire(timeout_s=timeout_s))
+    _logger.info("Forcing trigger on scope %s", oscope_id)
+    _inst(oscope_id).force_trigger()
 
 
 @measurement
@@ -464,70 +125,65 @@ def get_acquire_state(*, oscope_id: int, key: str) -> str:
 
 
 @measurement
-def measure_vpp(*, oscope_id: int, channel: int = 1, key: str) -> float:
-    """Measure peak-to-peak voltage from the last capture.
+def get_channel_offset_v(*, oscope_id: int, channel: int, key: str) -> float:
+    """Read configured vertical offset (V).
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
     :param key: Unique evidence key for this measurement.
 
-    :returns: Recorded vpp in volts.
+    :returns: Recorded channel offset v in volts.
     """
-    _logger.info("Reading Vpp from scope %s channel %s", oscope_id, channel)
+    _logger.info("Reading offset from scope %s channel %s", oscope_id, channel)
     _ = key
-    return float(_inst(oscope_id).measure_vpp(channel))
-
-
-verify_vpp = tolerance_verifier("measure_vpp", module=__name__, name="verify_vpp", unit="V")
+    return float(_inst(oscope_id).get_channel_offset_v(channel))
 
 
 @measurement
-def measure_vmax(*, oscope_id: int, channel: int = 1, key: str) -> float:
-    """Measure maximum voltage from the last capture.
+def get_channel_scale_v(*, oscope_id: int, channel: int, key: str) -> float:
+    """Read configured vertical scale (V/div).
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
     :param key: Unique evidence key for this measurement.
 
-    :returns: Recorded vmax in volts.
+    :returns: Recorded channel scale v in volts per division.
     """
-    _logger.info("Reading Vmax from scope %s channel %s", oscope_id, channel)
+    _logger.info("Reading scale from scope %s channel %s", oscope_id, channel)
     _ = key
-    return float(_inst(oscope_id).measure_vmax(channel))
+    return float(_inst(oscope_id).get_channel_scale_v(channel))
 
 
 @measurement
-def measure_vmin(*, oscope_id: int, channel: int = 1, key: str) -> float:
-    """Measure minimum voltage from the last capture.
+def get_record_length(*, oscope_id: int, key: str) -> float:
+    """Read configured record length.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
     :param key: Unique evidence key for this measurement.
 
-    :returns: Recorded vmin in volts.
+    :returns: Recorded sample count as a float.
     """
-    _logger.info("Reading Vmin from scope %s channel %s", oscope_id, channel)
+    _logger.info("Reading record length from scope %s", oscope_id)
     _ = key
-    return float(_inst(oscope_id).measure_vmin(channel))
+    return float(_inst(oscope_id).get_record_length())
 
 
 @measurement
-def measure_vrms(*, oscope_id: int, channel: int = 1, key: str) -> float:
-    """Measure RMS voltage from the last capture.
+def measure_fall_time_s(*, oscope_id: int, channel: int = 1, key: str) -> float:
+    """Measure fall time from the last capture.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
     :param key: Unique evidence key for this measurement.
 
-    :returns: Recorded vrms in volts.
+    :returns: Recorded fall time s in seconds.
     """
-    _logger.info("Reading Vrms from scope %s channel %s", oscope_id, channel)
+    _logger.info("Reading fall time from scope %s channel %s", oscope_id, channel)
     _ = key
-    return float(_inst(oscope_id).measure_vrms(channel))
+    return float(_inst(oscope_id).measure_fall_time_s(channel))
 
 
 @measurement
@@ -579,19 +235,103 @@ def measure_rise_time_s(*, oscope_id: int, channel: int = 1, key: str) -> float:
 
 
 @measurement
-def measure_fall_time_s(*, oscope_id: int, channel: int = 1, key: str) -> float:
-    """Measure fall time from the last capture.
+def measure_vmax(*, oscope_id: int, channel: int = 1, key: str) -> float:
+    """Measure maximum voltage from the last capture.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
     :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
         the configured model and fitted modules.
     :param key: Unique evidence key for this measurement.
 
-    :returns: Recorded fall time s in seconds.
+    :returns: Recorded vmax in volts.
     """
-    _logger.info("Reading fall time from scope %s channel %s", oscope_id, channel)
+    _logger.info("Reading Vmax from scope %s channel %s", oscope_id, channel)
     _ = key
-    return float(_inst(oscope_id).measure_fall_time_s(channel))
+    return float(_inst(oscope_id).measure_vmax(channel))
+
+
+@measurement
+def measure_vmin(*, oscope_id: int, channel: int = 1, key: str) -> float:
+    """Measure minimum voltage from the last capture.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded vmin in volts.
+    """
+    _logger.info("Reading Vmin from scope %s channel %s", oscope_id, channel)
+    _ = key
+    return float(_inst(oscope_id).measure_vmin(channel))
+
+
+@measurement
+def measure_vpp(*, oscope_id: int, channel: int = 1, key: str) -> float:
+    """Measure peak-to-peak voltage from the last capture.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded vpp in volts.
+    """
+    _logger.info("Reading Vpp from scope %s channel %s", oscope_id, channel)
+    _ = key
+    return float(_inst(oscope_id).measure_vpp(channel))
+
+
+@measurement
+def measure_vrms(*, oscope_id: int, channel: int = 1, key: str) -> float:
+    """Measure RMS voltage from the last capture.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param key: Unique evidence key for this measurement.
+
+    :returns: Recorded vrms in volts.
+    """
+    _logger.info("Reading Vrms from scope %s channel %s", oscope_id, channel)
+    _ = key
+    return float(_inst(oscope_id).measure_vrms(channel))
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def preset(*, oscope_id: EquipmentId) -> None:
+    """Return the scope to a default preset.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    """
+    _logger.info("Presetting scope %s", oscope_id)
+    _inst(oscope_id).preset()
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def run(*, oscope_id: EquipmentId) -> None:
+    """Start continuous acquisition (arm).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    """
+    _logger.info("Running scope %s", oscope_id)
+    _inst(oscope_id).run()
+
+
+@command
+def save_screenshot(*, oscope_id: int, path: str, key: str = "") -> None:
+    """Save a screen capture under the run directory.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param path: Destination file path, absolute or relative to the active run output directory;
+        requires artifacts enabled.
+    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
+        evidence lookup rules in the core guide. Default: ``''``.
+    """
+    _logger.info("Saving screenshot from scope %s to %s", oscope_id, path)
+    _inst(oscope_id).save_screenshot(path, key=key)
 
 
 @command
@@ -611,38 +351,271 @@ def save_waveform(*, oscope_id: int, channel: int, path: str, key: str = "") -> 
 
 
 @command
-def save_screenshot(*, oscope_id: int, path: str, key: str = "") -> None:
-    """Save a screen capture under the run directory.
+@broadcastable("oscope", "oscope_id")
+def set_acquire_averages(*, oscope_id: EquipmentId, count: int) -> None:
+    """Set number of averages when acquire mode is average.
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param path: Destination file path, absolute or relative to the active run output directory;
-        requires artifacts enabled.
-    :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
-        evidence lookup rules in the core guide. Default: ``''``.
+    :param count: Number of acquisition averages.
     """
-    _logger.info("Saving screenshot from scope %s to %s", oscope_id, path)
-    _inst(oscope_id).save_screenshot(path, key=key)
+    _logger.info("Setting acquire averages on scope %s to %s", oscope_id, count)
+    _inst(oscope_id).set_acquire_averages(count)
 
 
 @command
 @broadcastable("oscope", "oscope_id")
-def apply_mask_setup(
-    *,
-    oscope_id: EquipmentId,
-    mask: str,
-    channel: int = 1,
-    key: str = "",
-) -> None:
-    """Apply mask JSON ``setup`` fields (timebase/scale/offset) to this oscilloscope.
+def set_acquire_mode(*, oscope_id: EquipmentId, mode: str) -> None:
+    """Set acquire mode (``sample`` / ``peak`` / ``average`` / ``hres``).
 
     :param oscope_id: Configured ``equipment.oscope`` ID.
-    :param mask: Path to mask JSON (or from ``parameters.toml`` via ``key=``).
-    :param channel: Channel for vertical scale/offset (default 1).
-    :param key: Optional parameters / evidence key for this step.
+    :param mode: Model-specific acquisition or trigger mode token. Use the configured scope's
+        supported command vocabulary.
     """
-    _logger.info("Applying mask setup to scope %s channel %s", oscope_id, channel)
-    _ = key
-    apply_oscope_mask_setup(mask, oscope_id=require_int_id(oscope_id, kind="oscope"), channel=channel)
+    _logger.info("Setting acquire mode on scope %s to %s", oscope_id, mode)
+    _inst(oscope_id).set_acquire_mode(mode)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_bandwidth_limit(*, oscope_id: EquipmentId, channel: int, enabled: bool) -> None:
+    """Enable or disable channel bandwidth limit.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param enabled: True to enable the named feature; false to disable it.
+    """
+    _logger.info(
+        "%s bandwidth limit on scope %s channel %s",
+        "Enabling" if enabled else "Disabling",
+        oscope_id,
+        channel,
+    )
+    _inst(oscope_id).set_channel_bandwidth_limit(channel, enabled)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_coupling(*, oscope_id: EquipmentId, channel: int, coupling: str) -> None:
+    """Set channel coupling (``AC`` / ``DC`` / ``GND``).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param coupling: Channel coupling token, typically AC, DC, or GND; only use modes supported
+        by the scope.
+    """
+    _logger.info("Setting coupling on scope %s channel %s to %s", oscope_id, channel, coupling)
+    _inst(oscope_id).set_channel_coupling(channel, coupling)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_display(*, oscope_id: EquipmentId, channel: int, enabled: bool) -> None:
+    """Enable or disable a channel display.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param enabled: True to enable the named feature; false to disable it.
+    """
+    _logger.info(
+        "%s channel %s on scope %s",
+        "Enabling" if enabled else "Disabling",
+        channel,
+        oscope_id,
+    )
+    _inst(oscope_id).set_channel_display(channel, enabled)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_impedance(*, oscope_id: EquipmentId, channel: int, ohms: float) -> None:
+    """Set channel termination impedance (``50`` or ``1e6``).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param ohms: Impedance in ohms. The configured model determines the accepted values.
+    """
+    _logger.info("Setting impedance on scope %s channel %s to %s ohms", oscope_id, channel, ohms)
+    _inst(oscope_id).set_channel_impedance(channel, ohms)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_offset_v(*, oscope_id: EquipmentId, channel: int, offset_v: float) -> None:
+    """Set vertical offset in volts.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param offset_v: Vertical offset in volts; range depends on the scope/channel.
+    """
+    _logger.info("Setting offset on scope %s channel %s to %s V", oscope_id, channel, offset_v)
+    _inst(oscope_id).set_channel_offset_v(channel, offset_v)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_probe_attenuation(*, oscope_id: EquipmentId, channel: int, attenuation: float) -> None:
+    """Set probe attenuation factor (e.g. ``10`` for 10x).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param attenuation: Probe attenuation factor (for example 10 for a 10:1 probe), not a value
+        in decibels.
+    """
+    _logger.info(
+        "Setting probe attenuation on scope %s channel %s to %s",
+        oscope_id,
+        channel,
+        attenuation,
+    )
+    _inst(oscope_id).set_channel_probe_attenuation(channel, attenuation)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_channel_scale_v(*, oscope_id: EquipmentId, channel: int, volts_per_div: float) -> None:
+    """Set vertical scale in volts per division.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
+    :param volts_per_div: Vertical scale in volts per display division; range depends on the
+        scope/channel.
+    """
+    _logger.info(
+        "Setting scale on scope %s channel %s to %s V/div",
+        oscope_id,
+        channel,
+        volts_per_div,
+    )
+    _inst(oscope_id).set_channel_scale_v(channel, volts_per_div)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_record_length(*, oscope_id: EquipmentId, points: int) -> None:
+    """Set acquisition record length in points.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param points: Requested record length in sample points; supported lengths depend on the
+        scope and mode.
+    """
+    _logger.info("Setting record length on scope %s to %s points", oscope_id, points)
+    _inst(oscope_id).set_record_length(points)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_timebase_position_s(*, oscope_id: EquipmentId, position_s: float) -> None:
+    """Set horizontal position / delay.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param position_s: Horizontal trigger position in seconds using the selected scope's
+        reference convention.
+    """
+    _logger.info("Setting timebase position on scope %s to %s s", oscope_id, position_s)
+    _inst(oscope_id).set_timebase_position_s(position_s)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_timebase_scale(*, oscope_id: EquipmentId, seconds_per_div: float) -> None:
+    """Set horizontal timebase scale.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param seconds_per_div: Horizontal scale in seconds per display division; range depends on
+        the scope.
+    """
+    _logger.info("Setting timebase on scope %s to %s s/div", oscope_id, seconds_per_div)
+    _inst(oscope_id).set_timebase_scale(seconds_per_div)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_trigger_holdoff_s(*, oscope_id: EquipmentId, holdoff_s: float) -> None:
+    """Set trigger holdoff time in seconds.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param holdoff_s: Trigger holdoff in seconds; accepted range depends on the scope.
+    """
+    _logger.info("Setting trigger holdoff on scope %s to %s s", oscope_id, holdoff_s)
+    _inst(oscope_id).set_trigger_holdoff_s(holdoff_s)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_trigger_level_v(*, oscope_id: EquipmentId, level_v: float) -> None:
+    """Set edge trigger level in volts.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param level_v: Trigger threshold in volts using the selected trigger source.
+    """
+    _logger.info("Setting trigger level on scope %s to %s V", oscope_id, level_v)
+    _inst(oscope_id).set_trigger_level_v(level_v)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_trigger_mode(*, oscope_id: EquipmentId, mode: str) -> None:
+    """Set trigger mode (``auto`` / ``normal`` / ``single``).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param mode: Model-specific acquisition or trigger mode token. Use the configured scope's
+        supported command vocabulary.
+    """
+    _logger.info("Setting trigger mode on scope %s to %s", oscope_id, mode)
+    _inst(oscope_id).set_trigger_mode(mode)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_trigger_slope(*, oscope_id: EquipmentId, slope: str) -> None:
+    """Set edge trigger slope (``rising`` / ``falling``).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param slope: Trigger edge token, such as POS or NEG; supported tokens depend on the
+        selected driver.
+    """
+    _logger.info("Setting trigger slope on scope %s to %s", oscope_id, slope)
+    _inst(oscope_id).set_trigger_slope(slope)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def set_trigger_source(*, oscope_id: EquipmentId, source: str) -> None:
+    """Set edge trigger source (e.g. ``CH1``).
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param source: Trigger source token accepted by the configured scope, such as CHAN1 or EXT.
+    """
+    _logger.info("Setting trigger source on scope %s to %s", oscope_id, source)
+    _inst(oscope_id).set_trigger_source(source)
+
+
+@command
+def single_acquire(*, oscope_id: int) -> None:
+    """Arm a single acquisition and wait for OPC completion.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    """
+    _logger.info("Acquiring single waveform on scope %s", oscope_id)
+    _inst(oscope_id).single_acquire()
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def stop(*, oscope_id: EquipmentId) -> None:
+    """Stop acquisition.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    """
+    _logger.info("Stopping scope %s", oscope_id)
+    _inst(oscope_id).stop()
 
 
 @verification
@@ -672,3 +645,30 @@ def verify_mask(
         prefer_commands=("save_waveform",),
         optional=optional,
     )
+
+
+verify_vpp = tolerance_verifier("measure_vpp", module=__name__, name="verify_vpp", unit="V")
+
+
+@command
+def wait_complete(*, oscope_id: int, timeout_s: float) -> None:
+    """Wait for the current acquisition to complete.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
+        completed.
+    """
+    _logger.info("Waiting for scope %s acquisition to complete", oscope_id)
+    _inst(oscope_id).wait_complete(timeout_s=timeout_s)
+
+
+@command
+def wait_for_trigger(*, oscope_id: int, timeout_s: float) -> None:
+    """Wait until the scope reports a triggered / complete state.
+
+    :param oscope_id: Configured ``equipment.oscope`` ID.
+    :param timeout_s: Maximum wait in seconds. Expiration does not establish that the operation
+        completed.
+    """
+    _logger.info("Waiting for trigger on scope %s", oscope_id)
+    _inst(oscope_id).wait_for_trigger(timeout_s=timeout_s)

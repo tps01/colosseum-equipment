@@ -29,66 +29,6 @@ _logger = get_logger("colosseum.equipment")
 
 @command
 @broadcastable("vna", "vna_id")
-def preset(*, vna_id: EquipmentId) -> None:
-    """Return the VNA to a default preset.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-    """
-    _logger.info("Presetting VNA %s", vna_id)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).preset()
-
-
-@command
-@broadcastable("vna", "vna_id")
-def set_start_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
-    """Set the sweep start frequency.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param frequency_hz: Start frequency in hertz.
-    """
-    _logger.info("Setting start frequency on VNA %s to %s Hz", vna_id, frequency_hz)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_start_frequency(frequency_hz)
-
-
-@command
-@broadcastable("vna", "vna_id")
-def set_stop_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
-    """Set the sweep stop frequency.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param frequency_hz: Stop frequency in hertz.
-    """
-    _logger.info("Setting stop frequency on VNA %s to %s Hz", vna_id, frequency_hz)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_stop_frequency(frequency_hz)
-
-
-@command
-@broadcastable("vna", "vna_id")
-def set_points(*, vna_id: EquipmentId, count: int) -> None:
-    """Set the number of sweep points.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param count: Number of frequency points in the sweep.
-    """
-    _logger.info("Setting sweep points on VNA %s to %s", vna_id, count)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_points(count)
-
-
-@command
-def single_sweep(*, vna_id: int) -> None:
-    """Trigger a single sweep and wait for completion.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-    """
-    _logger.info("Running single sweep on VNA %s", vna_id)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).single_sweep()
-
-
-@command
-@broadcastable("vna", "vna_id")
 def abort(*, vna_id: EquipmentId) -> None:
     """Cancel an in-progress sweep.
 
@@ -100,41 +40,82 @@ def abort(*, vna_id: EquipmentId) -> None:
 
 @command
 @broadcastable("vna", "vna_id")
-def set_averaging_count(*, vna_id: EquipmentId, count: int) -> None:
-    """Set sweep averaging count.
+def configure_trigger(
+    *,
+    vna_id: EquipmentId,
+    source: str = "IMM",
+    continuous: bool | None = None,
+    edge: str | None = None,
+    delay_s: float | None = None,
+    channel: int | None = None,
+) -> None:
+    """Configure acquisition trigger source and optional settings.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
-    :param count: Number of sweeps to average.
+    :param source: Trigger source (default ``IMM``).
+
+    :param continuous: ``True`` for continuous sweep, ``False`` for single sweep.
+
+    :param edge: Trigger edge (for example ``POS``, ``NEG``).
+
+    :param delay_s: Trigger delay in seconds.
+
+    :param channel: Measurement channel override.
     """
-    _logger.info("Setting averaging count on VNA %s to %s", vna_id, count)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_averaging_count(count)
+    _logger.info(
+        "Setting trigger on VNA %s channel %s to %s edge %s delay %s s",
+        vna_id,
+        channel,
+        source,
+        edge,
+        delay_s,
+    )
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).configure_trigger(
+        source,
+        continuous=continuous,
+        edge=edge,
+        delay_s=delay_s,
+        channel=channel,
+    )
 
 
-@command
-@broadcastable("vna", "vna_id")
-def toggle_averaging(*, vna_id: EquipmentId, enabled: bool) -> None:
-    """Enable or disable sweep averaging.
+@measurement
+def measure_marker_frequency(*, vna_id: int, marker: int = 1, key: str) -> float:
+    """Read marker frequency.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
-    :param enabled: ``True`` to enable averaging.
+    :param marker: Marker number (default ``1``).
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+        Must not collide with another instrument's measurement using the same command name.
+
+    :returns: Measured marker frequency in hertz.
+    :rtype: float
     """
-    _logger.info("%s averaging on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_averaging(enabled)
+    _logger.info("Reading marker frequency from VNA %s marker %s", vna_id, marker)
+    _ = key
+    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_marker_frequency(marker))
 
 
-@command
-@broadcastable("vna", "vna_id")
-def set_smoothing_aperture(*, vna_id: EquipmentId, percent: float) -> None:
-    """Set trace smoothing aperture as a percent of span.
+@measurement
+def measure_marker_value(*, vna_id: int, marker: int = 1, key: str) -> float:
+    """Read marker trace value.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
-    :param percent: Smoothing aperture in percent.
+    :param marker: Marker number (default ``1``).
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+        Must not collide with another instrument's measurement using the same command name.
+
+    :returns: Measured marker trace value.
+    :rtype: float
     """
-    _logger.info("Setting smoothing aperture on VNA %s to %s %%", vna_id, percent)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_smoothing_aperture(percent)
+    _logger.info("Reading marker value from VNA %s marker %s", vna_id, marker)
+    _ = key
+    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_marker_value(marker))
 
 
 @measurement
@@ -209,29 +190,6 @@ def measure_s_parameter(
 
 
 @command
-def wait_complete(*, vna_id: int) -> None:
-    """Block until the current operation completes.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-    """
-    _logger.info("Waiting for VNA %s sweep to complete", vna_id)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).wait_complete()
-
-
-@command
-@broadcastable("vna", "vna_id")
-def toggle_display(*, vna_id: EquipmentId, enabled: bool) -> None:
-    """Enable or disable instrument display updates.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param enabled: ``True`` to enable display updates, ``False`` to disable.
-    """
-    _logger.info("%s display on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_display(enabled)
-
-
-@command
 def perform_ecal(*, vna_id: int, ports: str) -> None:
     """Run guided e-calibration between ports.
 
@@ -245,71 +203,13 @@ def perform_ecal(*, vna_id: int, ports: str) -> None:
 
 @command
 @broadcastable("vna", "vna_id")
-def set_marker(*, vna_id: EquipmentId, marker: int, frequency_hz: float, trace: int = 1) -> None:
-    """Place a marker at the given frequency on a trace.
+def preset(*, vna_id: EquipmentId) -> None:
+    """Return the VNA to a default preset.
 
     :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param marker: Marker number.
-
-    :param frequency_hz: Marker frequency in hertz.
-
-    :param trace: Trace number (default ``1``).
     """
-    _logger.info("Setting VNA %s marker %s to %s Hz", vna_id, marker, frequency_hz)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_marker(marker, frequency_hz, trace=trace)
-
-
-@measurement
-def measure_marker_frequency(*, vna_id: int, marker: int = 1, key: str) -> float:
-    """Read marker frequency.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param marker: Marker number (default ``1``).
-
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
-
-    :returns: Measured marker frequency in hertz.
-    :rtype: float
-    """
-    _logger.info("Reading marker frequency from VNA %s marker %s", vna_id, marker)
-    _ = key
-    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_marker_frequency(marker))
-
-
-@measurement
-def measure_marker_value(*, vna_id: int, marker: int = 1, key: str) -> float:
-    """Read marker trace value.
-
-    :param vna_id: Configured ``equipment.vna`` ID.
-
-    :param marker: Marker number (default ``1``).
-
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-        Must not collide with another instrument's measurement using the same command name.
-
-    :returns: Measured marker trace value.
-    :rtype: float
-    """
-    _logger.info("Reading marker value from VNA %s marker %s", vna_id, marker)
-    _ = key
-    return float(get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).measure_marker_value(marker))
-
-
-verify_marker_frequency = tolerance_verifier(
-    "measure_marker_frequency", module=__name__,
-    name="verify_marker_frequency",
-    default_tolerance=1000.0,
-)
-
-
-verify_marker_value = tolerance_verifier(
-    "measure_marker_value", module=__name__,
-    name="verify_marker_value",
-    default_tolerance=0.01,
-)
+    _logger.info("Presetting VNA %s", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).preset()
 
 
 @command
@@ -344,6 +244,19 @@ def save_trace_data(
 
 @command
 @broadcastable("vna", "vna_id")
+def set_averaging_count(*, vna_id: EquipmentId, count: int) -> None:
+    """Set sweep averaging count.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param count: Number of sweeps to average.
+    """
+    _logger.info("Setting averaging count on VNA %s to %s", vna_id, count)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_averaging_count(count)
+
+
+@command
+@broadcastable("vna", "vna_id")
 def set_if_bw(*, vna_id: EquipmentId, bandwidth_hz: float) -> None:
     """Set IF/resolution bandwidth.
 
@@ -357,17 +270,32 @@ def set_if_bw(*, vna_id: EquipmentId, bandwidth_hz: float) -> None:
 
 @command
 @broadcastable("vna", "vna_id")
-def set_tx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> None:
-    """Set source port output power.
+def set_marker(*, vna_id: EquipmentId, marker: int, frequency_hz: float, trace: int = 1) -> None:
+    """Place a marker at the given frequency on a trace.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
-    :param power_dbm: Output power in dBm.
+    :param marker: Marker number.
 
-    :param port: Source port number (default ``1``).
+    :param frequency_hz: Marker frequency in hertz.
+
+    :param trace: Trace number (default ``1``).
     """
-    _logger.info("Setting transmit power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_tx_power(power_dbm, port=port)
+    _logger.info("Setting VNA %s marker %s to %s Hz", vna_id, marker, frequency_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_marker(marker, frequency_hz, trace=trace)
+
+
+@command
+@broadcastable("vna", "vna_id")
+def set_points(*, vna_id: EquipmentId, count: int) -> None:
+    """Set the number of sweep points.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param count: Number of frequency points in the sweep.
+    """
+    _logger.info("Setting sweep points on VNA %s to %s", vna_id, count)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_points(count)
 
 
 @command
@@ -383,6 +311,45 @@ def set_rx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> Non
     """
     _logger.info("Setting receive power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
     get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_rx_power(power_dbm, port=port)
+
+
+@command
+@broadcastable("vna", "vna_id")
+def set_smoothing_aperture(*, vna_id: EquipmentId, percent: float) -> None:
+    """Set trace smoothing aperture as a percent of span.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param percent: Smoothing aperture in percent.
+    """
+    _logger.info("Setting smoothing aperture on VNA %s to %s %%", vna_id, percent)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_smoothing_aperture(percent)
+
+
+@command
+@broadcastable("vna", "vna_id")
+def set_start_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
+    """Set the sweep start frequency.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param frequency_hz: Start frequency in hertz.
+    """
+    _logger.info("Setting start frequency on VNA %s to %s Hz", vna_id, frequency_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_start_frequency(frequency_hz)
+
+
+@command
+@broadcastable("vna", "vna_id")
+def set_stop_frequency(*, vna_id: EquipmentId, frequency_hz: float) -> None:
+    """Set the sweep stop frequency.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param frequency_hz: Stop frequency in hertz.
+    """
+    _logger.info("Setting stop frequency on VNA %s to %s Hz", vna_id, frequency_hz)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_stop_frequency(frequency_hz)
 
 
 @command
@@ -445,41 +412,74 @@ def set_trace_parameters(*, vna_id: EquipmentId, trace: int, parameter: str, for
 
 @command
 @broadcastable("vna", "vna_id")
-def configure_trigger(
-    *,
-    vna_id: EquipmentId,
-    source: str = "IMM",
-    continuous: bool | None = None,
-    edge: str | None = None,
-    delay_s: float | None = None,
-    channel: int | None = None,
-) -> None:
-    """Configure acquisition trigger source and optional settings.
+def set_tx_power(*, vna_id: EquipmentId, power_dbm: float, port: int = 1) -> None:
+    """Set source port output power.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
-    :param source: Trigger source (default ``IMM``).
+    :param power_dbm: Output power in dBm.
 
-    :param continuous: ``True`` for continuous sweep, ``False`` for single sweep.
-
-    :param edge: Trigger edge (for example ``POS``, ``NEG``).
-
-    :param delay_s: Trigger delay in seconds.
-
-    :param channel: Measurement channel override.
+    :param port: Source port number (default ``1``).
     """
-    _logger.info(
-        "Setting trigger on VNA %s channel %s to %s edge %s delay %s s",
-        vna_id,
-        channel,
-        source,
-        edge,
-        delay_s,
-    )
-    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).configure_trigger(
-        source,
-        continuous=continuous,
-        edge=edge,
-        delay_s=delay_s,
-        channel=channel,
-    )
+    _logger.info("Setting transmit power on VNA %s port %s to %s dBm", vna_id, port, power_dbm)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).set_tx_power(power_dbm, port=port)
+
+
+@command
+def single_sweep(*, vna_id: int) -> None:
+    """Trigger a single sweep and wait for completion.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+    """
+    _logger.info("Running single sweep on VNA %s", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).single_sweep()
+
+
+@command
+@broadcastable("vna", "vna_id")
+def toggle_averaging(*, vna_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable sweep averaging.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param enabled: ``True`` to enable averaging.
+    """
+    _logger.info("%s averaging on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_averaging(enabled)
+
+
+@command
+@broadcastable("vna", "vna_id")
+def toggle_display(*, vna_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable instrument display updates.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+
+    :param enabled: ``True`` to enable display updates, ``False`` to disable.
+    """
+    _logger.info("%s display on VNA %s", "Enabling" if enabled else "Disabling", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).toggle_display(enabled)
+
+
+verify_marker_frequency = tolerance_verifier(
+    "measure_marker_frequency", module=__name__,
+    name="verify_marker_frequency",
+    default_tolerance=1000.0,
+)
+
+
+verify_marker_value = tolerance_verifier(
+    "measure_marker_value", module=__name__,
+    name="verify_marker_value",
+    default_tolerance=0.01,
+)
+
+
+@command
+def wait_complete(*, vna_id: int) -> None:
+    """Block until the current operation completes.
+
+    :param vna_id: Configured ``equipment.vna`` ID.
+    """
+    _logger.info("Waiting for VNA %s sweep to complete", vna_id)
+    get_cached_instrument("vna", require_int_id(vna_id, kind="vna")).wait_complete()

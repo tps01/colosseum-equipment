@@ -37,90 +37,19 @@ def _correct_dbm(inst: Any, raw_dbm: float, *, channel: int, calibration: str | 
 
 
 @command
-@broadcastable("pwrmeter", "pwrmeter_id")
-def set_frequency(
-    *,
-    pwrmeter_id: EquipmentId,
-    frequency_hz: float,
-    channel: int = 1,
-    calibration: str | None = None,
-) -> None:
-    """Set the calibration frequency.
+def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
+    """Start a new sensor acquisition and wait before fetching a statistic.
 
-    ``calibration`` only binds the frequency for later ``measure_*`` path-loss
-    correction (sensor frequency is still programmed on the instrument).
+    Configure the qualified sensor's measurement/gate/trigger mode first.
+    The transport timeout bounds the wait; unsupported generic dialects must
+    be supplied by a model adapter rather than treated as measured power.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-
-    :param frequency_hz: Frequency in hertz.
-
-    :param channel: Sensor channel index (1-based).
-
-    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
+        the configured model and fitted modules.
     """
-    _logger.info(
-        "Setting frequency on power meter %s channel %s to %s Hz",
-        pwrmeter_id,
-        channel,
-        frequency_hz,
-    )
-    _ = calibration
-    inst = _inst(pwrmeter_id)
-    inst.set_frequency(frequency_hz, channel=channel)
-    _cal.bind_frequency(inst, frequency_hz, channel=channel)
-
-
-@command
-@broadcastable("pwrmeter", "pwrmeter_id")
-def set_averaging_count(*, pwrmeter_id: EquipmentId, count: int, channel: int = 1) -> None:
-    """Set the measurement averaging count.
-
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-
-    :param count: Number of averages.
-
-    :param channel: Sensor channel index (1-based).
-    """
-    _logger.info(
-        "Setting averaging count on power meter %s channel %s to %s",
-        pwrmeter_id,
-        channel,
-        count,
-    )
-    _inst(pwrmeter_id).set_averaging_count(count, channel=channel)
-
-
-@command
-@broadcastable("pwrmeter", "pwrmeter_id")
-def set_offset_db(*, pwrmeter_id: EquipmentId, offset_db: float, channel: int = 1) -> None:
-    """Set power offset correction in dB.
-
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-
-    :param offset_db: Offset in dB.
-
-    :param channel: Sensor channel index (1-based).
-    """
-    _logger.info(
-        "Setting offset on power meter %s channel %s to %s dB",
-        pwrmeter_id,
-        channel,
-        offset_db,
-    )
-    _inst(pwrmeter_id).set_offset_db(offset_db, channel=channel)
-
-
-@command
-@broadcastable("pwrmeter", "pwrmeter_id")
-def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
-    """Zero the sensor.
-
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-
-    :param channel: Sensor channel index (1-based).
-    """
-    _logger.info("Zeroing power meter %s channel %s", pwrmeter_id, channel)
-    _inst(pwrmeter_id).zero_sensor(channel=channel)
+    _logger.info("Acquiring power meter %s channel %s", pwrmeter_id, channel)
+    _inst(pwrmeter_id).acquire(channel=channel)
 
 
 @command
@@ -136,31 +65,68 @@ def calibrate(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     _inst(pwrmeter_id).calibrate(channel=channel)
 
 
-@command
-@broadcastable("pwrmeter", "pwrmeter_id")
-def preset(*, pwrmeter_id: EquipmentId) -> None:
-    """Return the instrument to a default preset.
+def measure_power(
+    *,
+    pwrmeter_id: int,
+    channel: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
+    """Measure RF power in dBm (alias of :func:`measure_power_dbm`).
+
+    Records evidence under command ``measure_power_dbm``. Pair with
+    :data:`verify_power` or :data:`verify_power_dbm` using the same ``key``.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
+    :param channel: Sensor channel index (1-based).
+
+    :param key: Unique measurement key within domain ``equipment``.
+
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+
+    :returns: Measured power in dBm.
+    :rtype: float
     """
-    _logger.info("Presetting power meter %s", pwrmeter_id)
-    _inst(pwrmeter_id).preset()
+    _logger.info("Reading power from power meter %s channel %s", pwrmeter_id, channel)
+    return measure_power_dbm(
+        pwrmeter_id=pwrmeter_id,
+        channel=channel,
+        key=key,
+        calibration=calibration,
+    )
 
 
-@command
-def acquire(*, pwrmeter_id: int, channel: int = 1) -> None:
-    """Start a new sensor acquisition and wait before fetching a statistic.
-
-    Configure the qualified sensor's measurement/gate/trigger mode first.
-    The transport timeout bounds the wait; unsupported generic dialects must
-    be supplied by a model adapter rather than treated as measured power.
+@measurement
+def measure_power_avg_dbm(
+    *,
+    pwrmeter_id: int,
+    channel: int = 1,
+    key: str,
+    calibration: str | None = None,
+) -> float:
+    """Measure averaged RF power in dBm.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-    :param channel: Physical channel, numbered from 1. Defaults to 1; valid channels depend on
-        the configured model and fitted modules.
+
+    :param channel: Sensor channel index (1-based).
+
+    :param key: Unique measurement key within domain ``equipment`` and this command name.
+
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+
+    :returns: Averaged power in dBm.
+    :rtype: float
     """
-    _logger.info("Acquiring power meter %s channel %s", pwrmeter_id, channel)
-    _inst(pwrmeter_id).acquire(channel=channel)
+    _logger.info("Reading average power from power meter %s channel %s", pwrmeter_id, channel)
+    _ = key
+    inst = _inst(pwrmeter_id)
+    return _correct_dbm(
+        inst,
+        inst.measure_power_avg_dbm(channel=channel),
+        channel=channel,
+        calibration=calibration,
+    )
 
 
 @measurement
@@ -196,72 +162,6 @@ def measure_power_dbm(
     )
 
 
-verify_power_dbm = tolerance_verifier(
-    "measure_power_dbm", module=__name__,
-    name="verify_power_dbm",
-    default_tolerance=0.5,
-    unit="dBm",
-)
-
-
-def measure_power(
-    *,
-    pwrmeter_id: int,
-    channel: int = 1,
-    key: str,
-    calibration: str | None = None,
-) -> float:
-    """Measure RF power in dBm (alias of :func:`measure_power_dbm`).
-
-    Records evidence under command ``measure_power_dbm``. Pair with
-    :data:`verify_power` or :data:`verify_power_dbm` using the same ``key``.
-
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-
-    :param channel: Sensor channel index (1-based).
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-
-    :returns: Measured power in dBm.
-    :rtype: float
-    """
-    _logger.info("Reading power from power meter %s channel %s", pwrmeter_id, channel)
-    return measure_power_dbm(
-        pwrmeter_id=pwrmeter_id,
-        channel=channel,
-        key=key,
-        calibration=calibration,
-    )
-
-
-verify_power = tolerance_verifier(
-    "measure_power_dbm", module=__name__,
-    name="verify_power",
-    default_tolerance=0.5,
-    unit="dBm",
-)
-
-
-@measurement
-def measure_power_w(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
-    """Measure RF power in watts.
-
-    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
-
-    :param channel: Sensor channel index (1-based).
-
-    :param key: Unique measurement key within domain ``equipment`` and this command name.
-
-    :returns: Measured power in watts.
-    :rtype: float
-    """
-    _logger.info("Reading power in watts from power meter %s channel %s", pwrmeter_id, channel)
-    _ = key
-    return float(_inst(pwrmeter_id).measure_power_w(channel=channel))
-
-
 @measurement
 def measure_power_peak_dbm(
     *,
@@ -295,14 +195,8 @@ def measure_power_peak_dbm(
 
 
 @measurement
-def measure_power_avg_dbm(
-    *,
-    pwrmeter_id: int,
-    channel: int = 1,
-    key: str,
-    calibration: str | None = None,
-) -> float:
-    """Measure averaged RF power in dBm.
+def measure_power_w(*, pwrmeter_id: int, channel: int = 1, key: str) -> float:
+    """Measure RF power in watts.
 
     :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
 
@@ -310,17 +204,123 @@ def measure_power_avg_dbm(
 
     :param key: Unique measurement key within domain ``equipment`` and this command name.
 
-    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
-
-    :returns: Averaged power in dBm.
+    :returns: Measured power in watts.
     :rtype: float
     """
-    _logger.info("Reading average power from power meter %s channel %s", pwrmeter_id, channel)
+    _logger.info("Reading power in watts from power meter %s channel %s", pwrmeter_id, channel)
     _ = key
-    inst = _inst(pwrmeter_id)
-    return _correct_dbm(
-        inst,
-        inst.measure_power_avg_dbm(channel=channel),
-        channel=channel,
-        calibration=calibration,
+    return float(_inst(pwrmeter_id).measure_power_w(channel=channel))
+
+
+@command
+@broadcastable("pwrmeter", "pwrmeter_id")
+def preset(*, pwrmeter_id: EquipmentId) -> None:
+    """Return the instrument to a default preset.
+
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+    """
+    _logger.info("Presetting power meter %s", pwrmeter_id)
+    _inst(pwrmeter_id).preset()
+
+
+@command
+@broadcastable("pwrmeter", "pwrmeter_id")
+def set_averaging_count(*, pwrmeter_id: EquipmentId, count: int, channel: int = 1) -> None:
+    """Set the measurement averaging count.
+
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
+    :param count: Number of averages.
+
+    :param channel: Sensor channel index (1-based).
+    """
+    _logger.info(
+        "Setting averaging count on power meter %s channel %s to %s",
+        pwrmeter_id,
+        channel,
+        count,
     )
+    _inst(pwrmeter_id).set_averaging_count(count, channel=channel)
+
+
+@command
+@broadcastable("pwrmeter", "pwrmeter_id")
+def set_frequency(
+    *,
+    pwrmeter_id: EquipmentId,
+    frequency_hz: float,
+    channel: int = 1,
+    calibration: str | None = None,
+) -> None:
+    """Set the calibration frequency.
+
+    ``calibration`` only binds the frequency for later ``measure_*`` path-loss
+    correction (sensor frequency is still programmed on the instrument).
+
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
+    :param frequency_hz: Frequency in hertz.
+
+    :param channel: Sensor channel index (1-based).
+
+    :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
+    """
+    _logger.info(
+        "Setting frequency on power meter %s channel %s to %s Hz",
+        pwrmeter_id,
+        channel,
+        frequency_hz,
+    )
+    _ = calibration
+    inst = _inst(pwrmeter_id)
+    inst.set_frequency(frequency_hz, channel=channel)
+    _cal.bind_frequency(inst, frequency_hz, channel=channel)
+
+
+@command
+@broadcastable("pwrmeter", "pwrmeter_id")
+def set_offset_db(*, pwrmeter_id: EquipmentId, offset_db: float, channel: int = 1) -> None:
+    """Set power offset correction in dB.
+
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
+    :param offset_db: Offset in dB.
+
+    :param channel: Sensor channel index (1-based).
+    """
+    _logger.info(
+        "Setting offset on power meter %s channel %s to %s dB",
+        pwrmeter_id,
+        channel,
+        offset_db,
+    )
+    _inst(pwrmeter_id).set_offset_db(offset_db, channel=channel)
+
+
+verify_power = tolerance_verifier(
+    "measure_power_dbm", module=__name__,
+    name="verify_power",
+    default_tolerance=0.5,
+    unit="dBm",
+)
+
+
+verify_power_dbm = tolerance_verifier(
+    "measure_power_dbm", module=__name__,
+    name="verify_power_dbm",
+    default_tolerance=0.5,
+    unit="dBm",
+)
+
+
+@command
+@broadcastable("pwrmeter", "pwrmeter_id")
+def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
+    """Zero the sensor.
+
+    :param pwrmeter_id: Configured ``equipment.pwrmeter`` ID.
+
+    :param channel: Sensor channel index (1-based).
+    """
+    _logger.info("Zeroing power meter %s channel %s", pwrmeter_id, channel)
+    _inst(pwrmeter_id).zero_sensor(channel=channel)

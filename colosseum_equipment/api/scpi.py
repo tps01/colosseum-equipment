@@ -29,15 +29,6 @@ def _selected_instrument(**instrument_ids: object) -> tuple[str, int]:
     )
 
 
-def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
-    """Return a SCPI helper for one configured instrument.
-
-    :param kind: Registered equipment kind, such as psu or dmm.
-    :param equipment_id: Integer ID from that kind's configuration section.
-    :returns: SCPIHelper using the cached transport; helper calls are not decorated evidence APIs.
-    :raises EquipmentConnectionError: The transport could not be opened.
-    """
-    return SCPIHelper(get_transport(kind, equipment_id))
 
 
 def _resolve_kind(**kwargs: object) -> tuple[str, int]:
@@ -113,9 +104,6 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
     return command(api_any)
 
 
-write = _make_scpi_api("write", "write", None)
-query = _make_scpi_api("query", "query", str)
-query_float = _make_scpi_api("query_float", "query_float", float)
 
 
 def _make_status_api(name: str, method: str, return_annotation: object) -> Callable[..., object]:
@@ -163,9 +151,6 @@ def _make_status_api(name: str, method: str, return_annotation: object) -> Calla
     return command(api_any)
 
 
-status_byte = _make_status_api("status_byte", "status_byte", int)
-esr = _make_status_api("esr", "esr", int)
-clear_status = _make_status_api("clear_status", "clear_status", None)
 
 
 def _make_drain_error_queue() -> Callable[..., list[str]]:
@@ -219,4 +204,25 @@ def _make_drain_error_queue() -> Callable[..., list[str]]:
     return command(api_any)
 
 
+clear_status = _make_status_api("clear_status", "clear_status", None)
 drain_error_queue = _make_drain_error_queue()
+
+
+
+
+esr = _make_status_api("esr", "esr", int)
+def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
+    """Return a SCPI helper for one configured instrument.
+
+    :param kind: Registered equipment kind, such as psu or dmm.
+    :param equipment_id: Integer ID from that kind's configuration section.
+    :returns: SCPIHelper using the cached transport; helper calls are not decorated evidence APIs.
+    :raises EquipmentConnectionError: The transport could not be opened.
+    """
+    return SCPIHelper(get_transport(kind, equipment_id))
+
+
+query = _make_scpi_api("query", "query", str)
+query_float = _make_scpi_api("query_float", "query_float", float)
+status_byte = _make_status_api("status_byte", "status_byte", int)
+write = _make_scpi_api("write", "write", None)

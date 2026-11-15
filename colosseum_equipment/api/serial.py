@@ -29,34 +29,35 @@ def _channel(serial_id: EquipmentId) -> SerialChannel:
 
 @command
 @broadcastable("serial", "serial_id")
-def write(*, serial_id: EquipmentId, data: str, append_newline: str = "") -> None:
-    """Write raw text to a configured serial port.
+def flush(*, serial_id: EquipmentId) -> None:
+    """Discard pending RX/TX buffers on the serial port when supported.
 
     :param serial_id: Configured ``equipment.serial`` ID.
 
-    :param data: Payload to send (no line ending added unless ``append_newline`` is set).
-
-    :param append_newline: Optional suffix (for example ``"\\r\\n"``).
-
-    :raises EquipmentConnectionError: Port open or write failed.
+    :raises EquipmentConnectionError: Port flush failed.
+    :raises EquipmentCapabilityError: Transport does not support flush.
     """
-    _logger.info("Writing %s characters to serial %s", len(data), serial_id)
-    _channel(serial_id).write(data, append_newline=append_newline)
+    _logger.info("Flushing serial %s", serial_id)
+    _channel(serial_id).flush()
 
 
-@command
-@broadcastable("serial", "serial_id")
-def write_bytes(*, serial_id: EquipmentId, data: bytes) -> None:
-    """Write raw bytes to a configured serial port.
+@measurement
+def measure_in_waiting(*, serial_id: int, key: str) -> int:
+    """Read the number of bytes waiting in the RX buffer.
 
     :param serial_id: Configured ``equipment.serial`` ID.
 
-    :param data: Payload to send.
+    :param key: Unique measurement key within domain ``equipment``.
 
-    :raises EquipmentConnectionError: Port open or write failed.
+    :returns: Byte count available to read.
+    :rtype: int
+
+    :raises EquipmentConnectionError: Port access failed.
+    :raises EquipmentCapabilityError: Transport does not expose buffer depth.
     """
-    _logger.info("Writing %s bytes to serial %s", len(data), serial_id)
-    _channel(serial_id).write_bytes(data)
+    _logger.info("Reading bytes waiting on serial %s", serial_id)
+    _ = key
+    return int(_channel(serial_id).measure_in_waiting())
 
 
 @measurement
@@ -131,39 +132,6 @@ def read_until(
 
 @command
 @broadcastable("serial", "serial_id")
-def flush(*, serial_id: EquipmentId) -> None:
-    """Discard pending RX/TX buffers on the serial port when supported.
-
-    :param serial_id: Configured ``equipment.serial`` ID.
-
-    :raises EquipmentConnectionError: Port flush failed.
-    :raises EquipmentCapabilityError: Transport does not support flush.
-    """
-    _logger.info("Flushing serial %s", serial_id)
-    _channel(serial_id).flush()
-
-
-@measurement
-def measure_in_waiting(*, serial_id: int, key: str) -> int:
-    """Read the number of bytes waiting in the RX buffer.
-
-    :param serial_id: Configured ``equipment.serial`` ID.
-
-    :param key: Unique measurement key within domain ``equipment``.
-
-    :returns: Byte count available to read.
-    :rtype: int
-
-    :raises EquipmentConnectionError: Port access failed.
-    :raises EquipmentCapabilityError: Transport does not expose buffer depth.
-    """
-    _logger.info("Reading bytes waiting on serial %s", serial_id)
-    _ = key
-    return int(_channel(serial_id).measure_in_waiting())
-
-
-@command
-@broadcastable("serial", "serial_id")
 def set_timeout_s(*, serial_id: EquipmentId, timeout_s: float) -> None:
     """Set the serial port read timeout in seconds.
 
@@ -176,3 +144,35 @@ def set_timeout_s(*, serial_id: EquipmentId, timeout_s: float) -> None:
     """
     _logger.info("Setting timeout on serial %s to %s s", serial_id, timeout_s)
     _channel(serial_id).set_timeout_s(timeout_s)
+
+
+@command
+@broadcastable("serial", "serial_id")
+def write(*, serial_id: EquipmentId, data: str, append_newline: str = "") -> None:
+    """Write raw text to a configured serial port.
+
+    :param serial_id: Configured ``equipment.serial`` ID.
+
+    :param data: Payload to send (no line ending added unless ``append_newline`` is set).
+
+    :param append_newline: Optional suffix (for example ``"\\r\\n"``).
+
+    :raises EquipmentConnectionError: Port open or write failed.
+    """
+    _logger.info("Writing %s characters to serial %s", len(data), serial_id)
+    _channel(serial_id).write(data, append_newline=append_newline)
+
+
+@command
+@broadcastable("serial", "serial_id")
+def write_bytes(*, serial_id: EquipmentId, data: bytes) -> None:
+    """Write raw bytes to a configured serial port.
+
+    :param serial_id: Configured ``equipment.serial`` ID.
+
+    :param data: Payload to send.
+
+    :raises EquipmentConnectionError: Port open or write failed.
+    """
+    _logger.info("Writing %s bytes to serial %s", len(data), serial_id)
+    _channel(serial_id).write_bytes(data)
