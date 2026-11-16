@@ -7,6 +7,8 @@ Manuals: Keysight ENA/PNA online programming help and R&S ZNL/ZNLE
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment._paths import resolve_artifact_path
@@ -117,10 +119,26 @@ class InventoryVna(GenericVna):
     def _query_frequencies(self) -> list[float]:
         return parse_vna_trace_values(self._scpi.query(f"{self._sens()}:FREQ:DATA?"))
 
+    @contextmanager
+    def _selected_trace(self, trace: int) -> Iterator[None]:
+        # ENA selection cannot be restored with the parameterized setter used
+        # by PNA. Require the desired trace to be selected explicitly instead.
+        self._scpi.require_setting(f"{self._calc()}:PAR:SEL?", str(trace))
+        yield
+
+    def _trace_parameter(self, trace: int) -> str:
+        return self._scpi.query(f"{self._calc()}:PAR{trace}:DEF?").strip().strip('"').upper()
+
+    def _require_trace(self, trace: int, parameter: str, fmt: str) -> None:
+        param, form = self._validate_trace(trace, parameter, fmt)
+        with self._selected_trace(trace):
+            if self._trace_parameter(trace) != param:
+                raise EquipmentCapabilityError(f"configure trace {trace} as {param} before acquisition")
+            self._scpi.require_setting(f"{self._calc()}:FORM?", form)
+
     def _trace_values(self, trace: int) -> list[float]:
-        self._select_trace(trace)
-        self._scpi.write("FORM:DATA ASC")
-        return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA:FDAT?"))
+        with self._selected_trace(trace), self._scpi.temporary_settings(("FORM:DATA", "ASC")):
+            return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA:FDAT?"))
 
     def save_trace_data(
         self,
@@ -132,9 +150,7 @@ class InventoryVna(GenericVna):
     ) -> Path:
         if file_format.lower() != "csv" or path.lower().endswith((".s1p", ".s2p")):
             raise EquipmentCapabilityError("formatted trace export is CSV, not a full Touchstone matrix")
-        # Set the requested parameter so an existing S21 trace cannot be mislabeled S11.
-        self.set_trace_parameters(trace, parameter, "MLOG")
-        self.single_sweep()
+        self._require_trace(trace, parameter, "MLOG")
         values = self._trace_values(trace)
         frequencies = self._query_frequencies()
         if not values or len(values) != len(frequencies):
@@ -155,8 +171,7 @@ class InventoryVna(GenericVna):
         return artifact
 
     def _measure_trace_peak(self, trace: int, parameter: str, fmt: str) -> float:
-        self.set_trace_parameters(trace, parameter, fmt)
-        self.single_sweep()
+        self._require_trace(trace, parameter, fmt)
         values = self._trace_values(trace)
         if not values or any(not math.isfinite(v) or abs(v) >= 9e37 for v in values):
             raise EquipmentResponseError("empty or invalid VNA trace")
@@ -183,10 +198,12 @@ class PairedTraceVna(InventoryVna):
         return super()._validate_trace(trace, parameter, fmt)
 
     def _trace_values(self, trace: int) -> list[float]:
-        self._select_trace(trace)
-        if self._ascii_command:
-            self._scpi.write(self._ascii_command)
-        raw = self._scpi.query(f"{self._calc()}:DATA:FDAT?")
+        with self._selected_trace(trace):
+            if self._ascii_command:
+                with self._scpi.temporary_settings(("FORM:DATA", "ASC")):
+                    raw = self._scpi.query(f"{self._calc()}:DATA:FDAT?")
+            else:
+                raw = self._scpi.query(f"{self._calc()}:DATA:FDAT?")
         try:
             if any(not part.strip() for part in raw.split(",")):
                 raise ValueError("empty sample")
@@ -247,6 +264,18 @@ class KeysightPna(InventoryVna):
         self._scpi.write(f"{self._sens()}:SWE:MODE SING")
         self.wait_complete()
 
+    @contextmanager
+    def _selected_trace(self, trace: int) -> Iterator[None]:
+        with self._scpi.temporary_settings((f"{self._calc()}:PAR:MNUM", str(trace))):
+            yield
+
+    def _trace_parameter(self, trace: int) -> str:
+        import csv
+
+        name = self._scpi.query(f"{self._calc()}:PAR:SEL?").strip().strip('"')
+        catalog = next(csv.reader([self._scpi.query(f"{self._calc()}:PAR:CAT:EXT?").strip('"')]))
+        return dict(zip(catalog[::2], catalog[1::2], strict=True)).get(name, "").upper()
+
     def _select_trace(self, trace: int) -> None:
         self._scpi.write(f"{self._calc()}:PAR:MNUM {trace}")
 
@@ -257,9 +286,8 @@ class KeysightPna(InventoryVna):
         self._scpi.write(f"{self._calc()}:FORM {form}")
 
     def _trace_values(self, trace: int) -> list[float]:
-        self._select_trace(trace)
-        self._scpi.write("FORM:DATA ASC")
-        return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA? FDATA"))
+        with self._selected_trace(trace), self._scpi.temporary_settings(("FORM:DATA", "ASC")):
+            return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA? FDATA"))
 
     def _query_frequencies(self) -> list[float]:
         return parse_vna_trace_values(self._scpi.query(f"{self._sens()}:X?"))
@@ -273,6 +301,17 @@ class RohdeZnle(InventoryVna):
     COL_trcN names are owned by this driver and reassigned on configuration.
     """
 
+    @contextmanager
+    def _selected_trace(self, trace: int) -> Iterator[None]:
+        with self._scpi.temporary_settings((f"{self._calc()}:PAR:SEL", f"'COL_trc{trace}'")):
+            yield
+
+    def _trace_parameter(self, trace: int) -> str:
+        import csv
+
+        catalog = next(csv.reader([self._scpi.query(f"{self._calc()}:PAR:CAT?").strip('"')]))
+        return dict(zip(catalog[::2], catalog[1::2], strict=True)).get(f"COL_trc{trace}", "").upper()
+
     def _select_trace(self, trace: int) -> None:
         self._scpi.write(f"{self._calc()}:PAR:SEL 'COL_trc{trace}'")
 
@@ -283,9 +322,8 @@ class RohdeZnle(InventoryVna):
         self._scpi.write(f"{self._calc()}:FORM {form}")
 
     def _trace_values(self, trace: int) -> list[float]:
-        self._select_trace(trace)
-        self._scpi.write("FORM ASC")
-        return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA? FDAT"))
+        with self._selected_trace(trace), self._scpi.temporary_settings(("FORM", "ASC")):
+            return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA? FDAT"))
 
     def _query_frequencies(self) -> list[float]:
         return parse_vna_trace_values(self._scpi.query(f"{self._calc()}:DATA:STIM?"))
@@ -317,8 +355,6 @@ class KeysightFieldFox(InventoryVna):
             raise EquipmentCapabilityError("FieldFox exposes one NA measurement channel")
         super().__init__(transport, config)
         self._average_count = 1
-        self._scpi.write('INST:SEL "NA"')
-        self.wait_complete()
 
     def _sens(self) -> str:
         return "SENS"

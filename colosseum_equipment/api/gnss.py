@@ -656,27 +656,25 @@ def set_message_rate(*, gnss_id: EquipmentId, message: str, rate_hz: float) -> N
 
 
 @command
-def start_logging(*, gnss_id: int, path: str, key: str = "", messages: str = "default") -> None:
+def start_logging(*, gnss_id: int, path: str, key: str = "") -> None:
     """Start background logging of raw messages, binary wire capture, track CSV, and DB epochs.
 
     Writes a decoded text log at ``path``, a binary wire sidecar
     (``{stem}_wire.ubx`` / ``.gps`` / ``.sbf`` / ``.bin``), and ``{stem}_track.csv``.
     ``key`` identifies the logging window for evidence rows.
-    ``messages`` selects a vendor message profile (``default`` / ``nmea`` / ``field`` /
-    ``sat`` / ``all``).
+    Configure receiver output separately with ``set_message_profile`` or
+    ``set_message_rate``. Logging records the existing stream without changing it.
 
     :param gnss_id: Configured ``equipment.gnss`` ID.
     :param path: Destination file path, absolute or relative to the active run output directory;
         requires artifacts enabled.
     :param key: Evidence key for this operation. Keep distinct keys for separate facts; see the
         evidence lookup rules in the core guide. Default: ``''``.
-    :param messages: Message enable profile applied when arming streams. Default: ``default``.
     """
-    _logger.info("Starting GNSS %s logging to %s (%s)", gnss_id, path, messages)
+    _logger.info("Starting GNSS %s logging to %s", gnss_id, path)
     get_cached_instrument("gnss", require_int_id(gnss_id, kind="gnss")).start_logging(
         path,
         key=key,
-        messages=messages,
     )
 
 

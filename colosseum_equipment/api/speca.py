@@ -106,7 +106,7 @@ def measure_bw(
     save_plot: bool = False,
     ref_pwr_meas_method: RefPowerMethod = "max",
 ) -> float:
-    """Measure bandwidth in hertz from a trace CSV or live sweep.
+    """Measure bandwidth in hertz from a trace CSV or existing instrument trace.
 
     :param speca_id: Configured ``equipment.speca`` ID.
 
@@ -179,7 +179,7 @@ def measure_center_frequency_hz(
         are still searched outward from the maximum. Non-default values require
         threshold analysis (no named ``method``); an omitted threshold uses 3 dB.
     :param smoothing_order: Moving-average half-window; dBm for threshold, linear power for named methods.
-    :param trace: Trace number used for a live sweep.
+    :param trace: Trace number read from existing instrument data.
     :param trace_path: Optional path to a previously saved trace CSV.
     :param method: ``fwhm`` (half peak linear power), ``occupied_power`` (equal-tail
         integrated power), or ``half_prominence`` (half the dominant peak's prominence).
@@ -351,7 +351,7 @@ def measure_obw_hz(
 
     :param smoothing_order: Host fallback moving-average half-window.
 
-    :param trace: Trace number when a live sweep is required for fallback.
+    :param trace: Trace number read for host fallback; no sweep is initiated.
 
     :param trace_path: Optional prior trace CSV under the run directory.
 
@@ -497,7 +497,10 @@ def save_trace_data(
     key: str = "",
     calibration: str | None = None,
 ) -> None:
-    """Export trace data to CSV after a new single sweep (see ``single_sweep`` / ``arm_sweep``).
+    """Export existing trace data to CSV without sweeping or changing display/trace mode.
+
+    HP 8563EC is a native-protocol exception: transferring trace A leaves it in
+    view mode. Select dBm amplitude units explicitly before exporting that model.
 
     With ``calibration``, each bin is corrected by nearest-bin path loss before
     the CSV (and optional plot) is written.

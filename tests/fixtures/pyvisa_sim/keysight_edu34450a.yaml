@@ -21,6 +21,8 @@ devices:
       - q: "*TST?"
         r: "0"
       - q: "ABOR"
+      - q: "SENS:FUNC?"
+        r: "VOLT:DC"
       - q: "INIT"
       - q: "CONF:VOLT:DC"
       - q: "CONF:VOLT:DC CH1"
@@ -38,7 +40,7 @@ devices:
       fetch_reading:
         default: 3.3
         getter:
-          q: "FETCh?"
+          q: "FETC?"
           r: "{:.6E}"
         specs:
           type: float

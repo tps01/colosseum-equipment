@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -18,7 +17,7 @@ from colosseum_equipment.instruments.speca.trace_csv import (
     write_trace_csv,
 )
 from colosseum_equipment.instruments.speca.trace_plot import _write_trace_plot, read_trace_csv, write_trace_plot
-from colosseum_equipment.protocols.scpi import SCPIHelper, prepare_fast_sweep, wait_opc
+from colosseum_equipment.protocols.scpi import SCPIHelper, wait_opc
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -33,7 +32,7 @@ class GenericSpecA:
     - ``arm_sweep`` / ``single_sweep`` arm acquisition; ``single_sweep`` also waits for OPC
     - ``wait_complete`` blocks with a bounded timeout; ``abort`` cancels in progress
     - ``measure_marker_*`` fetch the last completed sweep (do not re-arm)
-    - ``save_trace_data`` / ``_fetch_trace`` / ``measure_bw`` without ``trace_path`` take a new sweep
+    - Trace export and analysis read existing data; acquire explicitly first
     """
 
     _model = "generic"
@@ -212,8 +211,6 @@ class GenericSpecA:
         *,
         include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
-        prepare_fast_sweep(self._scpi)
-        self.single_sweep()
         center = self._scpi.query_float("FREQ:CENT?")
         span = self._scpi.query_float("FREQ:SPAN?")
         raw = self._scpi.query(f"TRAC:DATA? TRACE{trace}")
@@ -454,6 +451,4 @@ class GenericSpecA:
         return artifact_path
 
     def close(self) -> None:
-        with contextlib.suppress(Exception):
-            self._scpi.write("DISP:UPD ON")
         self._scpi._transport.close()

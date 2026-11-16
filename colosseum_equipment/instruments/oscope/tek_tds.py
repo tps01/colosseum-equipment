@@ -67,7 +67,6 @@ class TekTdsOscope(TekMdo4000Oscope):
         if not 1 <= channels <= maximum:
             raise EquipmentCapabilityError(f"model has {maximum} analog channels")
         super().__init__(transport, {**config, "channels": channels})
-        self._scpi.write("HEADER OFF")
 
     def set_trigger_source(self, source: str) -> None:
         token = source.strip().upper()
@@ -114,40 +113,37 @@ class TekTdsOscope(TekMdo4000Oscope):
     def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
         ch = self._require_channel(channel)
         self._require_stopped()
-        self._scpi.write(f"DATA:SOU CH{ch}")
-        self._scpi.write("DATA:ENC RIBINARY")
-        self._scpi.write("DATA:WIDTH 1")
-        self._scpi.write("DATA:START 1")
-        count = int(self._scpi.query_float("WFMPRE:NR_PT?"))
-        if count < 1:
-            raise EquipmentResponseError("waveform preamble has no samples")
-        self._scpi.write(f"DATA:STOP {count}")
-        xinc = self._scpi.query_float("WFMPRE:XINCR?")
-        xzero = self._scpi.query_float("WFMPRE:XZERO?")
-        ptoff = self._scpi.query_float("WFMPRE:PT_OFF?")
-        ymult = self._scpi.query_float("WFMPRE:YMULT?")
-        yoff = self._scpi.query_float("WFMPRE:YOFF?")
-        yzero = self._scpi.query_float("WFMPRE:YZERO?")
-        xunit = self._scpi.query("WFMPRE:XUNIT?").strip('"').upper()
-        yunit = self._scpi.query("WFMPRE:YUNIT?").strip('"').upper()
-        if xunit not in {"S", "SECONDS"} or yunit not in {"V", "VOLTS"}:
-            raise EquipmentCapabilityError("time/voltage CSV requires second/volt waveform units")
-        raw = self._scpi.read_binary_block("CURVE?")
-        if len(raw) != count:
-            raise EquipmentResponseError(f"expected {count} waveform bytes, received {len(raw)}")
-        if not all(math.isfinite(v) for v in (xinc, xzero, ptoff, ymult, yoff, yzero)) or xinc <= 0:
-            raise EquipmentResponseError("invalid waveform scaling or time axis")
-        samples = struct.unpack(f"{count}b", raw)
-        values = [(value - yoff) * ymult + yzero for value in samples]
-        return values, {
-            "channel": ch,
-            "points": count,
-            "xinc_s": xinc,
-            "xorigin_s": xzero - ptoff * xinc,
-            "capture_id": self._capture_id,
-            "vertical_units": "V",
-            "encoding": "RIBINARY",
-        }
+        with self._scpi.temporary_settings(('HEADER', 'OFF'), ('DATA:SOU', f'CH{ch}'), ('DATA:ENC', 'RIBINARY'), ('DATA:WIDTH', '1'), ('DATA:START', '1')):
+            count = int(self._scpi.query_float("WFMPRE:NR_PT?"))
+            if count < 1:
+                raise EquipmentResponseError("waveform preamble has no samples")
+            xinc = self._scpi.query_float("WFMPRE:XINCR?")
+            xzero = self._scpi.query_float("WFMPRE:XZERO?")
+            ptoff = self._scpi.query_float("WFMPRE:PT_OFF?")
+            ymult = self._scpi.query_float("WFMPRE:YMULT?")
+            yoff = self._scpi.query_float("WFMPRE:YOFF?")
+            yzero = self._scpi.query_float("WFMPRE:YZERO?")
+            xunit = self._scpi._setting_value("WFMPRE:XUNIT?").strip('"').upper()
+            yunit = self._scpi._setting_value("WFMPRE:YUNIT?").strip('"').upper()
+            if xunit not in {"S", "SECONDS"} or yunit not in {"V", "VOLTS"}:
+                raise EquipmentCapabilityError("time/voltage CSV requires second/volt waveform units")
+            with self._scpi.temporary_settings(("DATA:STOP", str(count))):
+                raw = self._scpi.read_binary_block("CURVE?")
+            if len(raw) != count:
+                raise EquipmentResponseError(f"expected {count} waveform bytes, received {len(raw)}")
+            if not all(math.isfinite(v) for v in (xinc, xzero, ptoff, ymult, yoff, yzero)) or xinc <= 0:
+                raise EquipmentResponseError("invalid waveform scaling or time axis")
+            samples = struct.unpack(f"{count}b", raw)
+            values = [(value - yoff) * ymult + yzero for value in samples]
+            return values, {
+                "channel": ch,
+                "points": count,
+                "xinc_s": xinc,
+                "xorigin_s": xzero - ptoff * xinc,
+                "capture_id": self._capture_id,
+                "vertical_units": "V",
+                "encoding": "RIBINARY",
+            }
 
 
 @instrument_model(
@@ -196,7 +192,6 @@ class TekWfmOutOscope(TekMdo4000Oscope):
         if not 1 <= channels <= maximum:
             raise EquipmentCapabilityError(f"model has {maximum} analog channels")
         super().__init__(transport, {**config, "channels": channels})
-        self._scpi.write("HEADER OFF")
 
     def set_channel_display(self, channel: int, enabled: bool) -> None:
         ch = self._require_channel(channel)
@@ -208,11 +203,11 @@ class TekWfmOutOscope(TekMdo4000Oscope):
     def get_channel_display(self, channel: int) -> bool:
         ch = self._require_channel(channel)
         if self._model in {"tektronix-mso58", "tektronix-mso64"}:
-            return bool(int(self._scpi.query(f"DISP:WAVEV1:CH{ch}:STATE?")))
+            return bool(int(self._scpi._setting_value(f"DISP:WAVEV1:CH{ch}:STATE?")))
         return super().get_channel_display(ch)
 
     def set_trigger_level_v(self, level_v: float) -> None:
-        source = self._scpi.query("TRIG:A:EDGE:SOU?").upper()
+        source = self._scpi._setting_value("TRIG:A:EDGE:SOU?").upper()
         if not source.startswith("CH") or not source[2:].isdigit():
             raise EquipmentCapabilityError("trigger level requires an analog CH source")
         self._require_channel(int(source[2:]))
@@ -225,38 +220,35 @@ class TekWfmOutOscope(TekMdo4000Oscope):
         ch = self._require_channel(channel)
         if self.get_acquire_state().upper() not in {"0", "STOP"}:
             raise EquipmentCapabilityError("stop/complete acquisition before waveform export")
-        self._scpi.write(f"DATA:SOU CH{ch}")
-        self._scpi.write("DATA:ENC RIBINARY")
-        self._scpi.write("DATA:WIDTH 2")
-        self._scpi.write("DATA:START 1")
-        count = int(self._scpi.query_float("WFMO:NR_PT?"))
-        if count < 1:
-            raise EquipmentResponseError("waveform has no samples")
-        self._scpi.write(f"DATA:STOP {count}")
-        if self._scpi.query("WFMO:PT_FMT?").upper() not in {"Y", "YT"}:
-            raise EquipmentCapabilityError("only scalar analog YT waveforms are supported")
-        if self._scpi.query("WFMO:XUNIT?").strip('"').upper() not in {"S", "SECONDS"}:
-            raise EquipmentCapabilityError("waveform time axis must be seconds")
-        if self._scpi.query("WFMO:YUNIT?").strip('"').upper() not in {"V", "VOLTS"}:
-            raise EquipmentCapabilityError("waveform vertical axis must be volts")
-        xinc = self._scpi.query_float("WFMO:XINCR?")
-        xzero = self._scpi.query_float("WFMO:XZERO?")
-        ptoff = self._scpi.query_float("WFMO:PT_OFF?")
-        ymult = self._scpi.query_float("WFMO:YMULT?")
-        yoff = self._scpi.query_float("WFMO:YOFF?")
-        yzero = self._scpi.query_float("WFMO:YZERO?")
-        if not all(math.isfinite(v) for v in (xinc, xzero, ptoff, ymult, yoff, yzero)) or xinc <= 0:
-            raise EquipmentResponseError("invalid waveform scaling")
-        raw = self._scpi.read_binary_block("CURVE?")
-        if len(raw) != count * 2:
-            raise EquipmentResponseError("waveform byte count differs from preamble")
-        values = [(v - yoff) * ymult + yzero for v in struct.unpack(f">{count}h", raw)]
-        return values, {
-            "channel": ch,
-            "points": count,
-            "xinc_s": xinc,
-            "xorigin_s": xzero - ptoff * xinc,
-            "capture_id": self._capture_id,
-            "vertical_units": "V",
-            "encoding": "RIBINARY16 big-endian",
-        }
+        with self._scpi.temporary_settings(('HEADER', 'OFF'), ('DATA:SOU', f'CH{ch}'), ('DATA:ENC', 'RIBINARY'), ('DATA:WIDTH', '2'), ('DATA:START', '1')):
+            count = int(self._scpi.query_float("WFMO:NR_PT?"))
+            if count < 1:
+                raise EquipmentResponseError("waveform has no samples")
+            if self._scpi._setting_value("WFMO:PT_FMT?").upper() not in {"Y", "YT"}:
+                raise EquipmentCapabilityError("only scalar analog YT waveforms are supported")
+            if self._scpi._setting_value("WFMO:XUNIT?").strip('"').upper() not in {"S", "SECONDS"}:
+                raise EquipmentCapabilityError("waveform time axis must be seconds")
+            if self._scpi._setting_value("WFMO:YUNIT?").strip('"').upper() not in {"V", "VOLTS"}:
+                raise EquipmentCapabilityError("waveform vertical axis must be volts")
+            xinc = self._scpi.query_float("WFMO:XINCR?")
+            xzero = self._scpi.query_float("WFMO:XZERO?")
+            ptoff = self._scpi.query_float("WFMO:PT_OFF?")
+            ymult = self._scpi.query_float("WFMO:YMULT?")
+            yoff = self._scpi.query_float("WFMO:YOFF?")
+            yzero = self._scpi.query_float("WFMO:YZERO?")
+            if not all(math.isfinite(v) for v in (xinc, xzero, ptoff, ymult, yoff, yzero)) or xinc <= 0:
+                raise EquipmentResponseError("invalid waveform scaling")
+            with self._scpi.temporary_settings(("DATA:STOP", str(count))):
+                raw = self._scpi.read_binary_block("CURVE?")
+            if len(raw) != count * 2:
+                raise EquipmentResponseError("waveform byte count differs from preamble")
+            values = [(v - yoff) * ymult + yzero for v in struct.unpack(f">{count}h", raw)]
+            return values, {
+                "channel": ch,
+                "points": count,
+                "xinc_s": xinc,
+                "xorigin_s": xzero - ptoff * xinc,
+                "capture_id": self._capture_id,
+                "vertical_units": "V",
+                "encoding": "RIBINARY16 big-endian",
+            }

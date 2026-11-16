@@ -51,7 +51,10 @@ def test_seconds_to_tdiv() -> None:
 def test_t3dso_measure_vpp_parse() -> None:
     transport = _MockTransport({"PAVA? CUST1": "PAVA CUST1:C1,PKPK,4.08E+00V"})
     inst = build_instrument("oscope", 1, {"model": "tektronix-t3dso2000"}, transport)
+    inst.configure_vpp(channel=1)
+    transport.writes.clear()
     assert inst.measure_vpp(channel=1) == pytest.approx(4.08)
+    assert transport.writes == []
     inst.close()
 
 

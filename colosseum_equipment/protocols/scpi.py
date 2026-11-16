@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import re
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from colosseum.logging import get_logger
 
-from colosseum_equipment.exceptions import EquipmentResponseError
+from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from colosseum_equipment.transports.base import Transport
 
 _logger = get_logger("colosseum.equipment")
@@ -103,7 +106,67 @@ class SCPIHelper:
         return response
 
     def query_float(self, command: str) -> float:
-        return parse_float(self.query(command))
+        return parse_float(self._setting_value(command))
+
+    def _setting_value(self, query: str) -> str:
+        value = self.query(query)
+        # Some scopes echo the SCPI header when HEADER is enabled. Preserve
+        # the setting value, not the echoed header, when restoring it later.
+        header, separator, argument = value.partition(" ")
+        requested = query.rstrip("?").lstrip(":").upper().split(":")
+        echoed = header.lstrip(":").upper().split(":")
+        if separator and len(requested) == len(echoed):
+            for reply, part in zip(echoed, requested, strict=True):
+                reply_name, part_name = reply.rstrip("0123456789"), part.rstrip("0123456789")
+                if reply[len(reply_name):] != part[len(part_name):] or not (
+                    reply_name.startswith(part_name) or part_name.startswith(reply_name)
+                ):
+                    return value
+            return argument.strip()
+        return value
+
+    @contextmanager
+    def temporary_settings(self, *settings: tuple[str, str]) -> Iterator[None]:
+        """Temporarily select transfer settings, restoring even partially failed writes.
+
+        Snapshot every value before changing anything. Only use for reversible
+        transfer/selection settings, never acquisition or measurement configuration.
+        """
+        previous = []
+        for command, _value in settings:
+            try:
+                value = self._setting_value(f"{command}?")
+            except Exception as exc:
+                raise EquipmentCapabilityError(
+                    f"cannot snapshot {command}; prepare transfer settings explicitly",
+                ) from exc
+            if not value:
+                raise EquipmentCapabilityError(f"empty {command}? response; cannot restore transfer setting")
+            previous.append((command, value))
+        attempted = 0
+        try:
+            for command, value in settings:
+                attempted += 1
+                self.write(f"{command} {value}")
+            yield
+        finally:
+            failure = None
+            for command, value in reversed(previous[:attempted]):
+                try:
+                    self.write(f"{command} {value}")
+                except Exception as exc:
+                    _logger.exception("Failed to restore instrument setting %s", command)
+                    failure = exc
+            if failure is not None:
+                raise EquipmentResponseError("failed to restore instrument transfer settings") from failure
+
+    def require_setting(self, command: str, expected: str) -> None:
+        """Validate an operating setting without silently correcting it."""
+        actual = self._setting_value(command).strip().strip('"').upper()
+        if actual != expected.upper():
+            raise EquipmentCapabilityError(
+                f"{command} returned {actual!r}; configure {expected!r} explicitly before reading",
+            )
 
     def write_binary_block(self, command_prefix: str, payload: bytes) -> None:
         block = format_definite_length_block(payload)
@@ -169,7 +232,3 @@ class SCPIHelper:
 
 def wait_opc(scpi: SCPIHelper) -> None:
     scpi.query("*OPC?")
-
-
-def prepare_fast_sweep(scpi: SCPIHelper) -> None:
-    scpi.write("DISP:UPD OFF")

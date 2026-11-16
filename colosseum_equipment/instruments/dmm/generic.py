@@ -105,48 +105,54 @@ class GenericDMM(ScpiInstrumentMixin):
 
     def fetch(self, *, channel: int = 1) -> float:
         self._require_channel(channel)
-        return self._scpi.query_float("FETCH?")
+        return self._scpi.query_float("FETC?")
+
+    def _measure(self, function: str, channel: int) -> float:
+        self._require_channel(channel)
+        actual = self.get_function(channel=channel).strip().strip('"').upper()
+        for full, short in (("VOLTAGE", "VOLT"), ("CURRENT", "CURR"),
+                            ("FRESISTANCE", "FRES"), ("RESISTANCE", "RES"), ("FREQUENCY", "FREQ")):
+            actual = actual.replace(full, short)
+        if actual in {"VOLT", "CURR"}:
+            actual += ":DC"
+        if actual != function:
+            raise EquipmentCapabilityError(
+                f"configured DMM function is {actual!r}; call set_function({function!r}) before acquisition",
+            )
+        return self.fetch(channel=channel)
 
     def measure_voltage_dc(self, channel: int = 1) -> float:
-        self._require_channel(channel)
-        self._scpi.write("CONF:VOLT:DC")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing VOLT:DC result; configure and initiate explicitly first."""
+        return self._measure("VOLT:DC", channel)
 
     def measure_voltage_ac(self, channel: int = 1) -> float:
-        self._require_channel(channel)
-        self._scpi.write("CONF:VOLT:AC")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing VOLT:AC result; configure and initiate explicitly first."""
+        return self._measure("VOLT:AC", channel)
 
     def measure_current_dc(self, channel: int = 1) -> float:
-        self._require_channel(channel)
-        self._scpi.write("CONF:CURR:DC")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing CURR:DC result; configure and initiate explicitly first."""
+        return self._measure("CURR:DC", channel)
 
     def measure_current_ac(self, channel: int = 1) -> float:
-        self._require_channel(channel)
-        self._scpi.write("CONF:CURR:AC")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing CURR:AC result; configure and initiate explicitly first."""
+        return self._measure("CURR:AC", channel)
 
     def measure_resistance_4w(self, channel: int = 1) -> float:
-        self._require_channel(channel)
-        self._scpi.write("CONF:FRES")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing FRES result; configure and initiate explicitly first."""
+        return self._measure("FRES", channel)
 
     def measure_frequency_hz(self, channel: int = 1) -> float:
-        self._require_channel(channel)
-        self._scpi.write("CONF:FREQ")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing FREQ result; configure and initiate explicitly first."""
+        return self._measure("FREQ", channel)
 
     def measure_voltage(self, channel: int = 1) -> float:
-        """One-shot DC voltage (sets ``CONF:VOLT:DC`` then ``READ?``)."""
+        """Fetch DC voltage from the existing acquisition."""
         return self.measure_voltage_dc(channel)
 
     def measure_current(self, channel: int = 1) -> float:
-        """One-shot DC current (sets ``CONF:CURR:DC`` then ``READ?``)."""
+        """Fetch DC current from the existing acquisition."""
         return self.measure_current_dc(channel)
 
     def measure_resistance(self, channel: int = 1) -> float:
-        """One-shot 2-wire resistance (sets ``CONF:RES`` then ``READ?``)."""
-        self._require_channel(channel)
-        self._scpi.write("CONF:RES")
-        return self._scpi.query_float("READ?")
+        """Fetch an existing RES result; configure and initiate explicitly first."""
+        return self._measure("RES", channel)

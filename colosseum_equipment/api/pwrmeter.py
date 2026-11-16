@@ -324,3 +324,13 @@ def zero_sensor(*, pwrmeter_id: EquipmentId, channel: int = 1) -> None:
     """
     _logger.info("Zeroing power meter %s channel %s", pwrmeter_id, channel)
     _inst(pwrmeter_id).zero_sensor(channel=channel)
+
+
+@command
+@broadcastable("pwrmeter", "pwrmeter_id")
+def configure_average(*, pwrmeter_id: EquipmentId) -> None:
+    """Configure absolute average-power processing and dBm units explicitly.
+
+    :param pwrmeter_id: Configured equipment.pwrmeter ID; broadcast commands also accept "all".
+    """
+    get_cached_instrument("pwrmeter", require_int_id(pwrmeter_id, kind="pwrmeter")).configure_average()

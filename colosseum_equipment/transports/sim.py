@@ -108,7 +108,11 @@ class SimTransport(Transport):
             self._state.setdefault("tx_log", []).append(data)
             return
         cmd = data.strip().upper()
-        if cmd.startswith("VOLT"):
+        if cmd.startswith("CONF:"):
+            self._state["function"] = cmd[5:].split()[0]
+        elif cmd == "INIT":
+            self._state["reading"] = self._read_voltage()
+        elif cmd.startswith("VOLT"):
             parts = cmd.split()
             if len(parts) >= 2:
                 self._state["voltage"] = float(parts[-1])
@@ -134,6 +138,10 @@ class SimTransport(Transport):
             return f"{voltage:.6f}"
         if cmd in ("CURR?", "MEAS:CURR?"):
             return f"{self._state['current_limit']:.6f}"
+        if cmd in ("FETC?", "FETCH?"):
+            return f"{self._state.get('reading', float('nan')):.6E}"
+        if cmd in ("SENS:FUNC?", "CONF?"):
+            return str(self._state.get("function", "VOLT:DC"))
         if cmd in ("READ?", "MEAS?", "MEAS:VOLT:DC?"):
             return f"{voltage:.6E}"
         if cmd.startswith("CONF"):

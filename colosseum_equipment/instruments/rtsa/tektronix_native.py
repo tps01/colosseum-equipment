@@ -10,7 +10,7 @@ from __future__ import annotations
 import csv
 import math
 import struct
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
@@ -25,7 +25,6 @@ from colosseum_equipment.instruments.speca.trace_csv import write_trace_csv
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from colosseum_equipment.transports.base import Transport
 
 _SPECTRUM = (
     "set_sample_rate",
@@ -53,9 +52,6 @@ class TekNativeRtsa(GenericRtsa):
     _fetch_iq_float32 = TektronixRSA5100BRtsa._fetch_iq_float32
     capture_iq = TektronixRSA5100BRtsa.capture_iq
 
-    def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
-        transport.write("DISP:GEN:MEAS:NEW SPEC")
-        super().__init__(transport, config)
 
     def set_center_freq(self, frequency_hz: float) -> None:
         self._scpi.write(f"SENS:SPEC:FREQ:CENT {frequency_hz:.6f}")

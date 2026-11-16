@@ -63,6 +63,12 @@ class RohdeHmp4040(GenericPSU):
     selected channel and is deliberately not used for channel-specific output.
     """
 
+    _channel_command = 'INST'
+    _always_select_channel = True
+
+    def _channel_value(self, channel: int) -> str:
+        return f"OUT{channel}"
+
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         count = int(config.get("channels") or config.get("channel_count") or 4)
         if count < 1 or count > 4:

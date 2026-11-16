@@ -11,6 +11,8 @@ def test_power_rail_measure_and_verify_pass(bench_sim, isolated_cwd) -> None:
     load_config(bench_sim)
     col.equipment.psu.set_voltage(psu_id=1, voltage=3.3)
     col.equipment.psu.set_output(psu_id=1, enabled=True)
+    col.equipment.dmm.set_function(dmm_id=1, function="VOLT:DC")
+    col.equipment.dmm.initiate(dmm_id=1)
     col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="vrail_3v3")
     result = col.equipment.dmm.verify_voltage(key="vrail_3v3", expected_val=3.3, tolerance=0.1)
     assert result.status == "PASS"

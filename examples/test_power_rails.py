@@ -41,12 +41,15 @@ def main() -> None:
     col.equipment.psu.set_output(psu_id=1, enabled=True)
 
     try:
-        # --- Measurement + required verification (architecture doc flow) ---
+        # --- Explicit setup and acquisition before passive reads ---
+        col.equipment.dmm.set_function(dmm_id=1, function="VOLT:DC")
+        col.equipment.dmm.initiate(dmm_id=1)
         col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="vrail_3v3")
         col.equipment.dmm.verify_voltage(key="vrail_3v3", expected_val=3.3, tolerance=0.1)
 
         # Reuse the supported single DMM input. The simulated value is still 3.3 V,
         # so this different engineering limit deliberately produces an optional FAIL.
+        col.equipment.dmm.initiate(dmm_id=1)
         col.equipment.dmm.measure_voltage(dmm_id=1, channel=1, key="engineering_probe_point")
         # --- Optional engineering check (FAIL/ERROR must not fail the run) ---
         col.equipment.dmm.verify_voltage(key="engineering_probe_point", expected_val=1.8, tolerance=0.1, optional=True)

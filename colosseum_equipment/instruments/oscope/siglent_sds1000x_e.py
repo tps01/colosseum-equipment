@@ -21,7 +21,7 @@ class SiglentSds1000xE(GenericOscope):
         wait_opc(self._scpi)
 
     def measure_vpp(self, channel: int = 1) -> float:
-        raw = self._scpi.query(f"C{channel}:PAVA? PKPK")
+        raw = self._scpi._setting_value(f"C{channel}:PAVA? PKPK")
         value = raw.split(",")[-1].strip()
         for unit in ("V", "S", "HZ", "%", "A"):
             value = value.replace(unit, "").replace(unit.lower(), "")

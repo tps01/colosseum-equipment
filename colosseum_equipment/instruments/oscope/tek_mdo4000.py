@@ -65,7 +65,7 @@ class TekMdo4000Oscope(GenericOscope):
 
     def get_channel_display(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        return bool(int(float(self._scpi.query(f"SELect:CH{ch}?"))))
+        return bool(int(float(self._scpi._setting_value(f"SELect:CH{ch}?"))))
 
     def set_channel_scale_v(self, channel: int, volts_per_div: float) -> None:
         ch = self._require_channel(channel)
@@ -92,7 +92,7 @@ class TekMdo4000Oscope(GenericOscope):
 
     def get_channel_coupling(self, channel: int) -> str:
         ch = self._require_channel(channel)
-        return self._scpi.query(f"CH{ch}:COUPling?").strip().upper()
+        return self._scpi._setting_value(f"CH{ch}:COUPling?").strip().upper()
 
     def set_channel_probe_attenuation(self, channel: int, attenuation: float) -> None:
         ch = self._require_channel(channel)
@@ -111,7 +111,7 @@ class TekMdo4000Oscope(GenericOscope):
 
     def get_channel_bandwidth_limit(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        raw = self._scpi.query(f"CH{ch}:BANdwidth?").strip().upper()
+        raw = self._scpi._setting_value(f"CH{ch}:BANdwidth?").strip().upper()
         return "FULL" not in raw
 
     def set_channel_impedance(self, channel: int, ohms: float) -> None:
@@ -127,7 +127,7 @@ class TekMdo4000Oscope(GenericOscope):
 
     def get_channel_impedance(self, channel: int) -> float:
         ch = self._require_channel(channel)
-        raw = self._scpi.query(f"CH{ch}:TERmination?").strip().upper()
+        raw = self._scpi._setting_value(f"CH{ch}:TERmination?").strip().upper()
         if "FIF" in raw or "50" in raw:
             return 50.0
         return 1e6
@@ -142,7 +142,7 @@ class TekMdo4000Oscope(GenericOscope):
         self._scpi.write(f"HORizontal:RECOrdlength {int(points)}")
 
     def get_record_length(self) -> int:
-        return int(float(self._scpi.query("HORizontal:RECOrdlength?")))
+        return int(float(self._scpi._setting_value("HORizontal:RECOrdlength?")))
 
     def set_trigger_mode(self, mode: str) -> None:
         normalized = mode.strip().lower()
@@ -206,7 +206,7 @@ class TekMdo4000Oscope(GenericOscope):
         wait_opc(self._scpi)
 
     def get_acquire_state(self) -> str:
-        return self._scpi.query("ACQuire:STATE?").strip()
+        return self._scpi._setting_value("ACQuire:STATE?").strip()
 
     def wait_complete(self, *, timeout_s: float) -> None:
         deadline = time.monotonic() + timeout_s
@@ -227,9 +227,10 @@ class TekMdo4000Oscope(GenericOscope):
     def _immeas(self, meas_type: str, channel: int) -> float:
         ch = self._require_channel(channel)
         source = f"CH{ch}"
-        self._scpi.write(f"MEASUrement:IMMed:SOUrce1 {source}")
-        self._scpi.write(f"MEASUrement:IMMed:TYPe {meas_type}")
-        return self._scpi.query_float("MEASUrement:IMMed:VALue?")
+        with self._scpi.temporary_settings(
+            ("MEASUrement:IMMed:SOUrce1", source), ("MEASUrement:IMMed:TYPe", meas_type),
+        ):
+            return self._scpi.query_float("MEASUrement:IMMed:VALue?")
 
     def measure_vpp(self, channel: int = 1) -> float:
         return self._immeas("PK2pk", channel)
@@ -257,39 +258,35 @@ class TekMdo4000Oscope(GenericOscope):
 
     def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
         ch = self._require_channel(channel)
-        self._scpi.write(f"DATa:SOUrce CH{ch}")
-        self._scpi.write("DATa:ENCdg RIBinary")
-        self._scpi.write("DATa:WIDth 1")
-        self._scpi.write("DATa:STARt 1")
-        self._scpi.write("DATa:STOP 10000000")
-        xincr = self._scpi.query_float("WFMOutpre:XINcr?")
-        xzero = self._scpi.query_float("WFMOutpre:XZEro?")
-        ymult = self._scpi.query_float("WFMOutpre:YMUlt?")
-        yoff = self._scpi.query_float("WFMOutpre:YOFf?")
-        yzero = self._scpi.query_float("WFMOutpre:YZEro?")
-        points_expected = int(float(self._scpi.query("WFMOutpre:NR_Pt?")))
-        raw = self._scpi.read_binary_block("CURVe?")
-        if points_expected > 0 and len(raw) < int(0.9 * points_expected):
-            raise EquipmentResponseError(
-                f"waveform truncated: got {len(raw)} bytes, preamble expected {points_expected}",
-            )
-        # Signed RIBinary bytes
-        samples = list(struct.unpack(f">{len(raw)}b", raw))
-        volts = [(s - yoff) * ymult + yzero for s in samples]
-        meta = {
-            "channel": ch,
-            "points": len(volts),
-            "points_expected": points_expected,
-            "xinc_s": xincr,
-            "xorigin_s": xzero,
-            "ymult_v": ymult,
-            "yoff": yoff,
-            "yzero_v": yzero,
-            "vertical_units": "V",
-            "encoding": "RIBinary",
-            "capture_id": self._capture_id,
-        }
-        return volts, meta
+        with self._scpi.temporary_settings(('DATa:SOUrce', f'CH{ch}'), ('DATa:ENCdg', 'RIBinary'), ('DATa:WIDth', '1'), ('DATa:STARt', '1'), ('DATa:STOP', '10000000')):
+            xincr = self._scpi.query_float("WFMOutpre:XINcr?")
+            xzero = self._scpi.query_float("WFMOutpre:XZEro?")
+            ymult = self._scpi.query_float("WFMOutpre:YMUlt?")
+            yoff = self._scpi.query_float("WFMOutpre:YOFf?")
+            yzero = self._scpi.query_float("WFMOutpre:YZEro?")
+            points_expected = int(float(self._scpi._setting_value("WFMOutpre:NR_Pt?")))
+            raw = self._scpi.read_binary_block("CURVe?")
+            if points_expected > 0 and len(raw) < int(0.9 * points_expected):
+                raise EquipmentResponseError(
+                    f"waveform truncated: got {len(raw)} bytes, preamble expected {points_expected}",
+                )
+            # Signed RIBinary bytes
+            samples = list(struct.unpack(f">{len(raw)}b", raw))
+            volts = [(s - yoff) * ymult + yzero for s in samples]
+            meta = {
+                "channel": ch,
+                "points": len(volts),
+                "points_expected": points_expected,
+                "xinc_s": xincr,
+                "xorigin_s": xzero,
+                "ymult_v": ymult,
+                "yoff": yoff,
+                "yzero_v": yzero,
+                "vertical_units": "V",
+                "encoding": "RIBinary",
+                "capture_id": self._capture_id,
+            }
+            return volts, meta
 
     def save_screenshot(self, path: str, *, key: str = "") -> Path:
         artifact_path = resolve_artifact_path(path)

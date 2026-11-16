@@ -84,18 +84,18 @@ def test_siglent_sds1000x_e_measure_vpp(caplog: pytest.LogCaptureFixture) -> Non
 
 def test_keithley_dmm6500_measure_voltage(caplog: pytest.LogCaptureFixture) -> None:
     reset_best_effort_warnings()
-    transport = RfStubTransport({":READ?": "1.234"})
+    transport = RfStubTransport({"SENS:FUNC?": "VOLT:DC", "FETC?": "1.234"})
     instrument = _build("dmm", "keithley-dmm6500", transport)
     with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
         value = instrument.measure_voltage(1)
     assert value == 1.234
-    assert transport.written == [':SENS:FUNC "VOLT:DC"']
+    assert transport.written == []
     assert "using generic SCPI" not in caplog.text
 
 
 def test_keysight_34401a_measure_voltage(caplog: pytest.LogCaptureFixture) -> None:
     reset_best_effort_warnings()
-    transport = RfStubTransport({"MEAS:VOLT:DC? DEF,DEF": "2.5"})
+    transport = RfStubTransport({"SENS:FUNC?": "VOLT:DC", "FETC?": "2.5"})
     instrument = _build("dmm", "keysight-34401a", transport)
     with caplog.at_level(logging.WARNING, logger="colosseum.equipment"):
         value = instrument.measure_voltage(1)

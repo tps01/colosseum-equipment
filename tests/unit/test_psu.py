@@ -36,3 +36,24 @@ def test_wait_for_current_times_out() -> None:
     inst = build_instrument("psu", 1, {"model": "generic"}, transport)
     with pytest.raises(EquipmentTimeoutError, match="did not reach"):
         inst.wait_for_current(1.0, timeout_s=0.2, tolerance=0.01)
+
+
+def test_toml_setpoints_precede_output_enable_and_setup_failure_blocks_enable():
+    from colosseum_equipment.instruments.factory import build_instrument
+    from tests.support.stubs import RfStubTransport
+
+    transport = RfStubTransport()
+    supply = build_instrument('psu', 1, {'model': 'generic', 'voltage': 5, 'ocp': .1, 'ovp': 5.5}, transport)
+    supply.set_output(True)
+    assert transport.written == ['VOLT 5.000000', 'CURR 0.100000', 'VOLT:PROT 5.500000', 'OUTP ON']
+
+    class FailingTransport(RfStubTransport):
+        def write(self, command):
+            super().write(command)
+            if command.startswith('VOLT '):
+                raise OSError('voltage setup failed')
+
+    failed = FailingTransport()
+    with pytest.raises(OSError):
+        build_instrument('psu', 1, {'model': 'generic', 'voltage': 5}, failed).set_output(True)
+    assert 'OUTP ON' not in failed.written
