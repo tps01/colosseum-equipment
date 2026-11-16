@@ -178,7 +178,7 @@ def test_ublox_uses_nav_pvt() -> None:
     instrument.wait_for_fix(1.0)
     assert abs(instrument.measure_latitude() - 37.7749) < 1e-4
     assert instrument.measure_satellites() == 10.0
-    assert transport.written_bytes  # CFG-MSG enable
+    assert transport.written_bytes == []  # Reads preserve receiver subscriptions.
 
 
 def test_generic_timeout_without_fix() -> None:
@@ -245,6 +245,8 @@ def test_septentrio_uses_pvt_geodetic() -> None:
     instrument.wait_for_fix(1.0)
     assert abs(instrument.measure_latitude() - 37.7749) < 1e-4
     assert instrument.measure_satellites() == 12.0
+    assert transport.written_bytes == []
+    instrument.set_message_profile("default")
     written = b"".join(transport.written_bytes).decode("ascii", errors="replace")
     assert "setDataInOut,COM1,,+NMEA+SBF" in written
     assert "setNMEAOutput,Stream1,COM1,GGA+RMC+GSV,sec1" in written
@@ -522,6 +524,8 @@ def test_novatel_aliases_and_logs() -> None:
     assert isinstance(instrument, NovatelGnss)
     instrument.wait_for_fix(1.0)
     assert abs(instrument.measure_latitude() - 51.11678) < 1e-4
+    assert transport.written_bytes == []
+    instrument.set_message_profile("default")
     written = b"".join(transport.written_bytes).decode("ascii", errors="replace")
     assert "LOG BESTPOSB ONTIME 1" in written
     assert "LOG GPGSV ONTIME 1" in written
@@ -537,9 +541,11 @@ def test_novatel_cold_start() -> None:
 
 def test_novatel_enable_uses_crlf_and_unlogall() -> None:
     transport = _ByteTransport([])
-    build_instrument("gnss", 1, {"model": "novatel-oem7"}, transport)
+    instrument = build_instrument("gnss", 1, {"model": "novatel-oem7"}, transport)
+    assert transport.written_bytes == []
+    instrument.set_message_profile("default")
     written = b"".join(transport.written_bytes)
-    assert b"UNLOGALL THISPORT\r\n" in written
+    assert b"UNLOGALL THISPORT\r\n" not in written
     assert b"LOG BESTPOSB ONTIME 1\r\n" in written
     assert b"LOG PSRDOPB ONCHANGED\r\n" in written
     assert b"\n" in written and b"\r\n" in written
@@ -585,3 +591,14 @@ def test_ubx_recovers_after_invalid_sync_in_same_chunk():
 
     frame = build_ubx(1, 7, b"abc")
     assert UbxStreamParser().feed(b"\xb5x" + frame) == [("ubx", (1, 7, b"abc"))]
+
+
+def test_vendor_logging_preserves_existing_receiver_streams(unit_runtime_context):
+    transport = _ByteTransport([])
+    instrument = build_instrument('gnss', 1, {'model': 'novatel-oem7'}, transport)
+    assert transport.written_bytes == []
+    try:
+        instrument.start_logging('gnss/passive.nmea', key='passive')
+    finally:
+        instrument.stop_logging()
+    assert transport.written_bytes == []

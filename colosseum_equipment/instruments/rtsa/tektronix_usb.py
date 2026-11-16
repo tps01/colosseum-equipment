@@ -30,7 +30,7 @@ from colosseum_equipment.transports.tektronix_rsa import IqAcquisitionInfo, RsaA
 
 
 @supported_commands(
-    "set_sample_rate",
+    "set_sample_rate", "configure_spectrum", "acquire_spectrum",
     "preset", "set_center_freq", "set_span", "set_bandwidth", "set_acq_time",
     "set_continuous_run", "set_num_samples", "get_num_samples", "set_trigger_source",
     "set_trigger_level", "set_trigger_position", "run", "wait_complete", "abort",
@@ -49,11 +49,10 @@ class TekUsbRsa(GenericRtsa):
         self._running = False
         self._iq: npt.NDArray[np.complex64] | None = None
         self._metadata: dict[str, Any] = {}
-        self._api.call("SPECTRUM_SetEnable", True)
-        self._api.call("SPECTRUM_SetDefault")
-        self._api.call("IQBLK_SetIQBandwidth", float(config.get("iq_bandwidth_hz", 40e6)))
-        self.set_num_samples(int(config.get("num_samples", 1024)))
-        self.set_trigger_source("IMM")
+        if "iq_bandwidth_hz" in config:
+            self._api.call("IQBLK_SetIQBandwidth", float(config["iq_bandwidth_hz"]))
+        if (count := config.get("num_samples")) is not None:
+            self.set_num_samples(int(count))
         if "center_freq" in config:
             self.set_center_freq(float(config["center_freq"]))
         if "reference_level_dbm" in config:
@@ -65,6 +64,9 @@ class TekUsbRsa(GenericRtsa):
             self.set_span(float(config["span"]))
         if "rbw" in config:
             self.set_bandwidth(float(config["rbw"]))
+        self._validate_sample_rate(config)
+
+    def _validate_sample_rate(self, config: dict[str, Any]) -> None:
         if "sample_rate_hz" in config:
             rate = self._double("IQBLK_GetIQSampleRate")
             if not math.isclose(rate, float(config["sample_rate_hz"])):
@@ -290,28 +292,38 @@ class TekUsbRsa(GenericRtsa):
         record_artifact(domain="equipment", command="capture_iq", key=key or f"rtsa_capture_iq_{self._run_id}", path=artifact, value=metadata)
         return metadata
 
+    def configure_spectrum(self) -> None:
+        """Explicitly initialize native spectrum processing with vendor defaults."""
+        self._invalidate()
+        self._api.call("SPECTRUM_SetEnable", True)
+        self._api.call("SPECTRUM_SetDefault")
+
+    def acquire_spectrum(self, *, timeout_s: float = 60.0) -> None:
+        """Acquire a spectrum explicitly; save_spectrum_trace_data only fetches."""
+        if not math.isfinite(timeout_s) or timeout_s <= 0:
+            raise ValueError("timeout must be finite and positive")
+        self._invalidate()
+        self._api.call("SPECTRUM_SetEnable", True)
+        self._api.call("DEVICE_Run")
+        try:
+            self._api.call("SPECTRUM_AcquireTrace")
+            self._wait("SPECTRUM_WaitForDataReady", timeout_s)
+        finally:
+            self._api.call("DEVICE_Stop")
+
     def save_spectrum_trace_data(self, path: str, *, trace: int = 1) -> Path:
         if trace != 1:
             raise EquipmentCapabilityError("USB RSA adapter exports native spectrum trace 1")
-        self._invalidate()
-        self._api.call("SPECTRUM_SetEnable", True)
         settings = SpectrumSettings()
         self._api.call("SPECTRUM_GetSettings", ct.byref(settings))
-        settings.verticalUnit = 0  # dBm.
-        self._api.call("SPECTRUM_SetSettings", settings)
-        self._api.call("SPECTRUM_GetSettings", ct.byref(settings))
+        if settings.verticalUnit != 0:
+            raise EquipmentCapabilityError("configure spectrum vertical units to dBm before exporting")
         count = settings.traceLength
         if count < 2 or not math.isfinite(settings.actualStartFreq) or not math.isfinite(settings.actualFreqStepSize) or settings.actualFreqStepSize <= 0:
             raise EquipmentResponseError("RSA spectrum settings contain an invalid axis/length")
         values = (ct.c_float * count)()
         received = ct.c_int()
-        self._api.call("DEVICE_Run")
-        try:
-            self._api.call("SPECTRUM_AcquireTrace")
-            self._wait("SPECTRUM_WaitForDataReady", float(self._config.get("timeout", 5.0)))
-            self._api.call("SPECTRUM_GetTrace", 0, count, values, ct.byref(received))
-        finally:
-            self._api.call("DEVICE_Stop")
+        self._api.call("SPECTRUM_GetTrace", 0, count, values, ct.byref(received))
         if received.value != count or not all(math.isfinite(v) for v in values):
             raise EquipmentResponseError("RSA spectrum trace is incomplete or invalid")
         span = settings.actualFreqStepSize * (count - 1)

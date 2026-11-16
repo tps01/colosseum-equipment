@@ -84,9 +84,22 @@ class GenericPhaseNoiseAnalyzer(ScpiInstrumentMixin):
             f"phasenoiseanalyzer model `{self._model}` does not support set_xcorr_count",
         )
 
+    def _require_value(self, query: str, expected: float) -> None:
+        if self._scpi.query_float(query) != expected:
+            raise EquipmentCapabilityError(f"configure {query.rstrip('?')} to {expected} before reading")
+
+    def set_spot_offset_hz(self, offset_hz: float) -> None:
+        self._scpi.write(f"CALC:SNO:X {offset_hz:.6f}")
+
+    def set_integration_bounds_hz(self, start_hz: float, stop_hz: float) -> None:
+        if not 0 < start_hz < stop_hz:
+            raise ValueError("integration bounds must satisfy 0 < start_hz < stop_hz")
+        self._scpi.write(f"CALC:LINT:STAR {start_hz:.6f}")
+        self._scpi.write(f"CALC:LINT:STOP {stop_hz:.6f}")
+
     def measure_spot_noise_dbc_hz(self, offset_hz: float) -> float:
         """Read spot noise at ``offset_hz`` from the last sweep (does not re-arm)."""
-        self._scpi.write(f"CALC:SNO:X {offset_hz:.6f}")
+        self._require_value("CALC:SNO:X?", offset_hz)
         return self._scpi.query_float("CALC:SNO:Y?")
 
     def measure_integrated_jitter_s(
@@ -96,9 +109,9 @@ class GenericPhaseNoiseAnalyzer(ScpiInstrumentMixin):
         stop_hz: float | None = None,
     ) -> float:
         if start_hz is not None:
-            self._scpi.write(f"CALC:LINT:STAR {start_hz:.6f}")
+            self._require_value("CALC:LINT:STAR?", start_hz)
         if stop_hz is not None:
-            self._scpi.write(f"CALC:LINT:STOP {stop_hz:.6f}")
+            self._require_value("CALC:LINT:STOP?", stop_hz)
         for command in ("CALC:LINT:RMS?", "CALC:JIT:RMS?", "CALC:JITTer:RMS?"):
             try:
                 return self._scpi.query_float(command)

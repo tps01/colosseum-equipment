@@ -20,6 +20,7 @@ def test_rohde_fswp_spot_noise_scpi() -> None:
     transport = RfStubTransport(
         {
             "*OPC?": "1",
+            "CALC:SNO:X?": "1000000",
             "CALC:SNO:Y?": "-120.5",
             "FREQ:CENT?": "1000000000.0",
         },
@@ -32,5 +33,5 @@ def test_rohde_fswp_spot_noise_scpi() -> None:
     value = inst.measure_spot_noise_dbc_hz(1e6)
     assert value == -120.5
     assert any(cmd.startswith("FREQ:CENT ") for cmd in transport.written)
-    assert any(cmd.startswith("CALC:SNO:X ") for cmd in transport.written)
-    assert "INIT:IMM" in transport.written
+    assert not any(cmd.startswith("CALC:SNO:X ") for cmd in transport.written)
+    assert "INIT:IMM" not in transport.written

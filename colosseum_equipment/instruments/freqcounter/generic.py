@@ -38,8 +38,7 @@ class GenericFreqCounter(ScpiInstrumentMixin):
 
     def _select_input(self, channel: int) -> None:
         ch = self._require_channel(channel)
-        if ch > 1:
-            self._scpi.write(f"ROUT:FEED INP{ch}")
+        self._scpi.require_setting("ROUT:FEED?", f"INP{ch}")
 
     def set_gate_time(self, seconds: float) -> None:
         self._scpi.write(f"SENS:FREQ:GATE:TIME {seconds}")
@@ -69,29 +68,46 @@ class GenericFreqCounter(ScpiInstrumentMixin):
         ch = self._require_channel(channel)
         self._scpi.write(f"INP{ch}:TRIG:LEV {level_v:.6f}")
 
-    def measure_frequency(self, *, channel: int = 1) -> float:
+    def set_function(self, function: str, *, channel: int = 1) -> None:
+        ch = self._require_channel(channel)
+        token = function.strip().upper()
+        if token not in {"FREQ", "PER", "TINT", "RTIM", "DCYC", "TOT"}:
+            raise EquipmentCapabilityError(f"unsupported counter function {function!r}")
+        self._scpi.write(f"ROUT:FEED INP{ch}")
+        self._scpi.write(f"CONF:{token} (@{ch})")
+
+    def initiate(self, *, channel: int = 1) -> None:
         self._select_input(channel)
-        return self._scpi.query_float("MEAS:FREQ?")
+        self._scpi.write("INIT")
+
+    def set_statistics(self, enabled: bool) -> None:
+        self._scpi.write(f"CALC:AVER:STAT {int(enabled)}")
+
+    def _measure(self, function: str, channel: int) -> float:
+        self._select_input(channel)
+        configured = self._scpi.query("CONF?").strip().strip('"').upper().split()
+        actual = configured[0].split(",")[0] if configured else ""
+        if actual != function:
+            raise EquipmentCapabilityError(f"configure counter function {function} before acquisition")
+        return self._scpi.query_float("FETC?")
+
+    def measure_frequency(self, *, channel: int = 1) -> float:
+        return self._measure("FREQ", channel)
 
     def measure_period(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEAS:PER?")
+        return self._measure("PER", channel)
 
     def measure_time_interval_s(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEAS:TINT?")
+        return self._measure("TINT", channel)
 
     def measure_rise_time_s(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEAS:RTIM?")
+        return self._measure("RTIM", channel)
 
     def measure_duty_cycle_pct(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEAS:DCYC?")
+        return self._measure("DCYC", channel)
 
     def measure_totalize(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEAS:TOT?")
+        return self._measure("TOT", channel)
 
     def measure_frequency_mean_hz(self, *, channel: int = 1) -> float:
         self._select_input(channel)

@@ -413,3 +413,22 @@ def test_native_models_do_not_open_unrelated_visa_endpoints(monkeypatch, kind, c
     with pytest.raises(ProceduralFault):
         open_transport(kind, 1, config)
     opener.assert_not_called()
+
+
+def test_rsa_connect_and_export_do_not_preset_configure_or_acquire(monkeypatch, tmp_path, unit_runtime_context):
+    dev, library = open_rsa(monkeypatch, tmp_path)
+    try:
+        assert not any(name.startswith(('CONFIG_Set', 'IQBLK_Set', 'SPECTRUM_Set', 'TRIG_Set'))
+                       or name == 'CONFIG_Preset' for name, _ in library.calls)
+        library.calls.clear()
+        artifact = dev.save_spectrum_trace_data(str(tmp_path / 'existing.csv'))
+        assert artifact.read_text().splitlines()[-1] == '114.000000,-30.000000'
+        assert [name for name, _ in library.calls] == ['SPECTRUM_GetSettings', 'SPECTRUM_GetTrace']
+        library.calls.clear()
+        dev.acquire_spectrum(timeout_s=1)
+        assert [name for name, _ in library.calls] == [
+            'SPECTRUM_SetEnable', 'DEVICE_Run', 'SPECTRUM_AcquireTrace',
+            'SPECTRUM_WaitForDataReady', 'DEVICE_Stop',
+        ]
+    finally:
+        dev.close()

@@ -9,12 +9,15 @@ devices:
     dialogues:
       - q: "*IDN?"
         r: "Colosseum, Generic DMM (Simulated), 0002, 0.1.0"
+      - q: "SENS:FUNC?"
+        r: "VOLT:DC"
+      - q: "INIT"
       - q: "CONF:VOLT:DC"
     properties:
       reading:
         default: 3.3
         getter:
-          q: "READ?"
+          q: "FETC?"
           r: "{:.6E}"
         specs:
           type: float

@@ -58,24 +58,23 @@ class KeysightE4418b(AveragePowerMeter):
         self._scpi.write(f"SENS{ch}:CORR:LOSS2 {offset_db:.3f}DB")
 
     def measure_power_dbm(self, *, channel: int = 1) -> float:
-        ch = self._require_channel(channel)
-        self._scpi.write(f"INIT{ch}:CONT OFF")
-        self._scpi.write(f"TRIG{ch}:SOUR IMM")
-        self._scpi.write(f"TRIG{ch}:DEL:AUTO ON")
-        self._scpi.write(f"UNIT{ch}:POW DBM")
-        self._scpi.write("FORM ASC")
-        # READ aborts/initiates the explicit input, returns a fresh absolute result,
-        # and preserves averaging. DEF placeholders preserve range/resolution.
-        return self._result(f"READ{ch}:POW:AC? DEF,DEF,(@{ch})")
+        return self.measure_power_avg_dbm(channel=channel)
+
+    def configure_average(self) -> None:
+        for ch in range(1, self._channel_count + 1):
+            self._scpi.write(f"UNIT{ch}:POW DBM")
 
     def acquire(self, *, channel: int = 1) -> None:
-        self.measure_power_dbm(channel=channel)
+        ch = self._require_channel(channel)
+        self._scpi.write(f"INIT{ch}:CONT OFF")
+        self._scpi.write(f"INIT{ch}:IMM")
+        self._wait()
 
     def measure_power_avg_dbm(self, *, channel: int = 1) -> float:
         ch = self._require_channel(channel)
-        self._scpi.write(f"UNIT{ch}:POW DBM")
-        self._scpi.write("FORM ASC")
-        return self._result(f"FETC{ch}:POW:AC? DEF,DEF,(@{ch})")
+        self._scpi.require_setting(f"UNIT{ch}:POW?", "DBM")
+        with self._scpi.temporary_settings(("FORM", "ASC")):
+            return self._result(f"FETC{ch}:POW:AC? DEF,DEF,(@{ch})")
 
     def measure_power_peak_dbm(self, *, channel: int = 1) -> float:
         self._require_channel(channel)

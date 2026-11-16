@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.instruments.phasenoiseanalyzer.generic import GenericPhaseNoiseAnalyzer
 from colosseum_equipment.instruments.registry import instrument_model
-from colosseum_equipment.protocols.scpi import wait_opc
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -37,9 +36,7 @@ class RohdeFswpPhaseNoiseAnalyzer(GenericPhaseNoiseAnalyzer):
         self._scpi.write("INIT:IMM")
 
     def measure_spot_noise_dbc_hz(self, offset_hz: float) -> float:
-        self.initiate()
-        wait_opc(self._scpi)
-        self._scpi.write(f"CALC:SNO:X {offset_hz:.6f}")
+        self._require_value("CALC:SNO:X?", offset_hz)
         return self._scpi.query_float("CALC:SNO:Y?")
 
     def measure_carrier_frequency_hz(self) -> float:

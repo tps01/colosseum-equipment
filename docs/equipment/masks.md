@@ -29,7 +29,8 @@ import colosseum as col
 # python tools/mask_editor.py --domain frequency --path masks/wifi_spurious.json
 
 col.equipment.speca.apply_mask_setup(speca_id=1, key="speca_trace_1")  # mask= from parameters
-# The E4407B exporter performs a single sweep internally.
+# Acquire explicitly; exporting the trace leaves acquisition/display state alone.
+col.equipment.speca.single_sweep(speca_id=1)
 col.equipment.speca.save_trace_data(
     speca_id=1,
     path="speca/wifi_trace.csv",

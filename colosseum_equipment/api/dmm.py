@@ -1,8 +1,8 @@
 """Digital multimeter APIs (``col.equipment.dmm``).
 
-One-shot measurements (``measure_voltage``, ``measure_voltage_dc``, etc.) configure
-the function then issue ``READ?``. Use ``set_function`` → ``initiate`` → ``fetch``
-when you need a fixed configuration across multiple samples.
+Measurements (``measure_voltage``, ``measure_voltage_dc``, etc.) validate the
+configured function and fetch an existing result. Use ``set_function`` →
+``initiate`` → ``measure_*`` or ``fetch``; reads never reconfigure or initiate.
 
 
 Configured IDs select ``equipment.dmm`` rows. Commands decorated with
@@ -197,7 +197,7 @@ def measure_current(*, dmm_id: int, channel: int = 1, key: str) -> float:
 
 @measurement
 def measure_current_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
-    """One-shot AC current.
+    """Fetch AC current from the existing acquisition.
 
     :param dmm_id: Configured ``equipment.dmm`` ID.
     :param channel: Physical channel (1-based); availability depends on the model.
@@ -212,7 +212,7 @@ def measure_current_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
 
 @measurement
 def measure_current_dc(*, dmm_id: int, channel: int = 1, key: str) -> float:
-    """One-shot DC current.
+    """Fetch DC current from the existing acquisition.
 
     :param dmm_id: Configured ``equipment.dmm`` ID.
     :param channel: Physical channel (1-based); availability depends on the model.
@@ -291,7 +291,7 @@ def measure_voltage(*, dmm_id: int, channel: int = 1, key: str) -> float:
 
 @measurement
 def measure_voltage_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
-    """One-shot AC voltage.
+    """Fetch AC voltage from the existing acquisition.
 
     :param dmm_id: Configured ``equipment.dmm`` ID.
     :param channel: Physical channel (1-based); availability depends on the model.
@@ -306,7 +306,7 @@ def measure_voltage_ac(*, dmm_id: int, channel: int = 1, key: str) -> float:
 
 @measurement
 def measure_voltage_dc(*, dmm_id: int, channel: int = 1, key: str) -> float:
-    """One-shot DC voltage (``CONF:VOLT:DC`` then ``READ?``).
+    """Fetch DC voltage from the existing acquisition.
 
     :param dmm_id: Configured ``equipment.dmm`` ID.
     :param channel: Physical channel (1-based); availability depends on the model.

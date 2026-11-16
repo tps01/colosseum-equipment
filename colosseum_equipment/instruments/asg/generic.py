@@ -45,8 +45,8 @@ class GenericASG(ScpiInstrumentMixin):
             self.set_amplitude_vpp(float(config["amplitude_vpp"]))
         if "power_dbm" in config:
             self.set_power(float(config["power_dbm"]))
-        if config.get("output"):
-            self.set_output(True)
+        if "output" in config:
+            self.set_output(bool(config["output"]))
 
     def _require_channel(self, channel: int) -> int:
         ch = int(channel)

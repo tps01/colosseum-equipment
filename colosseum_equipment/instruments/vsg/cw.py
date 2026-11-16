@@ -52,7 +52,7 @@ class CwSignalGenerator(GenericVSG):
         return self._scpi.query_float("FREQ?")
 
     def measure_power_dbm(self) -> float:
-        self._scpi.write("UNIT:POW DBM")
+        self._scpi.require_setting("UNIT:POW?", "DBM")
         return self._scpi.query_float("POW?")
 
     def set_ref_source(self, source: str) -> None:

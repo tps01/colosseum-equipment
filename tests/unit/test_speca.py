@@ -418,3 +418,25 @@ def test_center_frequency_uses_bandwidth_crossings() -> None:
     instrument = object.__new__(GenericSpecA)
     instrument._fetch_trace = Mock(return_value=([0.0, 10.0, 20.0, 30.0], [-10.0, 0.0, -2.0, -10.0]))
     assert instrument.measure_center_frequency_hz(0.0, 30.0) == 14.125
+
+
+@pytest.mark.parametrize('model', ['generic', 'keysight-e4407b'])
+def test_trace_export_and_close_preserve_acquisition_and_display(unit_runtime_context, model):
+    transport = RfStubTransport({
+        'FREQ:CENT?': '100', 'FREQ:SPAN?': '20',
+        'SENS:FREQ:CENT?': '100', 'SENS:FREQ:SPAN?': '20',
+        'TRAC:DATA? TRACE1': '-30,-10,-30', '*OPC?': '1',
+    })
+    inst = build_instrument('speca', 1, {'model': model}, transport)
+    inst.save_trace_data('traces/passive.csv')
+    inst.close()
+    assert transport.written == []
+
+
+def test_explicit_sweep_still_initiates_and_toml_configuration_is_retained():
+    transport = RfStubTransport({'*OPC?': '1'})
+    inst = build_instrument('speca', 1, {'model': 'keysight-e4407b', 'center_freq': 100, 'span': 20}, transport)
+    assert transport.written == ['SENS:FREQ:CENT 100.000000', 'SENS:FREQ:SPAN 20.000000']
+    transport.written.clear()
+    inst.single_sweep()
+    assert transport.written == ['INIT:CONT OFF', 'INIT:IMM']

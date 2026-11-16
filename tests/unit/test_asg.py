@@ -56,3 +56,15 @@ def test_generic_asg_config_bootstrap() -> None:
         "SOUR1:VOLT 2.000000",
         "OUTP ON",
     ]
+
+
+@pytest.mark.parametrize('kind', ['asg', 'vsg'])
+@pytest.mark.parametrize('enabled', [True, False])
+def test_declared_generator_output_applies_after_setpoints(kind, enabled):
+    from colosseum_equipment.instruments.factory import build_instrument
+    from tests.support.stubs import RfStubTransport
+
+    transport = RfStubTransport()
+    build_instrument(kind, 1, {'model': 'generic', 'frequency': 1000, 'output': enabled}, transport)
+    assert transport.written[-1] == ('OUTP ON' if enabled else 'OUTP OFF')
+    assert transport.written[0].startswith('FREQ')

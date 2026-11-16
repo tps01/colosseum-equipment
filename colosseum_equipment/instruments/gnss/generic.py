@@ -208,10 +208,6 @@ class GenericGnss:
         """Apply a message enable profile without starting a logging session."""
         self._apply_message_profile(messages)
 
-    def _arm_stream_outputs(self, messages: str = "default") -> None:
-        """Re-enable vendor message streams before a logging session."""
-        self._apply_message_profile(messages)
-
     def _record_message_epoch(
         self,
         *,
@@ -805,7 +801,7 @@ class GenericGnss:
     def set_message_rate(self, message: str, rate_hz: float) -> None:
         unsupported(self._model, "set_message_rate", detail=f"message={message!r}")
 
-    def start_logging(self, path: str, key: str = "", messages: str = "default") -> None:
+    def start_logging(self, path: str, key: str = "") -> None:
         if self._listener is not None or self._epoch_timer is not None:
             raise RuntimeError(f"gnss model `{self._model}` is already logging")
         if not key:
@@ -849,10 +845,9 @@ class GenericGnss:
                 "raw": str(raw_path),
                 "wire": str(wire_path),
                 "track_csv": str(track_path),
-                "messages": messages,
+                "messages": self._message_profile,
             },
         )
-        self._arm_stream_outputs(messages)
         self._listener = GnssListener(self._read_bytes, self._on_listener_chunk)
         self._listener.start()
         self._epoch_stop.clear()

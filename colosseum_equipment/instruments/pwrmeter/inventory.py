@@ -24,6 +24,7 @@ _AVERAGE = (
     "set_frequency",
     "set_averaging_count",
     "acquire",
+    "configure_average",
     "measure_power",
     "measure_power_dbm",
     "measure_power_w",
@@ -49,7 +50,6 @@ class AveragePowerMeter(GenericPwrMeter):
             raise EquipmentResponseError("power acquisition did not complete")
 
     def measure_power_dbm(self, *, channel: int = 1) -> float:
-        self.acquire(channel=channel)
         return self.measure_power_avg_dbm(channel=channel)
 
 
@@ -63,6 +63,10 @@ class KeysightDualPowerMeter(AveragePowerMeter):
         if count not in (1, 2):
             raise EquipmentCapabilityError("meter body has two physical sensor inputs")
         super().__init__(transport, {**config, "channels": count})
+
+    def configure_average(self) -> None:
+        """Explicitly configure absolute average power in dBm."""
+        count = self._channel_count
         for ch in range(1, count + 1):
             self._scpi.write(f'CALC{ch}:MATH:EXPR "(SENS{ch})"')
             self._scpi.write(f'CALC{ch}:FEED1 "POW:AVER"')
@@ -91,6 +95,7 @@ class KeysightDualPowerMeter(AveragePowerMeter):
 
     def measure_power_avg_dbm(self, *, channel: int = 1) -> float:
         ch = self._require_channel(channel)
+        self._scpi.require_setting(f"UNIT{ch}:POW?", "DBM")
         return self._result(f"FETC{ch}?")
 
     def zero_sensor(self, *, channel: int = 1) -> None:
@@ -113,6 +118,9 @@ class KeysightU848x(AveragePowerMeter):
         if int(config.get("channels") or 1) != 1:
             raise EquipmentCapabilityError("USB sensor has one input")
         super().__init__(transport, config)
+
+    def configure_average(self) -> None:
+        """Explicitly configure absolute average power in dBm."""
         self._scpi.write("UNIT:POW DBM")
 
     def set_frequency(self, frequency_hz: float, *, channel: int = 1) -> None:
@@ -136,6 +144,7 @@ class KeysightU848x(AveragePowerMeter):
 
     def measure_power_avg_dbm(self, *, channel: int = 1) -> float:
         self._require_channel(channel)
+        self._scpi.require_setting("UNIT:POW?", "DBM")
         return self._result("FETC?")
 
 
@@ -152,6 +161,8 @@ class RohdeNrpAverage(KeysightU848x):
         if int(config.get("channels") or 1) != 1:
             raise EquipmentCapabilityError("direct NRP session has one input")
         AveragePowerMeter.__init__(self, transport, config)
+
+    def configure_average(self) -> None:
         self._scpi.write("SENS:FUNC 'POW:AVG'")
 
     def acquire(self, *, channel: int = 1) -> None:
@@ -172,6 +183,7 @@ class RohdeNrpAverage(KeysightU848x):
 
 @instrument_model("pwrmeter", "anritsu-ml2495a")
 @supported_commands(
+    "configure_average",
     "set_frequency",
     "set_averaging_count",
     "measure_power",
@@ -191,6 +203,10 @@ class AnritsuMl2495a(GenericPwrMeter):
         if int(config.get("channels") or 1) != 1:
             raise EquipmentCapabilityError("ML2495A subset exposes physical input A as channel 1")
         super().__init__(transport, config)
+
+    def configure_average(self) -> None:
+        """Explicitly configure absolute average power in dBm."""
+        count = self._channel_count
         for command in ("CHCFG 1,A", "CHMODE 1,CW", "CWREL 1,OFF", "CHUNIT 1,DBM"):
             self._scpi.write(command)
 
@@ -238,6 +254,10 @@ class RohdeNrx(AveragePowerMeter):
         if not 1 <= count <= 4:
             raise EquipmentCapabilityError("NRX subset addresses fixed sensor ports A..D")
         super().__init__(transport, {**config, "channels": count})
+
+    def configure_average(self) -> None:
+        """Explicitly configure absolute average power in dBm."""
+        count = self._channel_count
         for ch in range(1, count + 1):
             self._scpi.write(f"CALC{ch}:TYPE CONTAV")
             self._scpi.write(f'CALC{ch}:MATH:EXPR "(SENS{ch})"')
@@ -267,4 +287,5 @@ class RohdeNrx(AveragePowerMeter):
 
     def measure_power_avg_dbm(self, *, channel: int = 1) -> float:
         ch = self._require_channel(channel)
+        self._scpi.require_setting(f"UNIT{ch}:POW?", "DBM")
         return self._result(f"FETC{ch}?")
