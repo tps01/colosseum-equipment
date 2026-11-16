@@ -29,7 +29,33 @@ class RecordingTransport:
 
 
 def instrument(kind, model, responses=None, **config):
-    transport = RecordingTransport(responses)
+    # Model a bench that has already been explicitly configured. These are
+    # readbacks, not implicit commands performed by construction or fetch.
+    states = {}
+    if kind == "speca":
+        states = {"UNIT:POW?": "DBM", "FORM:DATA?": "REAL,32", "FORM?": "REAL,32",
+                  "FORM:TRAC?": "REAL,32", "TRAC:SEL?": "3"}
+    elif kind == "vna":
+        channel = config.get("channel", 1)
+        calc = "CALC" if model.startswith("keysight-n991") else f"CALC{channel}"
+        trace = 2 if channel == 2 and not model.startswith("keysight-n524") else 1
+        parameter = "S21" if channel == 2 else "S11"
+        states = {f"{calc}:PAR:SEL?": str(trace), f"{calc}:PAR{trace}:DEF?": parameter,
+                  f"{calc}:FORM?": "MLOG", "FORM:DATA?": "REAL,64", "FORM?": "REAL,64"}
+        if model.startswith("keysight-n524"):
+            states.update({f"{calc}:PAR:MNUM?": "3", f"{calc}:PAR:SEL?": "existing",
+                           f"{calc}:PAR:CAT:EXT?": "existing,S21"})
+    elif kind == "pwrmeter":
+        states = {"UNIT:POW?": "DBM", "UNIT1:POW?": "DBM", "UNIT2:POW?": "DBM", "FORM?": "REAL"}
+    elif kind == "rtsa":
+        states = {"FORM:IQ?": "REAL"}
+    elif kind == "oscope":
+        states = {"HEADER?": "1", "DATA:SOU?": "CH2", "DATA:ENC?": "ASCII", "DATA:WIDTH?": "2",
+                  "DATA:START?": "5", "DATA:STOP?": "100", "WAV:SOUR?": "CHAN2", "WAV:FORM?": "BYTE",
+                  "WAV:BYT?": "MSBF", "WAV:STR?": "ON", "FORM?": "REAL", "FORM:DATA?": "REAL"}
+    elif kind == "eload" and model == "chroma-63600-5":
+        states = {"CHAN?": "2"}
+    transport = RecordingTransport({**states, **(responses or {})})
     driver = build_instrument(kind, 1, {"model": model, **config}, transport)
     return driver, transport
 
@@ -57,18 +83,18 @@ def test_dmm_does_not_accept_overload_arrays_or_units_as_scalar(raw):
         dmm.fetch()
 
 
-def test_dmm_oneshot_does_not_inherit_external_trigger():
-    dmm, io = instrument("dmm", "keithley-2100", {"READ?": "1.25"})
+def test_dmm_fetch_preserves_function_and_external_trigger():
+    dmm, io = instrument("dmm", "keithley-2100", {"SENS:FUNC?": "VOLT:DC", "FETC?": "1.25"})
     assert dmm.measure_voltage() == 1.25
-    assert io.events == ["CONF:VOLT:DC", "TRIG:SOUR IMM", "TRIG:COUN 1", "SAMP:COUN 1", "READ?"]
+    assert io.events == ["SENS:FUNC?", "FETC?"]
 
 
 def test_2001_fetch_uses_scpi_format_instead_of_poweron_fresh_mode():
-    dmm, io = instrument("dmm", "keithley-2001", {"FETC?": "1.5"})
-    assert io.events == ["SYST:FETC:FORM SCPI", "FORM:DATA ASC", "FORM:ELEM READ"]
+    dmm, io = instrument("dmm", "keithley-2001", {"FETC?": "1.5", "SYST:FETC:FORM?": "SCPI", "FORM:DATA?": "DREAL", "FORM:ELEM?": "READ,TST"})
+    assert io.events == []
     io.events.clear()
     assert dmm.fetch() == 1.5
-    assert io.events == ["FETC?"]
+    assert io.events == ["SYST:FETC:FORM?", "FORM:DATA?", "FORM:ELEM?", "FORM:DATA ASC", "FORM:ELEM READ", "FETC?", "FORM:ELEM READ,TST", "FORM:DATA DREAL"]
 
 
 def test_dmm_unsupported_features_do_not_send_generic_commands():
@@ -113,6 +139,10 @@ def test_analog_generator_refuses_vector_operations_without_io(model):
 
 def test_53150a_selects_input_in_measurement_not_sticky_routing():
     counter, io = instrument("freqcounter", "keysight-53150a", {"MEAS:FREQ? (@2)": "1e9"})
+    with pytest.raises(EquipmentCapabilityError):
+        counter.measure_frequency(channel=2)
+    assert io.events == []
+    counter.initiate(channel=2)
     assert counter.measure_frequency(channel=2) == 1e9
     assert io.events == ["MEAS:FREQ? (@2)"]
     with pytest.raises(EquipmentCapabilityError):
@@ -120,7 +150,7 @@ def test_53150a_selects_input_in_measurement_not_sticky_routing():
     assert io.events == ["MEAS:FREQ? (@2)"]
 
 
-def test_xseries_selects_application_before_initial_configuration_and_validates_trace():
+def test_xseries_applies_toml_without_selecting_application_and_fetches_existing_trace():
     analyzer, io = instrument(
         "speca",
         "keysight-n9020a",
@@ -133,17 +163,18 @@ def test_xseries_selects_application_before_initial_configuration_and_validates_
         },
         center_freq=1e9,
     )
-    assert io.events[:2] == ["INST:SEL SA", "FREQ:CENT 1000000000.000000"]
+    assert io.events == ["FREQ:CENT 1000000000.000000"]
     axis, values = analyzer._fetch_trace(1)
     assert axis == [999e6, 1e9, 1001e6]
     assert values == [-70, -10, -70]
-    assert io.events.index("INIT:IMM") < io.events.index("TRAC:DATA? TRACE1")
+    assert "INIT:IMM" not in io.events
+    assert io.events[-1] == "FORM:DATA REAL,32"
     io.responses["SWE:POIN?"] = "4"
     with pytest.raises(EquipmentResponseError):
         analyzer._fetch_trace(1)
 
 
-def test_vna_averages_selected_measurement_channel_and_keeps_actual_axis(tmp_path, monkeypatch):
+def test_vna_export_preserves_acquisition_and_keeps_actual_axis(tmp_path, monkeypatch):
     from pathlib import Path
 
     monkeypatch.setattr("colosseum_equipment.instruments.vna.inventory.resolve_artifact_path", Path)
@@ -161,11 +192,12 @@ def test_vna_averages_selected_measurement_channel_and_keeps_actual_axis(tmp_pat
         channel=2,
     )
     path = vna.save_trace_data(str(tmp_path / "trace.csv"), parameter="S21")
-    assert io.events.count("SENS2:SWE:MODE SING") == 2
+    assert "SENS2:SWE:MODE SING" not in io.events
     assert "INIT2:CONT OFF" not in io.events
-    assert 'CALC2:PAR:MOD:EXT "S21"' in io.events
+    assert 'CALC2:PAR:MOD:EXT "S21"' not in io.events
     assert path.read_text().splitlines()[-1].startswith("10000000.000000,-30")
-    assert io.events.count("SENS2:AVER:CLE") == 1
+    assert "SENS2:AVER:CLE" not in io.events
+    assert "CALC2:PAR:MNUM 3" in io.events
 
 
 def test_vna_rejects_mismatched_axis_and_fake_touchstone(tmp_path):
@@ -189,16 +221,18 @@ def test_vna_rejects_mismatched_axis_and_fake_touchstone(tmp_path):
 
 def test_power_body_routes_physical_inputs_and_fetches_without_rearming():
     meter, io = instrument("pwrmeter", "keysight-n1912a", {"FETC2?": "-30", "*OPC?": "1"})
+    assert io.events == []
+    meter.configure_average()
     assert 'CALC2:MATH:EXPR "(SENS2)"' in io.events
     io.events.clear()
     meter.acquire(channel=2)
     assert io.events == ["INIT2:CONT OFF", "TRIG2:SOUR IMM", "INIT2:IMM", "*OPC?"]
     io.events.clear()
     assert meter.measure_power_avg_dbm(channel=2) == -30
-    assert io.events == ["FETC2?"]
+    assert io.events == ["UNIT2:POW?", "FETC2?"]
     with pytest.raises(EquipmentCapabilityError):
         meter.measure_power_peak_dbm(channel=2)
-    assert io.events == ["FETC2?"]
+    assert io.events == ["UNIT2:POW?", "FETC2?"]
 
 
 def test_nrp_watt_results_are_not_mislabeled_dbm():
@@ -284,7 +318,7 @@ def test_fieldfox_uses_na_mode_and_sweep_averages_without_ena_pair_decoding():
             "CALC:DATA:FDAT?": "-10,-20,-30",
         },
     )
-    assert io.events == ['INST:SEL "NA"', "*OPC?"]
+    assert io.events == []
     vna.single_sweep()
     assert io.events.count("INIT:IMM") == 2
     assert "SENS:AVER?" not in io.events
@@ -427,7 +461,9 @@ def test_spike_spectrum_uses_reported_axis_and_single_detector_values():
         },
     )
     assert analyzer._fetch_trace(1) == ([100, 102.5, 105], [-80, -40, -70])
-    assert "SENS:SWE:DET:FUNC MAX" in io.events
+    assert "SENS:SWE:DET:FUNC MAX" not in io.events
+    assert "INIT:IMM" not in io.events
+    assert io.events[-1] == "TRAC:SEL 3"
     io.responses["SENS:POW:RF:RLEV:UNIT?"] = "MV"
     with pytest.raises(EquipmentCapabilityError):
         analyzer._fetch_trace(1)
@@ -553,6 +589,8 @@ def test_genesys_serial_uses_cr_acknowledgements_and_optional_address():
 @pytest.mark.parametrize("raw", ["CWO1,-25.1", "CWO 1,-25.1"])
 def test_ml2495a_parses_native_labelled_cw_result(raw):
     meter, io = instrument("pwrmeter", "anritsu-ml2495a", {"CWO 1": raw})
+    assert io.events == []
+    meter.configure_average()
     assert io.events == ["CHCFG 1,A", "CHMODE 1,CW", "CWREL 1,OFF", "CHUNIT 1,DBM"]
     assert meter.measure_power_dbm() == -25.1
     with pytest.raises(EquipmentCapabilityError):
@@ -568,6 +606,8 @@ def test_ml2495a_rejects_other_channels_arrays_and_invalid_readings(raw):
 
 def test_nrx_owns_sensor_mapping_and_fresh_bus_trigger_but_fetch_does_not_rearm():
     meter, io = instrument("pwrmeter", "rohde-nrx", {"*OPC?": "1", "FETC2?": "-15"}, channels=2)
+    assert io.events == []
+    meter.configure_average()
     assert 'CALC2:MATH:EXPR "(SENS2)"' in io.events
     assert "CALC2:TYPE CONTAV" in io.events
     assert 'CALC2:FEED1 "POW:AVER"' in io.events
@@ -577,7 +617,7 @@ def test_nrx_owns_sensor_mapping_and_fresh_bus_trigger_but_fetch_does_not_rearm(
     assert io.events == ["INIT2:CONT OFF", "TRIG2:SOUR BUS", "INIT2:IMM", "TRIG2:IMM", "*OPC?"]
     io.events.clear()
     assert meter.measure_power_avg_dbm(channel=2) == -15
-    assert io.events == ["FETC2?"]
+    assert io.events == ["UNIT2:POW?", "FETC2?"]
 
 
 def test_modern_tek_word_waveform_checks_preamble_and_scales_big_endian():
@@ -633,6 +673,8 @@ def test_anritsu_binary_trace_uses_operation_bit8_and_little_endian():
     assert analyzer._fetch_trace(1) == ([100, 150, 200], [-80, -20, -60])
     assert "*OPC?" not in io.events
     assert "TRAC:DATA? 1" in io.events
+    assert "STAT:OPER?" not in io.events
+    analyzer.single_sweep()
     assert io.events.count("STAT:OPER?") == 2
     with pytest.raises(EquipmentCapabilityError):
         instrument("speca", "anritsu-ms2720t", {"INST:SEL?": "VNA"})
@@ -649,13 +691,14 @@ def test_fpc_spectrum_uses_actual_trace_length_instead_of_vna_point_query():
             "FREQ:STOP?": "5",
         },
     )
-    assert io.events == ["INST:SEL SPEC"]
+    assert io.events == []
     assert analyzer._fetch_trace(2) == ([1, 3, 5], [-80, -20, -70])
-    assert "DISP:TRAC2:MODE WRIT" in io.events
+    assert "DISP:TRAC2:MODE WRIT" not in io.events
+    assert "INIT:IMM" not in io.events
     assert not any("POIN" in event for event in io.events)
 
 
-def test_hp_legacy_trace_restores_clear_write_before_every_sweep():
+def test_hp_legacy_trace_allows_native_view_mode_side_effect():
     analyzer, io = instrument(
         "speca",
         "keysight-8563ec",
@@ -667,8 +710,12 @@ def test_hp_legacy_trace_restores_clear_write_before_every_sweep():
     )
     axis, values = analyzer._fetch_trace(1)
     assert axis == list(range(100, 701))
-    assert len(values) == 601
-    assert io.events[:4] == ["AUNITS DBM;", "CLRW TRA;", "SNGLS;TS;", "TDF P;"]
+    assert values == [-40] * 601
+    assert io.events == ["TDF P;", "TRA?;", "FA?;", "FB?;"]
+    # A second transfer fetches the held trace without clearing or sweeping.
+    io.events.clear()
+    assert analyzer._fetch_trace(1, include_frequency=False) == (list(range(601)), values)
+    assert io.events == ["TDF P;", "TRA?;", "FA?;", "FB?;"]
     analyzer.set_marker_frequency(1, 123)
     assert io.events[-1] == "MKN 123.000000HZ;"
     with pytest.raises(EquipmentCapabilityError):
@@ -965,7 +1012,7 @@ def test_rte_rtp_absent_trigger_times_out_without_exporting_old_data():
 
 
 @pytest.mark.parametrize("model,trace", [("keysight-n9020a", 6), ("keysight-e4440a", 3)])
-def test_keysight_spectrum_fetch_unfreezes_requested_trace_before_immediate_sweep(model, trace):
+def test_keysight_spectrum_fetch_preserves_held_trace_and_trigger(model, trace):
     analyzer, io = instrument(
         "speca",
         model,
@@ -978,11 +1025,10 @@ def test_keysight_spectrum_fetch_unfreezes_requested_trace_before_immediate_swee
         },
     )
     analyzer._fetch_trace(trace)
-    unfreeze = io.events.index(f"TRAC{trace}:MODE WRIT")
-    trigger = io.events.index("TRIG:SOUR IMM")
-    sweep = io.events.index("INIT:IMM")
-    fetch = io.events.index(f"TRAC:DATA? TRACE{trace}")
-    assert unfreeze < trigger < sweep < fetch
+    assert f"TRAC{trace}:MODE WRIT" not in io.events
+    assert "TRIG:SOUR IMM" not in io.events
+    assert "INIT:IMM" not in io.events
+    assert f"TRAC:DATA? TRACE{trace}" in io.events
     analyzer.set_detector("POS")
     assert io.events[-1] == ("DET POS" if model == "keysight-e4440a" else "DET:TRAC1 POS")
     if model == "keysight-e4440a":
@@ -1248,10 +1294,10 @@ def test_batch2_unverified_models_still_use_warning_and_send(caplog):
 
 
 @pytest.mark.parametrize("model", ["siglent-ssa3021x", "siglent-ssa3032x"])
-def test_ssa_trace_uses_numeric_selector_ascii_dbm_and_a_new_sweep(model):
+def test_ssa_trace_uses_numeric_selector_and_restores_format_without_a_sweep(model):
     analyzer, io = instrument("speca", model, {"*OPC?": "1", "FREQ:CENT?": "100", "FREQ:SPAN?": "20", "TRAC:DATA? 2": "-30,-10,-20"})
     assert analyzer._fetch_trace(2) == ([90, 100, 110], [-30, -10, -20])
-    assert io.events == ["UNIT:POW DBM", "FORM ASC", "INIT:CONT OFF", "INIT:IMM", "*OPC?", "FREQ:CENT?", "FREQ:SPAN?", "TRAC:DATA? 2"]
+    assert io.events == ["UNIT:POW?", "FORM?", "FORM ASC", "FREQ:CENT?", "FREQ:SPAN?", "TRAC:DATA? 2", "FORM REAL,32"]
 
 
 @pytest.mark.parametrize("model", ["siglent-ssa3021x", "siglent-ssa3032x"])
@@ -1267,9 +1313,9 @@ def test_ssa_directional_and_amplitude_peak_searches_are_distinct(model):
 def test_catalog_vna_peak_ignores_secondary_values_and_uses_selected_trace(model):
     vna, io = instrument("vna", model, {"SENS2:AVER?": "0", "*OPC?": "1", "CALC2:DATA:FDAT?": "-20,0,-10,0"}, channel=2)
     assert vna.measure_s21_magnitude(trace=2) == -10
-    assert "CALC2:PAR2:DEF S21" in io.events
-    assert "CALC2:PAR2:SEL" in io.events
-    assert "CALC2:FORM MLOG" in io.events
+    assert "CALC2:PAR2:DEF S21" not in io.events
+    assert "CALC2:PAR2:SEL" not in io.events
+    assert "CALC2:FORM MLOG" not in io.events
     assert "CALC2:PAR2:DATA:FDATA?" not in io.events
 
 
@@ -1315,11 +1361,11 @@ def test_catalog_vna_export_keeps_actual_axis_and_rejects_fake_s2p(model, tmp_pa
     assert path.read_text().splitlines()[-1] == "10000000.000000,-30.000000"
     assert "INIT:IMM" not in io.events
     if model.startswith("keysight"):
-        assert "TRIG:SING" in io.events
+        assert "TRIG:SING" not in io.events
         assert "FORM:DATA ASC" in io.events
     else:
-        assert "TRIG:SOUR INT" in io.events
-        assert "INIT2:IMM" in io.events
+        assert "TRIG:SOUR INT" not in io.events
+        assert "INIT2:IMM" not in io.events
         assert "FORM:DATA ASC" not in io.events
 
 
@@ -1371,25 +1417,25 @@ def test_ssa_invalid_trace_or_marker_does_not_write():
 
 @pytest.mark.parametrize("model,channel", [("keysight-e4418b", 1), ("keysight-e4419b", 2)])
 def test_epm_reads_explicit_input_in_dbm_and_converts_watts(model, channel):
-    query = f"READ{channel}:POW:AC? DEF,DEF,(@{channel})"
+    query = f"FETC{channel}:POW:AC? DEF,DEF,(@{channel})"
     meter, io = instrument("pwrmeter", model, {query: "-30"})
     assert meter.measure_power_w(channel=channel) == pytest.approx(1e-6)
-    assert io.events == [f"INIT{channel}:CONT OFF", f"TRIG{channel}:SOUR IMM", f"TRIG{channel}:DEL:AUTO ON", f"UNIT{channel}:POW DBM", "FORM ASC", query]
+    assert io.events == [f"UNIT{channel}:POW?", "FORM?", "FORM ASC", query, "FORM REAL"]
     io.events.clear()
     meter.preset()
     assert meter.measure_power(channel=channel) == -30
-    assert io.events[-3:] == [f"UNIT{channel}:POW DBM", "FORM ASC", query]
+    assert io.events[-5:] == [f"UNIT{channel}:POW?", "FORM?", "FORM ASC", query, "FORM REAL"]
 
 
 def test_epm_average_fetch_does_not_acquire_and_acquire_leaves_a_valid_sample():
     read = "READ2:POW:AC? DEF,DEF,(@2)"
     fetch = "FETC2:POW:AC? DEF,DEF,(@2)"
-    meter, io = instrument("pwrmeter", "keysight-e4419b", {read: "-20", fetch: "-20"})
+    meter, io = instrument("pwrmeter", "keysight-e4419b", {read: "-20", fetch: "-20", "*OPC?": "1"})
     meter.acquire(channel=2)
-    assert io.events[-1] == read
+    assert io.events == ["INIT2:CONT OFF", "INIT2:IMM", "*OPC?"]
     io.events.clear()
     assert meter.measure_power_avg_dbm(channel=2) == -20
-    assert io.events == ["UNIT2:POW DBM", "FORM ASC", fetch]
+    assert io.events == ["UNIT2:POW?", "FORM?", "FORM ASC", fetch, "FORM REAL"]
 
 
 @pytest.mark.parametrize("model,channel", [("keysight-e4418b", 1), ("keysight-e4419b", 2)])
@@ -1428,7 +1474,7 @@ def test_epm_single_input_and_restricted_dual_input_reject_channel_two():
 
 
 @pytest.mark.parametrize("raw", ["nan", "inf", "9.9e37", "-9.9e37", "1,2", "", "overload"])
-@pytest.mark.parametrize("method,query", [("measure_power_dbm", "READ1:POW:AC? DEF,DEF,(@1)"), ("measure_power_avg_dbm", "FETC1:POW:AC? DEF,DEF,(@1)")])
+@pytest.mark.parametrize("method,query", [("measure_power_dbm", "FETC1:POW:AC? DEF,DEF,(@1)"), ("measure_power_avg_dbm", "FETC1:POW:AC? DEF,DEF,(@1)")])
 def test_epm_rejects_invalid_readings(raw, method, query):
     meter, _ = instrument("pwrmeter", "keysight-e4418b", {query: raw})
     with pytest.raises(EquipmentResponseError):
@@ -1440,4 +1486,42 @@ def test_epm_invalid_settings_do_not_write(method, value):
     meter, io = instrument("pwrmeter", "keysight-e4418b")
     with pytest.raises(ValueError):
         getattr(meter, method)(value)
+    assert io.events == []
+
+
+def test_counter_reads_existing_function_without_routing_or_rearming():
+    counter, io = instrument('freqcounter', 'keysight-53220a', {
+        'ROUT:FEED?': 'INP2', 'CONF?': 'FREQ', 'FETC?': '1234',
+    })
+    assert counter.measure_frequency(channel=2) == 1234
+    assert io.events == ['ROUT:FEED?', 'CONF?', 'FETC?']
+    io.responses['CONF?'] = 'PER'
+    io.events.clear()
+    with pytest.raises(EquipmentCapabilityError, match='configure counter function'):
+        counter.measure_frequency(channel=2)
+    assert io.events == ['ROUT:FEED?', 'CONF?']
+
+
+def test_wrong_vna_trace_parameter_fails_without_redefining_or_sweeping():
+    vna, io = instrument('vna', 'keysight-e5071c', {'CALC1:PAR1:DEF?': 'S21'})
+    with pytest.raises(EquipmentCapabilityError, match='configure trace'):
+        vna.measure_s11_magnitude()
+    assert io.events == ['CALC1:PAR:SEL?', 'CALC1:PAR1:DEF?']
+
+
+@pytest.mark.parametrize('samples,start,stop', [
+    (['-40'] * 600, '100', '700'),
+    (['nan'] + ['-40'] * 600, '100', '700'),
+    (['-40'] * 601, '100', '100'),
+])
+def test_hp_native_transfer_still_rejects_invalid_data(samples, start, stop):
+    analyzer, io = instrument('speca', 'keysight-8563ec', {
+        'TRA?;': ','.join(samples), 'FA?;': start, 'FB?;': stop,
+    })
+    with pytest.raises(EquipmentResponseError):
+        analyzer._fetch_trace(1)
+    assert io.events == ['TDF P;', 'TRA?;', 'FA?;', 'FB?;']
+    io.events.clear()
+    with pytest.raises(EquipmentCapabilityError):
+        analyzer._fetch_trace(2)
     assert io.events == []

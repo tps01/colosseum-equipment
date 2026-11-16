@@ -24,7 +24,7 @@ directory fixes also apply to existing export paths.
 
 | Category | New model slugs | Implemented behavior | Limits / qualification still required |
 | --- | --- | --- | --- |
-| Bench DMM | `keysight-34410a`, `keysight-34411a`, `keithley-2100`, `keithley-2001` | Function-qualified range/autorange and integration; trigger/initiate/fetch; one-shot DC/AC voltage/current, resistance, four-wire resistance and frequency | Scalar results only. Overload/nonfinite/array results are rejected. 3441x additionally has aperture and input-impedance selection; high input impedance is automatic and range dependent. No scanner or buffered acquisition. 2001 selects SCPI fetch format explicitly. |
+| Bench DMM | `keysight-34410a`, `keysight-34411a`, `keithley-2100`, `keithley-2001` | Function-qualified range/autorange and integration; trigger/initiate/fetch; one-shot DC/AC voltage/current, resistance, four-wire resistance and frequency | Scalar results only. Overload/nonfinite/array results are rejected. 3441x additionally has aperture and input-impedance selection; high input impedance is automatic and range dependent. No scanner or buffered acquisition. 2001 requires SCPI fetch semantics selected explicitly; transfer formats restore after reading. |
 | Handheld DMM | `keysight-u1252a`, `keysight-u1272a` | Read primary display with `fetch`; query native `CONF?` descriptor | Optical serial cable required; explicitly configure baud rate. No remote function switching or guarantee of a fresh conversion. Interpret the native display value together with its descriptor; no inferred SI conversion. |
 | Power supplies | `keysight-e3644a`, `keysight-n6705a`, `rohde-hmp4040` | Voltage/current settings, output, measurements, basic protection subsets | E3644A range must be selected on panel. N6705A uses explicit module-slot channel lists; installed modules determine limits. HMP4040 always selects an output before commands. Derived power uses separate voltage/current readings. No N6705A digitizer, sequencing or module identification. |
 | RF generators (`vsg`) | `keysight-e8257d`, `keysight-e8257c`, `keysight-e8241a`, `keysight-e4422b`, `keysight-n5183a`, `keysight-n5183b`, `rohde-smb100a`, `rohde-sma100b` | CW frequency, dBm level, RF output, reference source and setting readback | Readback reports programmed settings, not independently measured RF. No ARB/vector modulation or option-dependent sweeps. |
@@ -66,8 +66,9 @@ col.equipment.oscope.save_waveform(oscope_id=1, channel=1, path="capture.csv")
 For the first-pass average-power profiles, `acquire` selects immediate
 triggering and completes a new acquisition;
 `measure_power_avg_dbm` fetches its result without rearming.
-`measure_power_dbm` performs both. For Spike IQ, call `acquire`, then
-`save_IQ_data`. Spectrum/VNA trace exports perform a new sweep. Phase-noise trace
+`measure_power_dbm` also fetches without rearming; call `configure_average`
+explicitly when average-processing setup is required. For Spike IQ, call `acquire`, then
+`save_IQ_data`. Spectrum/VNA trace exports fetch existing data; request a sweep explicitly. Phase-noise trace
 export and spot reads fetch the captured trace without starting another sweep.
 
 ## Remaining category work

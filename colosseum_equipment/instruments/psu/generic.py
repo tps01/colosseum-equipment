@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from collections.abc import Iterator
+
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -41,6 +44,21 @@ class GenericPSU(ScpiInstrumentMixin):
             )
         return ch
 
+    _channel_command = "INST:NSEL"
+    _always_select_channel = False
+
+    @contextmanager
+    def _selected_channel(self, channel: int) -> Iterator[None]:
+        ch = self._require_channel(channel)
+        if self._channel_count > 1 or self._always_select_channel:
+            with self._scpi.temporary_settings((self._channel_command, self._channel_value(ch))):
+                yield
+        else:
+            yield
+
+    def _channel_value(self, channel: int) -> str:
+        return str(channel)
+
     def _apply_channel(self, channel: int) -> int:
         ch = self._require_channel(channel)
         if self._channel_count > 1:
@@ -60,44 +78,44 @@ class GenericPSU(ScpiInstrumentMixin):
         self._scpi.write("OUTP ON" if enabled else "OUTP OFF")
 
     def get_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("VOLT?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("VOLT?")
 
     def get_current_limit(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("CURR?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("CURR?")
 
     def get_output(self, *, channel: int = 1) -> bool:
-        self._apply_channel(channel)
-        return bool(int(float(self._scpi.query("OUTP?"))))
+        with self._selected_channel(channel):
+            return bool(int(float(self._scpi.query("OUTP?"))))
 
     def measure_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:VOLT?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEAS:VOLT?")
 
     def measure_current(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:CURR?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEAS:CURR?")
 
     def measure_power_w(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        try:
-            return self._scpi.query_float("MEAS:POW?")
-        except Exception:
-            return self.measure_voltage(channel=channel) * self.measure_current(channel=channel)
+        with self._selected_channel(channel):
+            try:
+                return self._scpi.query_float("MEAS:POW?")
+            except Exception:
+                return self.measure_voltage(channel=channel) * self.measure_current(channel=channel)
 
     def measure_output_state(self, *, channel: int = 1) -> bool:
         return self.get_output(channel=channel)
 
     def get_regulation_mode(self, *, channel: int = 1) -> str:
-        self._apply_channel(channel)
-        raw = self._scpi.query("OUTP:MODE?").strip().upper()
-        for token, label in (("CV", "cv"), ("CC", "cc"), ("UR", "ur"), ("UNR", "ur")):
-            if token in raw:
-                return label
-        if raw in ("0", "1", "2"):
-            return ("cv", "cc", "ur")[int(raw)]
-        return raw.lower() or "unknown"
+        with self._selected_channel(channel):
+            raw = self._scpi.query("OUTP:MODE?").strip().upper()
+            for token, label in (("CV", "cv"), ("CC", "cc"), ("UR", "ur"), ("UNR", "ur")):
+                if token in raw:
+                    return label
+            if raw in ("0", "1", "2"):
+                return ("cv", "cc", "ur")[int(raw)]
+            return raw.lower() or "unknown"
 
     def set_ovp_v(self, voltage: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
@@ -116,28 +134,28 @@ class GenericPSU(ScpiInstrumentMixin):
         self._scpi.write(f"CURR:PROT:STAT {'ON' if enabled else 'OFF'}")
 
     def get_ovp_v(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("VOLT:PROT?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("VOLT:PROT?")
 
     def get_ocp_a(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("CURR:PROT?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("CURR:PROT?")
 
     def get_ovp_enabled(self, *, channel: int = 1) -> bool:
-        self._apply_channel(channel)
-        return bool(int(float(self._scpi.query("VOLT:PROT:STAT?"))))
+        with self._selected_channel(channel):
+            return bool(int(float(self._scpi.query("VOLT:PROT:STAT?"))))
 
     def get_ocp_enabled(self, *, channel: int = 1) -> bool:
-        self._apply_channel(channel)
-        return bool(int(float(self._scpi.query("CURR:PROT:STAT?"))))
+        with self._selected_channel(channel):
+            return bool(int(float(self._scpi.query("CURR:PROT:STAT?"))))
 
     def clear_protection(self, *, channel: int = 1) -> None:
         self._apply_channel(channel)
         self._scpi.write("OUTP:PROT:CLE")
 
     def get_fault_status(self, *, channel: int = 1) -> str:
-        self._apply_channel(channel)
-        return self._scpi.query("STAT:QUES:INST?").strip()
+        with self._selected_channel(channel):
+            return self._scpi.query("STAT:QUES:INST?").strip()
 
     def set_remote_sense(self, enabled: bool, *, channel: int = 1) -> None:
         self._apply_channel(channel)

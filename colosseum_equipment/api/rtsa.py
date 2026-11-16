@@ -362,3 +362,35 @@ def wait_complete(*, rtsa_id: int, timeout_s: float = 60.0) -> None:
     """
     _logger.info("Waiting for RTSA %s acquisition to complete", rtsa_id)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).wait_complete(timeout_s=timeout_s)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
+def configure_spectrum(*, rtsa_id: EquipmentId) -> None:
+    """Explicitly initialize native USB RSA spectrum processing with vendor defaults.
+
+    :param rtsa_id: Configured equipment.rtsa ID; broadcast commands also accept "all".
+    """
+    from colosseum_equipment.exceptions import EquipmentCapabilityError
+
+    inst = get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa"))
+    configure = getattr(inst, "configure_spectrum", None)
+    if not callable(configure):
+        raise EquipmentCapabilityError("configure_spectrum is only available for native USB RSA")
+    configure()
+
+
+@command
+def acquire_spectrum(*, rtsa_id: int, timeout_s: float = 60.0) -> None:
+    """Acquire a native USB RSA spectrum before exporting it.
+
+    :param rtsa_id: Configured equipment.rtsa ID; broadcast commands also accept "all".
+    :param timeout_s: Positive acquisition timeout in seconds.
+    """
+    from colosseum_equipment.exceptions import EquipmentCapabilityError
+
+    inst = get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa"))
+    acquire = getattr(inst, "acquire_spectrum", None)
+    if not callable(acquire):
+        raise EquipmentCapabilityError("use run/acquire for SCPI spectrum instruments")
+    acquire(timeout_s=timeout_s)

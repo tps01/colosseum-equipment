@@ -48,9 +48,9 @@ class ItechIT8600Eload(GenericEload):
         self._scpi.write("INPut:STATe OFF")
 
     def measure_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEASure:VOLTage?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEASure:VOLTage?")
 
     def measure_current(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEASure:CURRent?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEASure:CURRent?")

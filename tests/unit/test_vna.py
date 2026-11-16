@@ -49,16 +49,13 @@ def test_generic_vna_measure_s11_magnitude() -> None:
     transport = RfStubTransport(
         {
             "*OPC?": "1",
+            "CALC:PAR1:DEF?": "S11", "CALC:PAR1:FORM?": "MLOG",
             "CALC:PAR1:DATA:FDATA?": "-20.0,-12.5,-18.0",
         },
     )
     inst = build_instrument("vna", 1, {"model": "generic"}, transport)
     assert inst.measure_s11_magnitude(trace=1) == -12.5
-    assert transport.written == [
-        "CALC:PAR1:DEF S11",
-        "CALC:PAR1:FORM MLOG",
-        "INIT:IMM",
-    ]
+    assert transport.written == []
 
 
 def test_save_trace_data_csv(unit_runtime_context) -> None:
@@ -66,6 +63,7 @@ def test_save_trace_data_csv(unit_runtime_context) -> None:
         {
             "*OPC?": "1",
             "SENS:FREQ:DATA?": "1000000000,2000000000",
+            "CALC:PAR1:DEF?": "S11", "CALC:PAR1:FORM?": "MLOG",
             "CALC:PAR1:DATA:FDATA?": "-10.5,-12.0",
         },
     )

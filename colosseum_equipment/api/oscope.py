@@ -672,3 +672,20 @@ def wait_for_trigger(*, oscope_id: int, timeout_s: float) -> None:
     """
     _logger.info("Waiting for trigger on scope %s", oscope_id)
     _inst(oscope_id).wait_for_trigger(timeout_s=timeout_s)
+
+
+@command
+@broadcastable("oscope", "oscope_id")
+def configure_vpp(*, oscope_id: EquipmentId, channel: int = 1) -> None:
+    """Explicitly configure a T3DSO custom peak-to-peak measurement slot.
+
+    :param oscope_id: Configured equipment.oscope ID; broadcast commands also accept "all".
+    :param channel: Physical input channel (1-based); availability depends on the model.
+    """
+    from colosseum_equipment.exceptions import EquipmentCapabilityError
+
+    inst = get_cached_instrument("oscope", require_int_id(oscope_id, kind="oscope"))
+    configure = getattr(inst, "configure_vpp", None)
+    if not callable(configure):
+        raise EquipmentCapabilityError("this oscilloscope does not require custom Vpp slot configuration")
+    configure(channel)

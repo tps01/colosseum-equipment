@@ -115,7 +115,7 @@ class GenericOscope(ScpiInstrumentMixin):
 
     def get_channel_display(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        return bool(int(float(self._scpi.query(f"CHAN{ch}:DISP?"))))
+        return bool(int(float(self._scpi._setting_value(f"CHAN{ch}:DISP?"))))
 
     def set_channel_scale_v(self, channel: int, volts_per_div: float) -> None:
         ch = self._require_channel(channel)
@@ -142,7 +142,7 @@ class GenericOscope(ScpiInstrumentMixin):
 
     def get_channel_coupling(self, channel: int) -> str:
         ch = self._require_channel(channel)
-        return self._scpi.query(f"CHAN{ch}:COUP?").strip().upper()
+        return self._scpi._setting_value(f"CHAN{ch}:COUP?").strip().upper()
 
     def set_channel_probe_attenuation(self, channel: int, attenuation: float) -> None:
         ch = self._require_channel(channel)
@@ -158,7 +158,7 @@ class GenericOscope(ScpiInstrumentMixin):
 
     def get_channel_bandwidth_limit(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        raw = self._scpi.query(f"CHAN{ch}:BWL?").strip().upper()
+        raw = self._scpi._setting_value(f"CHAN{ch}:BWL?").strip().upper()
         return raw in {"1", "ON", "20M", "TRUE"}
 
     def set_channel_impedance(self, channel: int, ohms: float) -> None:
@@ -174,7 +174,7 @@ class GenericOscope(ScpiInstrumentMixin):
 
     def get_channel_impedance(self, channel: int) -> float:
         ch = self._require_channel(channel)
-        raw = self._scpi.query(f"CHAN{ch}:IMP?").strip().upper()
+        raw = self._scpi._setting_value(f"CHAN{ch}:IMP?").strip().upper()
         if "FIF" in raw or raw in {"50", "FIFT"}:
             return 50.0
         return 1e6
@@ -191,7 +191,7 @@ class GenericOscope(ScpiInstrumentMixin):
         self._scpi.write(f"ACQ:MDEP {int(points)}")
 
     def get_record_length(self) -> int:
-        return int(float(self._scpi.query("ACQ:MDEP?")))
+        return int(float(self._scpi._setting_value("ACQ:MDEP?")))
 
     # --- Trigger -----------------------------------------------------------
 
@@ -264,7 +264,7 @@ class GenericOscope(ScpiInstrumentMixin):
         self._scpi.write("STOP")
 
     def get_acquire_state(self) -> str:
-        return self._scpi.query("TRIG:STAT?").strip()
+        return self._scpi._setting_value("TRIG:STAT?").strip()
 
     def wait_complete(self, *, timeout_s: float) -> None:
         deadline = time.monotonic() + timeout_s
@@ -278,7 +278,7 @@ class GenericOscope(ScpiInstrumentMixin):
                     with contextlib.suppress(Exception):
                         setter(min(remaining, 1.0))
                 try:
-                    done = self._scpi.query("*OPC?").strip()
+                    done = self._scpi._setting_value("*OPC?").strip()
                     if done.startswith("1"):
                         return
                 except Exception:
@@ -338,32 +338,30 @@ class GenericOscope(ScpiInstrumentMixin):
 
     def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
         ch = self._require_channel(channel)
-        self._scpi.write(f"WAV:SOUR CHAN{ch}")
-        self._scpi.write("WAV:FORM ASC")
-        self._scpi.write("WAV:MODE NORM")
-        xinc = self._scpi.query_float("WAV:XINC?")
-        xorigin = self._scpi.query_float("WAV:XOR?")
-        yinc = self._scpi.query_float("WAV:YINC?")
-        yorigin = self._scpi.query_float("WAV:YOR?")
-        yref = self._scpi.query_float("WAV:YREF?")
-        points_expected = int(float(self._scpi.query("WAV:POIN?")))
-        raw = self._scpi.query("WAV:DATA?")
-        values = _parse_ascii_waveform(raw, points_expected=points_expected)
-        volts = [(v - yref) * yinc + yorigin for v in values] if values else values
-        meta = {
-            "channel": ch,
-            "points": len(volts),
-            "points_expected": points_expected,
-            "xinc_s": xinc,
-            "xorigin_s": xorigin,
-            "yinc_v": yinc,
-            "yorigin_v": yorigin,
-            "yref": yref,
-            "vertical_units": "V",
-            "encoding": "ascii",
-            "capture_id": self._capture_id,
-        }
-        return volts, meta
+        with self._scpi.temporary_settings(('WAV:SOUR', f'CHAN{ch}'), ('WAV:FORM', 'ASC'), ('WAV:MODE', 'NORM')):
+            xinc = self._scpi.query_float("WAV:XINC?")
+            xorigin = self._scpi.query_float("WAV:XOR?")
+            yinc = self._scpi.query_float("WAV:YINC?")
+            yorigin = self._scpi.query_float("WAV:YOR?")
+            yref = self._scpi.query_float("WAV:YREF?")
+            points_expected = int(float(self._scpi._setting_value("WAV:POIN?")))
+            raw = self._scpi._setting_value("WAV:DATA?")
+            values = _parse_ascii_waveform(raw, points_expected=points_expected)
+            volts = [(v - yref) * yinc + yorigin for v in values] if values else values
+            meta = {
+                "channel": ch,
+                "points": len(volts),
+                "points_expected": points_expected,
+                "xinc_s": xinc,
+                "xorigin_s": xorigin,
+                "yinc_v": yinc,
+                "yorigin_v": yorigin,
+                "yref": yref,
+                "vertical_units": "V",
+                "encoding": "ascii",
+                "capture_id": self._capture_id,
+            }
+            return volts, meta
 
     def save_waveform(self, *, channel: int, path: str, key: str = "") -> Path:
         volts, meta = self._read_waveform_points(channel)

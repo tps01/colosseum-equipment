@@ -15,19 +15,17 @@ class Keysight53220AFreqCounter(GenericFreqCounter):
         self._scpi.write(f"SENSe:FREQuency:GATE:TIME {seconds}")
 
     def measure_frequency(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEASure:FREQuency?")
+        return self._measure("FREQ", channel)
 
     def measure_period(self, *, channel: int = 1) -> float:
-        self._select_input(channel)
-        return self._scpi.query_float("MEASure:PERiod?")
+        return self._measure("PER", channel)
 
     def measure_frequency_mean_hz(self, *, channel: int = 1) -> float:
         self._select_input(channel)
-        self._scpi.write("CALCulate:AVERage:STATe ON")
+        self._scpi.require_setting("CALCulate:AVERage:STATe?", "1")
         return self._scpi.query_float("CALCulate:AVERage:MEAN?")
 
     def measure_frequency_stdev_hz(self, *, channel: int = 1) -> float:
         self._select_input(channel)
-        self._scpi.write("CALCulate:AVERage:STATe ON")
+        self._scpi.require_setting("CALCulate:AVERage:STATe?", "1")
         return self._scpi.query_float("CALCulate:AVERage:SDEViation?")

@@ -75,21 +75,20 @@ class AnritsuMs272x(GenericSpecA):
     ) -> tuple[list[float], list[float]]:
         if trace not in (1, 2, 3):
             raise ValueError("spectrum trace number must be 1..3")
-        self._scpi.write("UNIT:POW DBM")
-        self._scpi.write("FORM:DATA REAL,32")
-        self.single_sweep()
-        raw = self._scpi.read_binary_block(f"TRAC:DATA? {trace}")
-        if len(raw) < 8 or len(raw) % 4:
-            raise EquipmentResponseError("invalid REAL32 spectrum byte count")
-        values = list(struct.unpack(f"<{len(raw) // 4}f", raw))
-        start = self._scpi.query_float("FREQ:STAR?")
-        stop = self._scpi.query_float("FREQ:STOP?")
-        if any(not math.isfinite(v) or abs(v) >= 9e37 for v in values):
-            raise EquipmentResponseError("invalid spectrum amplitude")
-        if not math.isfinite(start) or not math.isfinite(stop) or stop <= start:
-            raise EquipmentResponseError("zero-span/time data cannot be exported as frequency CSV")
-        axis = [start + i * (stop - start) / (len(values) - 1) for i in range(len(values))]
-        return (axis if include_frequency else [float(i) for i in range(len(values))]), values
+        self._scpi.require_setting("UNIT:POW?", "DBM")
+        with self._scpi.temporary_settings(('FORM:DATA', 'REAL,32')):
+            raw = self._scpi.read_binary_block(f"TRAC:DATA? {trace}")
+            if len(raw) < 8 or len(raw) % 4:
+                raise EquipmentResponseError("invalid REAL32 spectrum byte count")
+            values = list(struct.unpack(f"<{len(raw) // 4}f", raw))
+            start = self._scpi.query_float("FREQ:STAR?")
+            stop = self._scpi.query_float("FREQ:STOP?")
+            if any(not math.isfinite(v) or abs(v) >= 9e37 for v in values):
+                raise EquipmentResponseError("invalid spectrum amplitude")
+            if not math.isfinite(start) or not math.isfinite(stop) or stop <= start:
+                raise EquipmentResponseError("zero-span/time data cannot be exported as frequency CSV")
+            axis = [start + i * (stop - start) / (len(values) - 1) for i in range(len(values))]
+            return (axis if include_frequency else [float(i) for i in range(len(values))]), values
 
     def close(self) -> None:
         self._scpi._transport.close()

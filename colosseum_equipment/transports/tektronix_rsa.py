@@ -148,7 +148,6 @@ class RsaApiTransport:
                 actual = type_buffer.value.decode("ascii").strip().lower()
                 if actual != model.removeprefix("tektronix-"):
                     raise EquipmentConnectionError(f"RSA API found {actual!r}, expected {model!r}")
-                self.call("CONFIG_Preset")
                 return
             self.call("DEVICE_Disconnect")
             self._connected = False

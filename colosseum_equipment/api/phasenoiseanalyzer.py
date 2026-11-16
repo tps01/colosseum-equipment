@@ -296,3 +296,26 @@ def wait_opc(*, phasenoiseanalyzer_id: int) -> None:
     get_cached_instrument(
         "phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer"),
     ).wait_opc()
+
+
+@command
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_spot_offset_hz(*, phasenoiseanalyzer_id: EquipmentId, offset_hz: float) -> None:
+    """Configure the spot-noise offset before acquisition.
+
+    :param phasenoiseanalyzer_id: Configured equipment.phasenoiseanalyzer ID; broadcast commands also accept "all".
+    :param offset_hz: Spot-noise offset in hertz.
+    """
+    get_cached_instrument("phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")).set_spot_offset_hz(offset_hz)
+
+
+@command
+@broadcastable("phasenoiseanalyzer", "phasenoiseanalyzer_id")
+def set_integration_bounds_hz(*, phasenoiseanalyzer_id: EquipmentId, start_hz: float, stop_hz: float) -> None:
+    """Configure jitter integration bounds before acquisition.
+
+    :param phasenoiseanalyzer_id: Configured equipment.phasenoiseanalyzer ID; broadcast commands also accept "all".
+    :param start_hz: Lower integration offset in hertz.
+    :param stop_hz: Upper integration offset in hertz.
+    """
+    get_cached_instrument("phasenoiseanalyzer", require_int_id(phasenoiseanalyzer_id, kind="phasenoiseanalyzer")).set_integration_bounds_hz(start_hz, stop_hz)

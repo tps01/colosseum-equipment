@@ -81,10 +81,11 @@ class Hp8593e(HpLegacySpectrum):
 @instrument_model("speca", "keysight-8563ec")
 @supported_commands(*_CONTROLS, "save_trace_data", "measure_bw", "measure_center_frequency_hz", "measure_trace_power_at_frequency")
 class Hp8563ec(HpLegacySpectrum):
-    """Native SNGLS;TS and TDF P trace A transfer, 601 dBm points.
+    """Native parameter-unit trace A transfer, with 601 points.
 
-    TS/TRA? follows the documented sequential acquisition example; transport
-    timeout must cover the sweep. Trace transfers put trace A in view mode.
+    Select dBm amplitude units explicitly before export. The native ``TRA?``
+    transfer leaves trace A in view mode; this is an intentional exception to
+    passive exports. Fetching does not clear the trace or initiate a sweep.
     """
 
     def _fetch_trace(
@@ -95,9 +96,6 @@ class Hp8563ec(HpLegacySpectrum):
     ) -> tuple[list[float], list[float]]:
         if trace != 1:
             raise EquipmentCapabilityError("only trace A (trace 1) is implemented")
-        self._scpi.write("AUNITS DBM;")
-        self._scpi.write("CLRW TRA;")
-        self._scpi.write("SNGLS;TS;")
         self._scpi.write("TDF P;")
         values = parse_trace_amplitudes(self._scpi.query("TRA?;"))
         start = self._scpi.query_float("FA?;")
@@ -106,5 +104,5 @@ class Hp8563ec(HpLegacySpectrum):
             raise EquipmentResponseError("8563EC trace A must contain 601 finite dBm values")
         if not math.isfinite(start) or not math.isfinite(stop) or stop <= start:
             raise EquipmentResponseError("frequency export requires a positive span")
-        axis = [start + i * (stop - start) / 600 for i in range(601)]
-        return (axis if include_frequency else [float(i) for i in range(601)]), values
+        axis = [start + i * (stop - start) / (len(values) - 1) for i in range(len(values))]
+        return (axis if include_frequency else [float(i) for i in range(len(values))]), values

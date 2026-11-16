@@ -39,8 +39,8 @@ class GenericVSG(ScpiInstrumentMixin):
             self.set_frequency(float(config["frequency"]))
         if "power_dbm" in config:
             self.set_power(float(config["power_dbm"]))
-        if config.get("output"):
-            self.set_output(True)
+        if "output" in config:
+            self.set_output(bool(config["output"]))
 
     def set_frequency(self, frequency: float) -> None:
         self._scpi.write(f"FREQ:CW {frequency:.6f}")

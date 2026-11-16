@@ -19,6 +19,7 @@ def main() -> None:
     col.equipment.speca.apply_mask_setup(speca_id=1, key="speca_trace_1")
     # Omit the command key so the mask parameter is not injected into export.
     # The exporter records trace 1 under its default evidence key: speca_trace_1.
+    col.equipment.speca.single_sweep(speca_id=1)
     col.equipment.speca.save_trace_data(speca_id=1, path="speca/wifi_trace.csv")
     col.equipment.speca.verify_mask(key="speca_trace_1")
 
