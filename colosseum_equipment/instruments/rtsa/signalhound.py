@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 @instrument_model("rtsa", "signalhound-bb60c-spike", "signalhound-sm200c-spike")
 @supported_commands(
+    "set_iq_bandwidth", "set_reference_level",
     "set_center_freq",
     "set_bandwidth",
     "set_acq_time",
@@ -52,7 +53,13 @@ class SignalHoundSpikeIq(GenericRtsa):
         transport.write("INST:SEL ZS")
         super().__init__(transport, config)
         if "reference_level_dbm" in config:
-            self._scpi.write(f"SENS:ZS:CAP:RLEV {float(config['reference_level_dbm'])}DBM")
+            self.set_reference_level(float(config["reference_level_dbm"]))
+
+    def set_reference_level(self, level_dbm: float) -> None:
+        self._scpi.write(f"SENS:ZS:CAP:RLEV {level_dbm}DBM")
+
+    def set_iq_bandwidth(self, bandwidth_hz: float) -> None:
+        self.set_bandwidth(bandwidth_hz)
 
     def set_center_freq(self, frequency_hz: float) -> None:
         self._scpi.write(f"SENS:ZS:CAP:CENT {frequency_hz:.6f}")

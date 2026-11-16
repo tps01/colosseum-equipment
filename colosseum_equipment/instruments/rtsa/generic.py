@@ -65,6 +65,24 @@ class GenericRtsa(ScpiInstrumentMixin):
     def set_bandwidth(self, bandwidth_hz: float) -> None:
         self._scpi.write(f"BAND:RES {bandwidth_hz:.6f}")
 
+    def set_rbw(self, rbw: float) -> None:
+        self.set_bandwidth(rbw)
+
+    def set_iq_bandwidth(self, bandwidth_hz: float) -> None:
+        unsupported(self._model, "set_iq_bandwidth")
+
+    def set_attenuation_db(self, attenuation_db: float) -> None:
+        unsupported(self._model, "set_attenuation_db")
+
+    def set_auto_attenuation(self, enabled: bool) -> None:
+        unsupported(self._model, "set_auto_attenuation")
+
+    def set_reference_level(self, level_dbm: float) -> None:
+        unsupported(self._model, "set_reference_level")
+
+    def toggle_preamp(self, enabled: bool) -> None:
+        unsupported(self._model, "toggle_preamp")
+
     def set_acq_time(self, seconds: float) -> None:
         self._scpi.write(f"SWE:TIME {seconds:.9f}")
 
@@ -137,7 +155,10 @@ class GenericRtsa(ScpiInstrumentMixin):
     def peak_search(self, marker: int = 1) -> None:
         unsupported(self._model, "peak_search")
 
-    def save_spectrum_trace_data(self, path: str, *, trace: int = 1) -> Path:
+    def _acquire_spectrum_trace(self, path: str, *, trace: int = 1) -> Path:
+        unsupported(self._model, "spectrum measurement")
+
+    def save_spectrum_trace_data(self, path: str, *, trace: int = 1, key: str = "") -> Path:
         unsupported(self._model, "save_spectrum_trace_data")
 
     def save_IQ_data(self, path: str, *, file_format: str = "bin", key: str = "") -> Path:
@@ -176,6 +197,7 @@ class GenericRtsa(ScpiInstrumentMixin):
         path: str,
         file_format: str = "mat",
         sample_format: str = "f32",
+        endianness: str = "little",
         timeout_s: float = 120.0,
         key: str = "",
     ) -> dict[str, Any]:
@@ -184,3 +206,22 @@ class GenericRtsa(ScpiInstrumentMixin):
         Model drivers that support length-mode IQ capture override this method.
         """
         unsupported(self._model, "capture_iq")
+
+
+class _ScpiRfRtsa(GenericRtsa):
+    """RF controls shared by RSA5032/5065 and SSA3000X-R programming guides.
+
+    Other inherited operations retain their existing best-effort status.
+    """
+
+    def set_attenuation_db(self, attenuation_db: float) -> None:
+        self._scpi.write(f"SENS:POW:RF:ATT {attenuation_db:.3f}")
+
+    def set_auto_attenuation(self, enabled: bool) -> None:
+        self._scpi.write("SENS:POW:RF:ATT:AUTO ON" if enabled else "SENS:POW:RF:ATT:AUTO OFF")
+
+    def set_reference_level(self, level_dbm: float) -> None:
+        self._scpi.write(f"DISP:WIND:TRAC:Y:SCAL:RLEV {level_dbm:.3f}DBM")
+
+    def toggle_preamp(self, enabled: bool) -> None:
+        self._scpi.write("SENS:POW:RF:GAIN:STAT ON" if enabled else "SENS:POW:RF:GAIN:STAT OFF")

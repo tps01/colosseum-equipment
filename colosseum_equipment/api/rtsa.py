@@ -17,15 +17,61 @@ sequentially and failures aggregate. Measurements require numeric IDs.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
-from colosseum.decorators import command
+from colosseum.decorators import command, measurement
 from colosseum.logging import get_logger
 
+from colosseum_equipment import calibration as _cal
+from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
+from colosseum_equipment.evidence import record_artifact
+from colosseum_equipment.instruments.speca.bandwidth import BandwidthMethod, RefPowerMethod, bandwidth_edges_hz
+from colosseum_equipment.instruments.speca.trace_csv import read_trace_power_at_frequency
+from colosseum_equipment.instruments.speca.trace_plot import _write_trace_plot, read_trace_csv, write_trace_plot
 
 _logger = get_logger("colosseum.equipment")
+
+
+def _band_edges(
+    *, rtsa_id: int, start_hz: float, stop_hz: float, key: str,
+    threshold_db: float | None, smoothing_order: int, trace: int, trace_path: str | None,
+    method: BandwidthMethod | None, occupied_power_pct: float | None,
+    save_plot: bool, ref_pwr_meas_method: RefPowerMethod, center: bool,
+) -> tuple[float, float]:
+    path = _spectrum_path(rtsa_id, trace, trace_path)
+    frequencies, amplitudes = read_trace_csv(path)
+    left, right = bandwidth_edges_hz(
+        frequencies, amplitudes, start_hz=start_hz, stop_hz=stop_hz,
+        threshold_db=threshold_db, smoothing_order=smoothing_order, method=method,
+        occupied_power_pct=occupied_power_pct, ref_pwr_meas_method=ref_pwr_meas_method,
+    )
+    if save_plot:
+        kind = "center_frequency" if center else "bandwidth"
+        token = uuid4().hex
+        png = resolve_artifact_path(f"plots/rtsa_{kind}_{token}.png")
+        _write_trace_plot(
+            frequencies, amplitudes, png,
+            center_hz=(left + right) / 2 if center else None,
+            edges_hz=None if center else (left, right),
+        )
+        record_artifact(
+            domain="equipment", command=f"rtsa_{kind}_plot", key=f"{key}_plot_{token}", path=png,
+            value={"source_key": key, "source_trace": str(path), "method": method or "threshold",
+                   "left_hz": left, "right_hz": right},
+        )
+    return left, right
+
+
+def _spectrum_path(rtsa_id: int, trace: int, trace_path: str | None) -> Path:
+    require_int_id(rtsa_id, kind="rtsa")
+    if trace_path is not None:
+        return resolve_artifact_path(trace_path)
+    inst = get_cached_instrument("rtsa", rtsa_id)
+    return Path(inst._acquire_spectrum_trace(f"traces/rtsa_{rtsa_id}_{uuid4().hex}.csv", trace=trace))
 
 
 @command
@@ -65,6 +111,7 @@ def capture_iq(
     path: str,
     file_format: str = "mat",
     sample_format: str = "f32",
+    endianness: str = "little",
     timeout_s: float = 120.0,
     key: str = "",
 ) -> dict[str, Any]:
@@ -93,6 +140,9 @@ def capture_iq(
 
     :param sample_format: Sample encoding: ``f32`` (default), ``i16``, or ``c64``.
 
+    :param endianness: Binary payload byte order, ``little`` (default) or ``big``.
+        Big-endian applies to ``bin`` and ``iq.tar``; MATLAB stores complex samples.
+
     :param timeout_s: Maximum wait for acquisition and transfer.
 
     :param key: Evidence key (default ``rtsa_capture_iq_<run>``).
@@ -120,7 +170,7 @@ def capture_iq(
             seconds=seconds,
             path=path,
             file_format=file_format,
-            sample_format=sample_format,
+            sample_format=sample_format, endianness=endianness,
             timeout_s=timeout_s,
             key=key,
         ),
@@ -138,6 +188,97 @@ def get_num_samples(*, rtsa_id: int) -> int:
     """
     _logger.info("Reading sample count from RTSA %s", rtsa_id)
     return int(get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).get_num_samples())
+
+
+@measurement
+def measure_bw(
+    *, rtsa_id: int, start_hz: float, stop_hz: float, key: str,
+    threshold_db: float | None = None, smoothing_order: int = 0, trace: int = 1,
+    trace_path: str | None = None, method: BandwidthMethod | None = None,
+    occupied_power_pct: float | None = None, save_plot: bool = False,
+    ref_pwr_meas_method: RefPowerMethod = "max",
+) -> float:
+    """Measure spectrum bandwidth in hertz using the same analysis as ``speca.measure_bw``.
+
+    :param rtsa_id: Configured RTSA ID.
+    :param start_hz: Lower analysis bound in hertz.
+    :param stop_hz: Upper analysis bound in hertz.
+    :param key: Measurement key for parameter overrides and result recording.
+    :param threshold_db: Drop below the reference; default 3 dB. Exclusive with method.
+    :param smoothing_order: Moving-average half-window, default zero.
+    :param trace: Live spectrum trace, default 1.
+    :param trace_path: Prior run-relative CSV; bypasses all hardware access.
+    :param method: FWHM, occupied_power, or half_prominence (lowercase names).
+    :param occupied_power_pct: Enclosed power percentage, default 99 for occupied_power.
+    :param save_plot: Save an annotated plot of the analyzed data, marking both edges.
+    :param ref_pwr_meas_method: max, mean, or median reference for threshold analysis.
+    """
+    _logger.info("Measuring bandwidth on RTSA %s", rtsa_id)
+    left, right = _band_edges(
+        rtsa_id=rtsa_id, start_hz=start_hz, stop_hz=stop_hz, key=key,
+        threshold_db=threshold_db, smoothing_order=smoothing_order, trace=trace, trace_path=trace_path,
+        method=method, occupied_power_pct=occupied_power_pct, save_plot=save_plot,
+        ref_pwr_meas_method=ref_pwr_meas_method, center=False,
+    )
+    return right - left
+
+
+@measurement
+def measure_center_frequency_hz(
+    *, rtsa_id: int, start_hz: float, stop_hz: float, key: str,
+    threshold_db: float | None = None, smoothing_order: int = 0, trace: int = 1,
+    trace_path: str | None = None, method: BandwidthMethod | None = None,
+    occupied_power_pct: float | None = None, save_plot: bool = False,
+    ref_pwr_meas_method: RefPowerMethod = "max",
+) -> float:
+    """Measure the midpoint of spectrum band edges in hertz.
+
+    Arguments and defaults match :func:`measure_bw`. ``save_plot`` marks the
+    identified center on the analyzed trace. A supplied CSV avoids hardware access;
+    otherwise one spectrum is acquired for analysis and plotting together.
+
+    :param rtsa_id: Configured RTSA ID.
+    :param start_hz: Lower analysis bound in hertz.
+    :param stop_hz: Upper analysis bound in hertz.
+    :param key: Measurement key for parameter overrides and result recording.
+    :param threshold_db: Drop below the reference; default 3 dB. Exclusive with method.
+    :param smoothing_order: Moving-average half-window, default zero.
+    :param trace: Live spectrum trace, default 1.
+    :param trace_path: Prior run-relative CSV; bypasses all hardware access.
+    :param method: FWHM, occupied_power, or half_prominence (lowercase names).
+    :param occupied_power_pct: Enclosed power percentage, default 99 for occupied_power.
+    :param save_plot: Save an annotated plot of the analyzed data, marking the center on the source trace.
+    :param ref_pwr_meas_method: max, mean, or median reference for threshold analysis.
+    """
+    _logger.info("Measuring center frequency on RTSA %s", rtsa_id)
+    left, right = _band_edges(
+        rtsa_id=rtsa_id, start_hz=start_hz, stop_hz=stop_hz, key=key,
+        threshold_db=threshold_db, smoothing_order=smoothing_order, trace=trace, trace_path=trace_path,
+        method=method, occupied_power_pct=occupied_power_pct, save_plot=save_plot,
+        ref_pwr_meas_method=ref_pwr_meas_method, center=True,
+    )
+    return (left + right) / 2
+
+
+@measurement
+def measure_trace_power_at_frequency(
+    *, rtsa_id: int, frequency_hz: float, key: str, trace_path: str | None = None,
+    calibration: str | None = None, trace: int = 1,
+) -> float:
+    """Measure power in dBm at the nearest spectrum bin, optionally path-corrected.
+
+    :param rtsa_id: Configured RTSA ID.
+    :param frequency_hz: Requested frequency in hertz.
+    :param key: Measurement key for recording and parameter overrides.
+    :param trace_path: Prior run-relative CSV; otherwise acquire one spectrum.
+    :param calibration: Loaded calibration key; evaluated at the selected bin.
+    :param trace: Live trace number, default 1.
+    """
+    _logger.info("Measuring RTSA %s trace power at %s Hz", rtsa_id, frequency_hz)
+    _ = key
+    path = _spectrum_path(rtsa_id, trace, trace_path)
+    power, actual_hz = read_trace_power_at_frequency(path, frequency_hz)
+    return power if calibration is None else _cal.correct_power_dbm(power, key=calibration, frequency_hz=actual_hz)
 
 
 @command
@@ -200,7 +341,9 @@ def save_IQ_data(*, rtsa_id: int, path: str, file_format: str = "bin", key: str 
 
 
 @command
-def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None:
+def save_spectrum_trace_data(
+    *, rtsa_id: int, path: str, trace: int = 1, save_plot: bool = False, key: str = "",
+) -> None:
     """Export a non-IQ spectrum trace CSV (Tek RSA5100B workflow).
 
     :param rtsa_id: Configured ``equipment.rtsa`` ID.
@@ -208,9 +351,20 @@ def save_spectrum_trace_data(*, rtsa_id: int, path: str, trace: int = 1) -> None
     :param path: Relative path under the run output directory.
 
     :param trace: Trace number (1-based).
+    :param key: Artifact evidence key.
+    :param save_plot: Save a PNG of the exported CSV without another acquisition.
+
+    USB RSA acquires one spectrum; Tek SCPI exports the current spectrum.
+    Live measurements explicitly acquire one spectrum before analysis.
     """
     _logger.info("Saving trace data from RTSA %s to %s", rtsa_id, path)
-    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).save_spectrum_trace_data(path, trace=trace)
+    artifact = get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).save_spectrum_trace_data(
+        path, trace=trace, key=key,
+    )
+    if save_plot:
+        png = Path(artifact).with_suffix(".png")
+        write_trace_plot(Path(artifact), png)
+        record_artifact(domain="equipment", command="rtsa_spectrum_plot", key=key or f"rtsa_trace_{trace}", path=png)
 
 
 @command
@@ -228,12 +382,39 @@ def set_acq_time(*, rtsa_id: EquipmentId, seconds: float) -> None:
 
 @command
 @broadcastable("rtsa", "rtsa_id")
+def set_attenuation_db(*, rtsa_id: EquipmentId, attenuation_db: float) -> None:
+    """Set input attenuation in dB; disable automatic attenuation first.
+
+    :param rtsa_id: Configured RTSA ID, or ``"all"``.
+    :param attenuation_db: Requested setting.
+    """
+    _logger.info("RTSA %s: set_attenuation_db %s", rtsa_id, attenuation_db)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_attenuation_db(attenuation_db)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
+def set_auto_attenuation(*, rtsa_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable automatic input attenuation.
+
+    :param rtsa_id: Configured RTSA ID, or ``"all"``.
+    :param enabled: Requested setting.
+    """
+    _logger.info("RTSA %s: set_auto_attenuation %s", rtsa_id, enabled)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_auto_attenuation(enabled)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
 def set_bandwidth(*, rtsa_id: EquipmentId, bandwidth_hz: float) -> None:
-    """Set resolution bandwidth in hertz.
+    """Legacy model-dependent bandwidth setting in hertz.
+
+    Tek and generic drivers set spectrum RBW; Spike sets IQ IF bandwidth.
+    Prefer :func:`set_rbw` or :func:`set_iq_bandwidth` in new scripts.
 
     :param rtsa_id: Configured ``equipment.rtsa`` ID.
 
-    :param bandwidth_hz: Resolution bandwidth in hertz.
+    :param bandwidth_hz: Bandwidth in hertz, with the legacy model-specific meaning.
     """
     _logger.info("Setting bandwidth on RTSA %s to %s Hz", rtsa_id, bandwidth_hz)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_bandwidth(bandwidth_hz)
@@ -267,6 +448,18 @@ def set_continuous_run(*, rtsa_id: EquipmentId, enabled: bool) -> None:
 
 @command
 @broadcastable("rtsa", "rtsa_id")
+def set_iq_bandwidth(*, rtsa_id: EquipmentId, bandwidth_hz: float) -> None:
+    """Set IQ acquisition bandwidth in hertz; this may also select the IQ sample rate.
+
+    :param rtsa_id: Configured RTSA ID, or ``"all"``.
+    :param bandwidth_hz: Requested setting.
+    """
+    _logger.info("RTSA %s: set_iq_bandwidth %s", rtsa_id, bandwidth_hz)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_iq_bandwidth(bandwidth_hz)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
 def set_num_samples(*, rtsa_id: EquipmentId, count: int) -> None:
     """Set the number of IQ samples to acquire.
 
@@ -276,6 +469,30 @@ def set_num_samples(*, rtsa_id: EquipmentId, count: int) -> None:
     """
     _logger.info("Setting sample count on RTSA %s to %s", rtsa_id, count)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_num_samples(count)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
+def set_rbw(*, rtsa_id: EquipmentId, rbw: float) -> None:
+    """Set spectrum resolution bandwidth in hertz, independently of IQ bandwidth.
+
+    :param rtsa_id: Configured RTSA ID, or ``"all"``.
+    :param rbw: Requested setting.
+    """
+    _logger.info("RTSA %s: set_rbw %s", rtsa_id, rbw)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_rbw(rbw)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
+def set_reference_level(*, rtsa_id: EquipmentId, level_dbm: float) -> None:
+    """Set the RF reference level in dBm.
+
+    :param rtsa_id: Configured RTSA ID, or ``"all"``.
+    :param level_dbm: Requested setting.
+    """
+    _logger.info("RTSA %s: set_reference_level %s", rtsa_id, level_dbm)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_reference_level(level_dbm)
 
 
 @command
@@ -325,13 +542,13 @@ def set_trigger_level(*, rtsa_id: EquipmentId, level_dbm: float) -> None:
 @command
 @broadcastable("rtsa", "rtsa_id")
 def set_trigger_position(*, rtsa_id: EquipmentId, position_dbm: float) -> None:
-    """Set trigger position in dBm.
+    """Set trigger position using the model's native units.
 
     :param rtsa_id: Configured ``equipment.rtsa`` ID.
 
-    :param position_dbm: Trigger position in dBm.
+    :param position_dbm: Legacy name: percent on USB RSA and Spike; native units on other models.
     """
-    _logger.info("Setting trigger position on RTSA %s to %s dBm", rtsa_id, position_dbm)
+    _logger.info("Setting trigger position on RTSA %s to %s (native units)", rtsa_id, position_dbm)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_trigger_position(position_dbm)
 
 
@@ -348,6 +565,18 @@ def set_trigger_source(*, rtsa_id: EquipmentId, source: str) -> None:
     """
     _logger.info("Setting trigger source on RTSA %s to %s", rtsa_id, source)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_trigger_source(source)
+
+
+@command
+@broadcastable("rtsa", "rtsa_id")
+def toggle_preamp(*, rtsa_id: EquipmentId, enabled: bool) -> None:
+    """Enable or disable the RF preamplifier when installed.
+
+    :param rtsa_id: Configured RTSA ID, or ``"all"``.
+    :param enabled: Requested setting.
+    """
+    _logger.info("RTSA %s: toggle_preamp %s", rtsa_id, enabled)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).toggle_preamp(enabled)
 
 
 @command

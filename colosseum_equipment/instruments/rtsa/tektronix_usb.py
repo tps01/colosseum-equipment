@@ -30,6 +30,8 @@ from colosseum_equipment.transports.tektronix_rsa import IqAcquisitionInfo, RsaA
 
 
 @supported_commands(
+    "set_rbw", "set_iq_bandwidth", "set_reference_level", "set_attenuation_db",
+    "set_auto_attenuation", "toggle_preamp",
     "set_sample_rate",
     "preset", "set_center_freq", "set_span", "set_bandwidth", "set_acq_time",
     "set_continuous_run", "set_num_samples", "get_num_samples", "set_trigger_source",
@@ -110,6 +112,31 @@ class TekUsbRsa(GenericRtsa):
 
     def set_bandwidth(self, bandwidth_hz: float) -> None:
         self._spectrum_settings("rbw", bandwidth_hz)
+
+    def set_iq_bandwidth(self, bandwidth_hz: float) -> None:
+        self._invalidate()
+        self._api.call("IQBLK_SetIQBandwidth", bandwidth_hz)
+
+    def set_reference_level(self, level_dbm: float) -> None:
+        self._invalidate()
+        self._api.call("CONFIG_SetReferenceLevel", level_dbm)
+
+    def _require_manual_frontend(self, operation: str) -> None:
+        if self._model in {"tektronix-rsa306", "tektronix-rsa306b"}:
+            raise EquipmentCapabilityError(f"{operation} requires a USB RSA500A/600A model")
+        self._invalidate()
+
+    def set_attenuation_db(self, attenuation_db: float) -> None:
+        self._require_manual_frontend("set_attenuation_db")
+        self._api.call("CONFIG_SetRFAttenuator", -abs(attenuation_db))
+
+    def set_auto_attenuation(self, enabled: bool) -> None:
+        self._require_manual_frontend("set_auto_attenuation")
+        self._api.call("CONFIG_SetAutoAttenuationEnable", enabled)
+
+    def toggle_preamp(self, enabled: bool) -> None:
+        self._require_manual_frontend("toggle_preamp")
+        self._api.call("CONFIG_SetRFPreampEnable", enabled)
 
     def set_num_samples(self, count: int) -> None:
         if count < 2 or int(count) != count:
@@ -265,6 +292,7 @@ class TekUsbRsa(GenericRtsa):
     def capture_iq(
         self, *, center_hz: float, span_hz: float, bandwidth_hz: float, seconds: float,
         path: str, file_format: str = "mat", sample_format: str = "f32",
+        endianness: str = "little",
         timeout_s: float = 120.0, key: str = "",
     ) -> dict[str, Any]:
         fmt = normalize_iq_format(file_format, path)
@@ -281,7 +309,7 @@ class TekUsbRsa(GenericRtsa):
         self.acquire(timeout_s=timeout_s)
         assert self._iq is not None
         artifact = resolve_artifact_path(path)
-        metadata = write_capture_iq(artifact, self._iq, file_format=fmt, sample_format=sample_format, metadata={
+        metadata = write_capture_iq(artifact, self._iq, file_format=fmt, sample_format=sample_format, endianness=endianness, metadata={
             **self._metadata, "center_hz": center_hz, "span_hz": span_hz,
             "bandwidth_hz": bandwidth_hz, "seconds": seconds,
             "actual_duration_s": self._iq.size / self._metadata["sample_rate_hz"],
@@ -290,7 +318,10 @@ class TekUsbRsa(GenericRtsa):
         record_artifact(domain="equipment", command="capture_iq", key=key or f"rtsa_capture_iq_{self._run_id}", path=artifact, value=metadata)
         return metadata
 
-    def save_spectrum_trace_data(self, path: str, *, trace: int = 1) -> Path:
+    def _acquire_spectrum_trace(self, path: str, *, trace: int = 1) -> Path:
+        return self.save_spectrum_trace_data(path, trace=trace)
+
+    def save_spectrum_trace_data(self, path: str, *, trace: int = 1, key: str = "") -> Path:
         if trace != 1:
             raise EquipmentCapabilityError("USB RSA adapter exports native spectrum trace 1")
         self._invalidate()
@@ -317,7 +348,7 @@ class TekUsbRsa(GenericRtsa):
         span = settings.actualFreqStepSize * (count - 1)
         artifact = resolve_artifact_path(path)
         write_trace_csv(artifact, list(values), center_hz=settings.actualStartFreq + span / 2, span_hz=span, include_frequency=True)
-        record_artifact(domain="equipment", command="save_spectrum_trace_data", key="rtsa_spec_trace_1", path=artifact, value={"points": count, "units": "dBm"})
+        record_artifact(domain="equipment", command="save_spectrum_trace_data", key=key or "rtsa_spec_trace_1", path=artifact, value={"points": count, "units": "dBm"})
         return artifact
 
     def close(self) -> None:

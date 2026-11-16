@@ -75,6 +75,21 @@ class TektronixRSA5100BRtsa(GenericRtsa):
         self._ensure_spectrum_view()
         self._scpi.write(f"SENS:SPEC:BAND:RES {bandwidth_hz:.6f}")
 
+    def set_iq_bandwidth(self, bandwidth_hz: float) -> None:
+        self._scpi.write(f"SENS:ACQ:BAND {bandwidth_hz:.6f}")
+
+    def set_attenuation_db(self, attenuation_db: float) -> None:
+        self._scpi.write(f"INPUT:RF:ATTENUATION {attenuation_db:.3f}")
+
+    def set_auto_attenuation(self, enabled: bool) -> None:
+        self._scpi.write("INPUT:RF:ATTENUATION:AUTO ON" if enabled else "INPUT:RF:ATTENUATION:AUTO OFF")
+
+    def set_reference_level(self, level_dbm: float) -> None:
+        self._scpi.write(f"INPUT:RLEVEL {level_dbm:.3f}")
+
+    def toggle_preamp(self, enabled: bool) -> None:
+        self._scpi.write("INPUT:RF:GAIN:STATE ON" if enabled else "INPUT:RF:GAIN:STATE OFF")
+
     def set_acq_time(self, seconds: float) -> None:
         self._ensure_spectrum_view()
         self._scpi.write(f"SENS:SPEC:ACQ:TIME {seconds:.9f}")
@@ -112,7 +127,11 @@ class TektronixRSA5100BRtsa(GenericRtsa):
         self._ensure_spectrum_view()
         self._scpi.write(f"CALC:MARK{marker}:MAX")
 
-    def save_spectrum_trace_data(self, path: str, *, trace: int = 1) -> Path:
+    def _acquire_spectrum_trace(self, path: str, *, trace: int = 1) -> Path:
+        self.acquire()
+        return self.save_spectrum_trace_data(path, trace=trace)
+
+    def save_spectrum_trace_data(self, path: str, *, trace: int = 1, key: str = "") -> Path:
         """Export a non-IQ spectrum trace CSV (last completed acquisition)."""
         self._ensure_spectrum_view()
         center = self._scpi.query_float("DISP:SPEC:FREQ:OFFS?")
@@ -131,7 +150,7 @@ class TektronixRSA5100BRtsa(GenericRtsa):
         record_artifact(
             domain="equipment",
             command="save_spectrum_trace_data",
-            key=f"rtsa_spec_trace_{trace}",
+            key=key or f"rtsa_spec_trace_{trace}",
             path=artifact_path,
             value={
                 "trace": trace,
@@ -280,6 +299,7 @@ class TektronixRSA5100BRtsa(GenericRtsa):
         path: str,
         file_format: str = "mat",
         sample_format: str = "f32",
+        endianness: str = "little",
         timeout_s: float = 120.0,
         key: str = "",
     ) -> dict[str, Any]:
@@ -323,7 +343,7 @@ class TektronixRSA5100BRtsa(GenericRtsa):
             artifact_path,
             iq,
             file_format=file_format,
-            sample_format=sample_format,
+            sample_format=sample_format, endianness=endianness,
             metadata=base_meta,
         )
         out_meta["path"] = str(artifact_path)

@@ -286,16 +286,17 @@ def test_rsa_rejects_partial_overrange_and_transfer_error_records(monkeypatch, t
         dev.close()
 
 
-def test_rsa_capture_uses_actual_sample_rate_and_existing_sample_encodings(monkeypatch, tmp_path, unit_runtime_context):
+@pytest.mark.parametrize("endianness,prefix", [("little", "<"), ("big", ">")])
+def test_rsa_capture_uses_actual_sample_rate_and_existing_sample_encodings(monkeypatch, tmp_path, unit_runtime_context, endianness, prefix):
     import numpy as np
     dev, library = open_rsa(monkeypatch, tmp_path)
     try:
-        metadata = dev.capture_iq(center_hz=2e9, span_hz=20e6, bandwidth_hz=10e6, seconds=.004, path=str(tmp_path / "capture.bin"), file_format="bin", sample_format="f32")
+        metadata = dev.capture_iq(center_hz=2e9, span_hz=20e6, bandwidth_hz=10e6, seconds=.004, path=str(tmp_path / "capture.bin"), file_format="bin", sample_format="f32", endianness=endianness)
         assert metadata["num_samples"] == 4
         assert metadata["sample_rate_hz"] == 1000
         assert metadata["actual_duration_s"] == .004
         assert metadata["sample0_timestamp_ticks"] == 12345
-        assert np.fromfile(metadata["path"], dtype="<f4").tolist() == [1, -1, 2, -2, 3, -3, 4, -4]
+        assert np.fromfile(metadata["path"], dtype=prefix + "f4").tolist() == [1, -1, 2, -2, 3, -3, 4, -4]
         assert library.bandwidth == 10e6
     finally:
         dev.close()
@@ -413,3 +414,41 @@ def test_native_models_do_not_open_unrelated_visa_endpoints(monkeypatch, kind, c
     with pytest.raises(ProceduralFault):
         open_transport(kind, 1, config)
     opener.assert_not_called()
+@pytest.mark.parametrize("model", ["RSA306B", "RSA503A", "RSA607A"])
+def test_rsa_frontend_model_support(monkeypatch, tmp_path, model):
+    library = RsaLibrary()
+    library.devices = [("ABC123", model)]
+    dev, library = open_rsa(monkeypatch, tmp_path, library, model=f"tektronix-{model.lower()}")
+    try:
+        dev.set_reference_level(-10)
+        dev.set_iq_bandwidth(1e6)
+        assert ("CONFIG_SetReferenceLevel", (-10,)) in library.calls
+        assert ("IQBLK_SetIQBandwidth", (1e6,)) in library.calls
+        before = list(library.calls)
+        if model == "RSA306B":
+            for action, value in [(dev.set_auto_attenuation, False), (dev.set_attenuation_db, 20), (dev.toggle_preamp, True)]:
+                with pytest.raises(EquipmentCapabilityError):
+                    action(value)
+            assert library.calls == before
+        else:
+            dev.set_auto_attenuation(False)
+            dev.set_attenuation_db(20)
+            dev.toggle_preamp(True)
+            assert ("CONFIG_SetAutoAttenuationEnable", (False,)) in library.calls
+            assert ("CONFIG_SetRFAttenuator", (-20,)) in library.calls
+            assert ("CONFIG_SetRFPreampEnable", (True,)) in library.calls
+    finally:
+        dev.close()
+
+
+def test_rsa_live_measurement_acquires_exactly_one_spectrum(monkeypatch, tmp_path, unit_runtime_context):
+    from colosseum_equipment.api import rtsa
+
+    dev, library = open_rsa(monkeypatch, tmp_path)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: dev)
+    try:
+        rtsa.measure_bw(rtsa_id=1, start_hz=100, stop_hz=114, key="width", save_plot=True)
+        assert sum(name == "SPECTRUM_AcquireTrace" for name, _ in library.calls) == 1
+        assert not any(name == "IQBLK_AcquireIQData" for name, _ in library.calls)
+    finally:
+        dev.close()

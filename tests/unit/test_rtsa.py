@@ -326,3 +326,155 @@ def test_tek_capture_iq_iqvtime_sequence(unit_runtime_context, model: str) -> No
 
     mat = loadmat(meta["path"], squeeze_me=True, struct_as_record=False)
     np.testing.assert_allclose(np.asarray(mat["iq"]).ravel(), [1 + 2j, 3 + 4j], rtol=1e-6)
+@pytest.mark.parametrize("endianness,prefix", [("little", "<"), ("big", ">")])
+@pytest.mark.parametrize("sample_format,dtype,expected", [
+    ("f32", "f4", [1.0, -0.5, -1.0, 0.25]),
+    ("c64", "c8", [1 - 0.5j, -1 + 0.25j]),
+    ("i16", "i2", [32767, -16384, -32767, 8192]),
+])
+@pytest.mark.parametrize("file_format", ["bin", "iq.tar"])
+def test_capture_byte_order(tmp_path, endianness, prefix, sample_format, dtype, expected, file_format):
+    import json
+
+    samples = np.array([1 - 0.5j, -1 + 0.25j], dtype=np.complex64)
+    path = tmp_path / "samples"
+    meta = write_capture_iq(path, samples, file_format=file_format,
+                            sample_format=sample_format, endianness=endianness)
+    assert meta["endianness"] == endianness
+    if file_format == "iq.tar":
+        with tarfile.open(path) as archive:
+            payload = archive.extractfile("iq.bin").read()
+            assert json.load(archive.extractfile("metadata.json"))["endianness"] == endianness
+    else:
+        payload = path.read_bytes()
+    assert payload == np.array(expected, dtype=prefix + dtype).tobytes()
+
+
+@pytest.mark.parametrize("file_format,endianness", [("mat", "big"), ("bin", "native")])
+def test_capture_refuses_unsupported_byte_order(tmp_path, file_format, endianness):
+    path = tmp_path / "capture"
+    with pytest.raises(EquipmentResponseError, match="endianness"):
+        write_capture_iq(path, np.array([1j]), file_format=file_format,
+                         sample_format="i16", endianness=endianness)
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("model", ["tektronix-rsa5100b", "tektronix-rsa5115b", "tektronix-rsa6114a"])
+def test_tek_frontend_controls(model):
+    io = RfStubTransport()
+    inst = build_instrument("rtsa", 1, {"model": model}, io)
+    io.written.clear()
+    inst.set_auto_attenuation(False)
+    inst.set_attenuation_db(-20)
+    inst.set_reference_level(0)
+    inst.toggle_preamp(True)
+    inst.set_iq_bandwidth(1e6)
+    assert io.written == [
+        "INPUT:RF:ATTENUATION:AUTO OFF", "INPUT:RF:ATTENUATION -20.000",
+        "INPUT:RLEVEL 0.000", "INPUT:RF:GAIN:STATE ON", "SENS:ACQ:BAND 1000000.000000",
+    ]
+
+
+@pytest.mark.parametrize("model", ["rigol-rsa5032", "rigol-rsa5065", "siglent-ssa3032x-r", "siglent-ssa3075x-r"])
+def test_catalog_frontend_controls(model):
+    io = RfStubTransport()
+    inst = build_instrument("rtsa", 1, {"model": model}, io)
+    inst.set_auto_attenuation(False)
+    inst.set_attenuation_db(20)
+    inst.set_reference_level(-10)
+    inst.toggle_preamp(True)
+    assert io.written == ["SENS:POW:RF:ATT:AUTO OFF", "SENS:POW:RF:ATT 20.000",
+                          "DISP:WIND:TRAC:Y:SCAL:RLEV -10.000DBM", "SENS:POW:RF:GAIN:STAT ON"]
+
+
+@pytest.mark.parametrize("method", [None, "fwhm", "occupied_power", "half_prominence"])
+def test_offline_spectrum_measurements_record_and_plot(unit_runtime_context, monkeypatch, method):
+    from colosseum_equipment.api import rtsa
+    from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
+    from colosseum_equipment.instruments.speca.trace_csv import write_trace_csv
+
+    ctx = unit_runtime_context
+    path = ctx.output_dir / "trace.csv"
+    amplitudes = [-30, -10, 0, -10, -30]
+    write_trace_csv(path, amplitudes, center_hz=100, span_hz=40)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: pytest.fail("offline analysis contacted hardware"))
+    left, right = bandwidth_edges_hz([80, 90, 100, 110, 120], amplitudes,
+                                     start_hz=80, stop_hz=120, method=method)
+    captured = []
+    original = rtsa._write_trace_plot
+
+    def plot(*args, **kwargs):
+        captured.append(kwargs)
+        original(*args, **kwargs)
+
+    monkeypatch.setattr(rtsa, "_write_trace_plot", plot)
+    kwargs = {"rtsa_id": 1, "start_hz": 80, "stop_hz": 120, "trace_path": "trace.csv",
+              "method": method, "save_plot": True}
+    assert rtsa.measure_bw(**kwargs, key="width") == pytest.approx(right - left)
+    assert rtsa.measure_center_frequency_hz(**kwargs, key="center") == pytest.approx((left + right) / 2)
+    assert captured[0]["edges_hz"] == (left, right)
+    assert captured[1]["center_hz"] == (left + right) / 2
+    assert len(list((ctx.output_dir / "plots").glob("*.png"))) == 2
+    assert ctx.db.get_measurement("equipment", "rtsa.measure_bw", "width", row_index=0).value == pytest.approx(right - left)
+
+
+def test_live_spectrum_single_capture_and_power_calibration(unit_runtime_context, monkeypatch):
+    from types import SimpleNamespace
+
+    from colosseum_equipment.api import rtsa
+    from colosseum_equipment.instruments.speca.trace_csv import write_trace_csv
+
+    captures = []
+    def acquire(path, *, trace):
+        captures.append(trace)
+        target = unit_runtime_context.output_dir / path
+        write_trace_csv(target, [-30, -10, 0, -10, -30], center_hz=100, span_hz=40)
+        return target
+
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: SimpleNamespace(_acquire_spectrum_trace=acquire))
+    rtsa.measure_bw(rtsa_id=1, start_hz=80, stop_hz=120, key="width", save_plot=True)
+    assert captures == [1]
+    corrected = []
+    def correction(power, *, key, frequency_hz):
+        corrected.append((power, key, frequency_hz))
+        return power + 3
+
+    monkeypatch.setattr(rtsa._cal, "correct_power_dbm", correction)
+    assert rtsa.measure_trace_power_at_frequency(rtsa_id=1, frequency_hz=109,
+                                                key="power", calibration="rx") == -7
+    assert corrected == [(-10, "rx", 110)]
+
+
+def test_frontend_broadcast_and_parameter_overrides(unit_runtime_context, monkeypatch):
+    from colosseum_equipment.api import _broadcast, rtsa
+    from colosseum_equipment.exceptions import EquipmentError
+
+    transports = [RfStubTransport(), RfStubTransport(), RfStubTransport()]
+    models = ["tektronix-rsa5100b", "generic", "signalhound-bb60c-spike"]
+    instruments = [build_instrument("rtsa", i + 1, {"model": model}, io)
+                   for i, (model, io) in enumerate(zip(models, transports, strict=True))]
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda kind, index: instruments[index - 1])
+    monkeypatch.setattr(_broadcast, "resolve_equipment_ids", lambda *args: [1, 2, 3])
+    unit_runtime_context.parameters_map = {"frontend": {"level_dbm": -15}}
+    rtsa.set_reference_level(rtsa_id=1, level_dbm=0, key="frontend")
+    assert transports[0].written[-1] == "INPUT:RLEVEL -15.000"
+    with pytest.raises(EquipmentError, match="failed ids 2"):
+        rtsa.set_reference_level(rtsa_id="all", level_dbm=-10)
+    assert transports[0].written[-1] == "INPUT:RLEVEL -10.000"
+    assert transports[2].written[-1] == "SENS:ZS:CAP:RLEV -10DBM"
+    assert not transports[1].written
+
+
+@pytest.mark.parametrize("model", ["tektronix-rsa5100b", "tektronix-rsa5115b"])
+def test_capture_api_forwards_big_endian(unit_runtime_context, monkeypatch, model):
+    from colosseum_equipment.api import rtsa
+
+    block = format_definite_length_block(np.array([1, 2, 3, 4], dtype="<f4").tobytes())
+    io = RfStubTransport({"*OPC?": "1", "FETCh:RFIN:RECord:IDS?": "1,1",
+                          "FETCh:RFIN:IQ:HEADer? 1": "0,1000000.0,2", "__raw__": block})
+    inst = build_instrument("rtsa", 1, {"model": model}, io)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: inst)
+    meta = rtsa.capture_iq(rtsa_id=1, center_hz=1e9, span_hz=10e6, bandwidth_hz=10e6,
+                           seconds=.01, path="iq.bin", file_format="bin", endianness="big", key="iq")
+    assert meta["endianness"] == "big"
+    assert (unit_runtime_context.output_dir / "iq.bin").read_bytes() == np.array([1, 2, 3, 4], dtype=">f4").tobytes()
