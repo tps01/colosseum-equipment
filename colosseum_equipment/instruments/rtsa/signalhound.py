@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 @instrument_model("rtsa", "signalhound-bb60c-spike", "signalhound-sm200c-spike")
 @supported_commands(
+    "measure_sample_rate",
+    "set_iq_bandwidth", "set_reference_level",
     "set_center_freq",
     "set_bandwidth",
     "set_acq_time",
@@ -51,7 +53,13 @@ class SignalHoundSpikeIq(GenericRtsa):
             raise EquipmentCapabilityError("use sample_rate_hz for IQ rate; span is not sample rate")
         super().__init__(transport, config)
         if "reference_level_dbm" in config:
-            self._scpi.write(f"SENS:ZS:CAP:RLEV {float(config['reference_level_dbm'])}DBM")
+            self.set_reference_level(float(config["reference_level_dbm"]))
+
+    def set_reference_level(self, level_dbm: float) -> None:
+        self._scpi.write(f"SENS:ZS:CAP:RLEV {level_dbm}DBM")
+
+    def set_iq_bandwidth(self, bandwidth_hz: float) -> None:
+        self.set_bandwidth(bandwidth_hz)
 
     def set_center_freq(self, frequency_hz: float) -> None:
         self._scpi.write(f"SENS:ZS:CAP:CENT {frequency_hz:.6f}")
@@ -70,10 +78,13 @@ class SignalHoundSpikeIq(GenericRtsa):
             raise ValueError("sample rate must be finite and positive")
         self._scpi.write(f"SENS:ZS:CAP:SRAT {sample_rate_hz}")
 
+    def measure_sample_rate(self) -> float:
+        return self._scpi.query_float("SENS:ZS:CAP:SRAT?")
+
     def set_num_samples(self, count: int) -> None:
         if count < 1:
             raise ValueError("sample count must be positive")
-        rate = self._scpi.query_float("SENS:ZS:CAP:SRAT?")
+        rate = self.measure_sample_rate()
         if not math.isfinite(rate) or rate <= 0:
             raise EquipmentResponseError("invalid sample rate")
         self.set_acq_time(count / rate)
@@ -105,7 +116,7 @@ class SignalHoundSpikeIq(GenericRtsa):
                 raise EquipmentResponseError("malformed Spike IQ samples") from exc
             if count < 1 or len(values) != count * 2 or any(not math.isfinite(v) for v in values):
                 raise EquipmentResponseError("Spike IQ data length/values differ from reported capture")
-            rate = self._scpi.query_float("SENS:ZS:CAP:SRAT?")
+            rate = self.measure_sample_rate()
             center = self._scpi.query_float("SENS:ZS:CAP:CENT?")
             if not math.isfinite(rate) or rate <= 0 or not math.isfinite(center):
                 raise EquipmentResponseError("invalid capture sample rate")

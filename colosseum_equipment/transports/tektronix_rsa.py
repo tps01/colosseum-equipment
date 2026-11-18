@@ -90,6 +90,9 @@ class RsaApiTransport:
         p_int, p_double = ct.POINTER(ct.c_int), ct.POINTER(ct.c_double)
         p_bool, p_float = ct.POINTER(ct.c_bool), ct.POINTER(ct.c_float)
         signatures: dict[str, list[Any]] = {
+            "CONFIG_SetRFAttenuator": [ct.c_double],
+            "CONFIG_SetAutoAttenuationEnable": [ct.c_bool],
+            "CONFIG_SetRFPreampEnable": [ct.c_bool],
             "DEVICE_Search": [p_int, p_int, ct.c_char_p, ct.c_char_p],
             "DEVICE_Connect": [ct.c_int], "DEVICE_GetSerialNumber": [ct.c_char_p],
             "DEVICE_GetNomenclature": [ct.c_char_p], "DEVICE_Disconnect": [],

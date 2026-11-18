@@ -7,8 +7,9 @@ models use the direct RSA API finite-acquisition adapter instead of SCPI.
 from __future__ import annotations
 
 from colosseum_equipment.instruments.registry import instrument_model
-from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
+from colosseum_equipment.instruments.rtsa.generic import GenericRtsa, _ScpiRfRtsa
 from colosseum_equipment.instruments.rtsa.tektronix_usb import TekUsbRsa
+
 
 # TODO: Validate rigol-rsa3030 inherited commands against its vendor manual and hardware.
 
@@ -31,13 +32,13 @@ class RigolRsa3065(GenericRtsa):
 # TODO: Validate rigol-rsa5032 inherited commands against its vendor manual and hardware.
 
 @instrument_model("rtsa", "rigol-rsa5032")
-class RigolRsa5032(GenericRtsa):
+class RigolRsa5032(_ScpiRfRtsa):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
 # TODO: Validate rigol-rsa5065 inherited commands against its vendor manual and hardware.
 
 @instrument_model("rtsa", "rigol-rsa5065")
-class RigolRsa5065(GenericRtsa):
+class RigolRsa5065(_ScpiRfRtsa):
     """Manual: https://www.rigolna.com/support/downloads/"""
 
 # TODO: Validate rigol-rsa800 inherited commands against its vendor manual and hardware.
@@ -55,13 +56,13 @@ class RigolRsa6000(GenericRtsa):
 # TODO: Validate siglent-ssa3032x-r inherited commands against its vendor manual and hardware.
 
 @instrument_model("rtsa", "siglent-ssa3032x-r")
-class SiglentSsa3032xR(GenericRtsa):
+class SiglentSsa3032xR(_ScpiRfRtsa):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
 # TODO: Validate siglent-ssa3075x-r inherited commands against its vendor manual and hardware.
 
 @instrument_model("rtsa", "siglent-ssa3075x-r")
-class SiglentSsa3075xR(GenericRtsa):
+class SiglentSsa3075xR(_ScpiRfRtsa):
     """Manual: https://siglentna.com/resources/documents/spectrum-analyzers/"""
 
 # Direct RSA API finite acquisition subset; hardware qualification remains outstanding.
