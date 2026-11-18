@@ -56,6 +56,44 @@ def test_spike_sample_rate_config_and_runtime(model):
     assert transport.written[-1] == "SENS:ZS:CAP:SRAT 2000000.0"
 
 
+@pytest.mark.parametrize(
+    "model,replies",
+    [
+        ("tektronix-rsa6000", {"FETCh:RFIN:RECord:IDS?": "4,7", "FETCh:RFIN:IQ:HEADer? 4": "0,12500000,3"}),
+        ("tektronix-rsa5115b", {"FETCh:RFIN:RECord:IDS?": "4,7", "FETCh:RFIN:IQ:HEADer? 4": "0,12500000,3"}),
+        ("signalhound-bb60c-spike", {"SENS:ZS:CAP:SRAT?": "12500000"}),
+    ],
+)
+def test_measure_sample_rate_records_readback(unit_runtime_context, monkeypatch, model, replies):
+    from colosseum_equipment.api import rtsa
+
+    transport = RfStubTransport(replies)
+    inst = build_instrument("rtsa", 1, {"model": model}, transport)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: inst)
+    from unittest.mock import patch
+
+    with patch.object(transport, "query", wraps=transport.query) as query:
+        assert rtsa.measure_sample_rate(rtsa_id=1, key="replay_rate") == 12_500_000
+    assert [call.args[0] for call in query.call_args_list] == list(replies)
+    row = unit_runtime_context.db.get_measurement("equipment", "rtsa.measure_sample_rate", "replay_rate", row_index=0)
+    assert row is not None
+    assert row.value == 12_500_000
+
+
+def test_measure_sample_rate_rejects_no_tek_record(unit_runtime_context, monkeypatch):
+    from colosseum_equipment.api import rtsa
+
+    transport = RfStubTransport({"FETCh:RFIN:RECord:IDS?": "-1,-1"})
+    inst = build_instrument("rtsa", 1, {"model": "tektronix-rsa6000"}, transport)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: inst)
+    from unittest.mock import patch
+
+    with patch.object(transport, "query", wraps=transport.query) as query:
+        with pytest.raises(EquipmentResponseError, match="No completed IQ record"):
+            rtsa.measure_sample_rate(rtsa_id=1, key="replay_rate")
+    query.assert_called_once_with("FETCh:RFIN:RECord:IDS?")
+
+
 @pytest.mark.parametrize("rate", [0, -1, float("nan"), float("inf"), -float("inf")])
 def test_invalid_sample_rate_never_writes(rate, unit_runtime_context, monkeypatch):
     from colosseum_equipment.api import rtsa

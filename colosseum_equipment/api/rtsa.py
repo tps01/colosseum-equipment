@@ -29,6 +29,7 @@ from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.connections import get_cached_instrument
 from colosseum_equipment.evidence import record_artifact
+from colosseum_equipment.exceptions import EquipmentResponseError
 from colosseum_equipment.instruments.speca.bandwidth import BandwidthMethod, RefPowerMethod, bandwidth_edges_hz
 from colosseum_equipment.instruments.speca.trace_csv import read_trace_power_at_frequency
 from colosseum_equipment.instruments.speca.trace_plot import _write_trace_plot, read_trace_csv, write_trace_plot
@@ -258,6 +259,30 @@ def measure_center_frequency_hz(
         ref_pwr_meas_method=ref_pwr_meas_method, center=True,
     )
     return (left + right) / 2
+
+
+@measurement
+def measure_sample_rate(*, rtsa_id: int, key: str) -> float:
+    """Read and record the instrument's IQ sample rate in samples per second.
+
+    Tek SCPI reads the first record of a completed acquisition, as
+    :func:`capture_iq` does. Tek USB and Spike read the IQ sample rate from
+    the instrument. For replaying a previously saved waveform, use the rate
+    stored in that capture's metadata.
+
+    :param rtsa_id: Configured RTSA ID.
+    :param key: Measurement key for result recording.
+    :returns: IQ sample rate in samples per second.
+    :raises EquipmentCapabilityError: Model does not support IQ rate readback.
+    :raises EquipmentResponseError: Instrument reported an invalid rate or no IQ record.
+    """
+    _ = key
+    inst = get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa"))
+    rate = float(inst.measure_sample_rate())
+    if not math.isfinite(rate) or rate <= 0:
+        raise EquipmentResponseError("Invalid IQ sample rate")
+    _logger.info("RTSA %s IQ sample rate: %s samples/s", rtsa_id, rate)
+    return rate
 
 
 @measurement

@@ -294,6 +294,7 @@ def test_rsa_capture_uses_actual_sample_rate_and_existing_sample_encodings(monke
         metadata = dev.capture_iq(center_hz=2e9, span_hz=20e6, bandwidth_hz=10e6, seconds=.004, path=str(tmp_path / "capture.bin"), file_format="bin", sample_format="f32", endianness=endianness)
         assert metadata["num_samples"] == 4
         assert metadata["sample_rate_hz"] == 1000
+        assert dev.measure_sample_rate() == 1000
         assert metadata["actual_duration_s"] == .004
         assert metadata["sample0_timestamp_ticks"] == 12345
         assert np.fromfile(metadata["path"], dtype=prefix + "f4").tolist() == [1, -1, 2, -2, 3, -3, 4, -4]

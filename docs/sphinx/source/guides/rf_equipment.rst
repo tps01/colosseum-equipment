@@ -167,6 +167,21 @@ remains a check against the bandwidth-derived rate. Unsupported SCPI drivers
 now reject that configuration field rather than silently ignoring it.
 ``capture_iq`` and export sample formats are unchanged.
 
+Use ``measure_sample_rate`` to read and record the IQ rate in samples per
+second. Tek SCPI models with decoded IQ capture read the header of the first
+record in the completed acquisition, matching ``capture_iq``. USB RSA and
+Spike read back the instrument's current IQ rate. For an uploaded waveform
+corresponding to the current acquisition, pass the rate to VSG playback::
+
+    rate = col.equipment.rtsa.measure_sample_rate(rtsa_id=1, key="iq_rate")
+    col.equipment.vsg.play_iq(
+        vsg_id=1, filename="WFM1:IQ.bin", center_freq_hz=1e9,
+        amplitude_dbm=-10, sample_clock_hz=rate,
+    )
+
+For a previously saved waveform, use its recorded ``sample_rate_hz``. For
+example, ``capture_iq`` returns it in the capture metadata.
+
 Explicitly refused operations raise ``EquipmentCapabilityError``. Inherited
 generic methods may instead send best-effort SCPI and warn once per model
 and command. A successful write does not prove hardware support; the error

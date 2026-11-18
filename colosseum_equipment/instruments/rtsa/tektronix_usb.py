@@ -30,6 +30,7 @@ from colosseum_equipment.transports.tektronix_rsa import IqAcquisitionInfo, RsaA
 
 
 @supported_commands(
+    "measure_sample_rate",
     "set_rbw", "set_iq_bandwidth", "set_reference_level", "set_attenuation_db",
     "set_auto_attenuation", "toggle_preamp",
     "set_sample_rate",
@@ -154,6 +155,9 @@ class TekUsbRsa(GenericRtsa):
         if count.value < 2:
             raise EquipmentResponseError("RSA API returned an invalid IQ record length")
         return count.value
+
+    def measure_sample_rate(self) -> float:
+        return self._double("IQBLK_GetIQSampleRate")
 
     def set_acq_time(self, seconds: float) -> None:
         if not math.isfinite(seconds) or seconds <= 0:

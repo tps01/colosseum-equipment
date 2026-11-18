@@ -256,6 +256,13 @@ class TektronixRSA5100BRtsa(GenericRtsa):
             f"Unable to obtain RFIN record IDs after {_RECORD_ID_RETRIES} tries (last reply {details!r})",
         )
 
+    def measure_sample_rate(self) -> float:
+        record_id = self._fetch_record_id()
+        if record_id < 0:
+            raise EquipmentResponseError("No completed IQ record")
+        rate, _ = self._fetch_iq_header(record_id)
+        return rate
+
     def _fetch_iq_header(self, record_id: int) -> tuple[float, int]:
         header = ""
         for _ in range(_HEADER_RETRIES):

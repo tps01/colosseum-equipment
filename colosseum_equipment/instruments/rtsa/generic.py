@@ -89,6 +89,9 @@ class GenericRtsa(ScpiInstrumentMixin):
     def set_continuous_run(self, enabled: bool) -> None:
         self._scpi.write("INIT:CONT ON" if enabled else "INIT:CONT OFF")
 
+    def measure_sample_rate(self) -> float:
+        unsupported(self._model, "measure_sample_rate")
+
     def set_sample_rate(self, sample_rate_hz: float) -> None:
         detail = "no documented independent IQ sample-rate setting"
         if self._model.startswith("tektronix-"):

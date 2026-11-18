@@ -54,6 +54,7 @@ class TekNativeRtsa(GenericRtsa):
     _fetch_iq_header = TektronixRSA5100BRtsa._fetch_iq_header
     _fetch_iq_float32 = TektronixRSA5100BRtsa._fetch_iq_float32
     capture_iq = TektronixRSA5100BRtsa.capture_iq
+    measure_sample_rate = TektronixRSA5100BRtsa.measure_sample_rate
     set_iq_bandwidth = TektronixRSA5100BRtsa.set_iq_bandwidth
     set_attenuation_db = TektronixRSA5100BRtsa.set_attenuation_db
     set_auto_attenuation = TektronixRSA5100BRtsa.set_auto_attenuation
@@ -184,7 +185,7 @@ class TekNativeRtsa(GenericRtsa):
 
 
 @instrument_model("rtsa", "tektronix-rsa5115b", "tektronix-rsa5126b")
-@supported_commands(*_SPECTRUM, "get_num_samples", "save_IQ_data", "capture_iq")
+@supported_commands(*_SPECTRUM, "get_num_samples", "save_IQ_data", "capture_iq", "measure_sample_rate")
 class TekRsa5100bNative(TekNativeRtsa):
     """Exact RSA5100B models: finite acquisition, spectrum, recorded IQ, and capture_iq."""
 
