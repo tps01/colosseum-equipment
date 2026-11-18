@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
 
 _SPECTRUM = (
+    "set_rbw", "set_iq_bandwidth", "set_attenuation_db", "set_auto_attenuation",
+    "set_reference_level", "toggle_preamp",
     "set_sample_rate",
     "set_center_freq",
     "set_span",
@@ -51,6 +53,12 @@ class TekNativeRtsa(GenericRtsa):
     _fetch_iq_header = TektronixRSA5100BRtsa._fetch_iq_header
     _fetch_iq_float32 = TektronixRSA5100BRtsa._fetch_iq_float32
     capture_iq = TektronixRSA5100BRtsa.capture_iq
+    measure_sample_rate = TektronixRSA5100BRtsa.measure_sample_rate
+    set_iq_bandwidth = TektronixRSA5100BRtsa.set_iq_bandwidth
+    set_attenuation_db = TektronixRSA5100BRtsa.set_attenuation_db
+    set_auto_attenuation = TektronixRSA5100BRtsa.set_auto_attenuation
+    set_reference_level = TektronixRSA5100BRtsa.set_reference_level
+    toggle_preamp = TektronixRSA5100BRtsa.toggle_preamp
 
 
     def set_center_freq(self, frequency_hz: float) -> None:
@@ -63,7 +71,11 @@ class TekNativeRtsa(GenericRtsa):
         self._scpi.write("SENS:SPEC:BAND:RES:AUTO OFF")
         self._scpi.write(f"SENS:SPEC:BAND:RES {bandwidth_hz:.6f}")
 
-    def save_spectrum_trace_data(self, path: str, *, trace: int = 1) -> Path:
+    def _acquire_spectrum_trace(self, path: str, *, trace: int = 1) -> Path:
+        self.acquire()
+        return self.save_spectrum_trace_data(path, trace=trace)
+
+    def save_spectrum_trace_data(self, path: str, *, trace: int = 1, key: str = "") -> Path:
         if not 1 <= trace <= 3:
             raise EquipmentCapabilityError("only normal spectrum traces 1..3 are implemented")
         if self._scpi.query("SENS:POW:UNIT?").upper() != "DBM":
@@ -90,7 +102,7 @@ class TekNativeRtsa(GenericRtsa):
         record_artifact(
             domain="equipment",
             command="save_spectrum_trace_data",
-            key=f"rtsa_spec_trace_{trace}",
+            key=key or f"rtsa_spec_trace_{trace}",
             path=artifact,
             value={"points": len(values), "units": "dBm", "run_id": self._run_id},
         )
@@ -169,7 +181,7 @@ class TekNativeRtsa(GenericRtsa):
 
 
 @instrument_model("rtsa", "tektronix-rsa5115b", "tektronix-rsa5126b")
-@supported_commands(*_SPECTRUM, "get_num_samples", "save_IQ_data", "capture_iq")
+@supported_commands(*_SPECTRUM, "get_num_samples", "save_IQ_data", "capture_iq", "measure_sample_rate")
 class TekRsa5100bNative(TekNativeRtsa):
     """Exact RSA5100B models: finite acquisition, spectrum, recorded IQ, and capture_iq."""
 

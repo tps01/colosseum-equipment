@@ -86,6 +86,7 @@ def encode_iq_samples(
     iq: npt.NDArray[Any],
     *,
     sample_format: str,
+    endianness: str = "little",
 ) -> tuple[bytes, dict[str, Any]]:
     """Encode complex samples for ``capture_iq`` file output.
 
@@ -93,28 +94,31 @@ def encode_iq_samples(
     ``peak`` when ``sample_format`` is ``i16``.
     """
     fmt = normalize_sample_format(sample_format)
+    if endianness not in {"little", "big"}:
+        raise EquipmentResponseError("endianness must be little or big")
+    byte_order = "<" if endianness == "little" else ">"
     samples = _as_complex64(iq)
-    extra: dict[str, Any] = {"sample_format": fmt, "num_samples": int(samples.size)}
+    extra: dict[str, Any] = {"sample_format": fmt, "num_samples": int(samples.size), "endianness": endianness}
     if samples.size == 0:
         return b"", extra
 
     if fmt == "f32":
-        interleaved = np.empty(samples.size * 2, dtype="<f4")
-        interleaved[0::2] = samples.real.astype("<f4", copy=False)
-        interleaved[1::2] = samples.imag.astype("<f4", copy=False)
+        interleaved = np.empty(samples.size * 2, dtype=f"{byte_order}f4")
+        interleaved[0::2] = samples.real.astype(f"{byte_order}f4", copy=False)
+        interleaved[1::2] = samples.imag.astype(f"{byte_order}f4", copy=False)
         return interleaved.tobytes(), extra
 
     if fmt == "c64":
-        return samples.astype("<c8", copy=False).tobytes(), extra
+        return samples.astype(f"{byte_order}c8", copy=False).tobytes(), extra
 
     # i16: peak-scale to full-scale int16 (same as VSG iq_load).
     i = samples.real.astype(np.float64, copy=False)
     q = samples.imag.astype(np.float64, copy=False)
     peak = float(max(np.max(np.abs(i)), np.max(np.abs(q)), 1e-30))
     scale = 32767.0 / peak
-    interleaved = np.empty(samples.size * 2, dtype="<i2")
-    interleaved[0::2] = np.clip(np.rint(i * scale), -32768, 32767).astype("<i2")
-    interleaved[1::2] = np.clip(np.rint(q * scale), -32768, 32767).astype("<i2")
+    interleaved = np.empty(samples.size * 2, dtype=f"{byte_order}i2")
+    interleaved[0::2] = np.clip(np.rint(i * scale), -32768, 32767).astype(f"{byte_order}i2")
+    interleaved[1::2] = np.clip(np.rint(q * scale), -32768, 32767).astype(f"{byte_order}i2")
     extra["peak"] = peak
     return interleaved.tobytes(), extra
 
@@ -125,6 +129,7 @@ def write_capture_iq(
     *,
     file_format: str,
     sample_format: str,
+    endianness: str = "little",
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Write decoded IQ samples using ``file_format`` + ``sample_format``.
@@ -133,10 +138,14 @@ def write_capture_iq(
     ``sample_format``, ``num_samples``, and ``peak`` for ``i16``).
     """
     export_format = normalize_iq_format(file_format, str(path))
-    payload, encode_meta = encode_iq_samples(iq, sample_format=sample_format)
+    if export_format == "mat" and endianness != "little":
+        raise EquipmentResponseError("endianness applies to bin and iq.tar, not mat")
+    payload, encode_meta = encode_iq_samples(iq, sample_format=sample_format, endianness=endianness)
     out_meta = dict(metadata or {})
     out_meta.update(encode_meta)
     out_meta["format"] = export_format
+    if export_format == "mat":
+        out_meta.pop("endianness", None)
     samples = _as_complex64(iq)
 
     if export_format == "mat":
