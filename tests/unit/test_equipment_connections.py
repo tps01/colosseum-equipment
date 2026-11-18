@@ -165,3 +165,17 @@ def test_process_exit_auto_finalize_closes_once(unit_runtime_context) -> None:
 
     _auto_finalize_active_context()
     assert order == ["psu"]
+
+
+def test_toml_settings_apply_once_before_enable_and_cached_reuse_preserves_commands(unit_runtime_context, monkeypatch):
+    from colosseum_equipment import connections
+    from tests.support.stubs import RfStubTransport
+
+    transport = RfStubTransport()
+    monkeypatch.setattr(connections, 'get_config', lambda *args: {'model': 'generic', 'resource': 'stub', 'voltage': 5})
+    monkeypatch.setattr(connections, 'get_transport', lambda *args: transport)
+    supply = connections.get_cached_instrument('psu', 1)
+    supply.set_output(True)
+    supply.set_voltage(3.3)
+    assert connections.get_cached_instrument('psu', 1) is supply
+    assert transport.written == ['VOLT 5.000000', 'OUTP ON', 'VOLT 3.300000']

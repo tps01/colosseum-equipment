@@ -99,7 +99,6 @@ class NovatelGnss(_BinaryGnss):
         self._best: object | None = None
         # name -> (rate_hz, trigger)
         self._enabled_logs: dict[str, tuple[float, str]] = {}
-        self._apply_message_profile("default")
 
     def _wire_suffix(self) -> str:
         return ".gps"
@@ -155,9 +154,7 @@ class NovatelGnss(_BinaryGnss):
             return f"LOG {name} ONTIME {int(round(period))}"
         return f"LOG {name} ONTIME {period:g}"
 
-    def _enable_logs(self, *, reset: bool = False) -> None:
-        if reset:
-            self._send_command("UNLOGALL THISPORT")
+    def _enable_logs(self) -> None:
         for name, (rate_hz, trigger) in list(self._enabled_logs.items()):
             self._send_command(self._log_command(name, rate_hz, trigger))
 
@@ -170,11 +167,13 @@ class NovatelGnss(_BinaryGnss):
         self._message_profile = name
         specs = expand_profile_specs(name, vendor="novatel")
         managed = {spec.name.upper(): (float(spec.rate_hz), spec.trigger) for spec in specs}
-        # Replace managed set (UNLOG removed ones on next enable with reset).
+        for removed in self._enabled_logs.keys() - managed.keys():
+            self._send_command(f"UNLOG {removed}")
+            self._session_message_rates.pop(removed, None)
         self._enabled_logs = managed
         for msg, (rate_hz, _trig) in managed.items():
             self._session_message_rates[msg] = rate_hz
-        self._enable_logs(reset=True)
+        self._enable_logs()
 
     def _drain_reads(self, *, settle_s: float = 0.05) -> None:
         deadline = time.monotonic() + settle_s
@@ -196,8 +195,6 @@ class NovatelGnss(_BinaryGnss):
     def save_config(self, path: str) -> Path:
         out_path = resolve_artifact_path(path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        self._send_command("LOG VERSIONA ONCE")
-        self._send_command("LOG RXSTATUSA ONCE")
         lines = [
             "# Colosseum NovAtel OEM7 config snapshot (logging setup)",
             "# Re-apply with gnss.load_config",

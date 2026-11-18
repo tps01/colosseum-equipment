@@ -300,3 +300,37 @@ verify_frequency = tolerance_verifier(
     default_tolerance=1.0,
     unit="Hz",
 )
+
+
+@command
+@broadcastable("freqcounter", "freqcounter_id")
+def set_function(*, freqcounter_id: EquipmentId, function: str, channel: int = 1) -> None:
+    """Configure counter function and input before acquisition.
+
+    :param freqcounter_id: Configured equipment.freqcounter ID; broadcast commands also accept "all".
+    :param function: Counter function: FREQ, PER, TINT, RTIM, DCYC, or TOT.
+    :param channel: Physical input channel (1-based); availability depends on the model.
+    """
+    get_cached_instrument("freqcounter", require_int_id(freqcounter_id, kind="freqcounter")).set_function(function, channel=channel)
+
+
+@command
+@broadcastable("freqcounter", "freqcounter_id")
+def initiate(*, freqcounter_id: EquipmentId, channel: int = 1) -> None:
+    """Initiate acquisition using the current counter setup.
+
+    :param freqcounter_id: Configured equipment.freqcounter ID; broadcast commands also accept "all".
+    :param channel: Physical input channel (1-based); availability depends on the model.
+    """
+    get_cached_instrument("freqcounter", require_int_id(freqcounter_id, kind="freqcounter")).initiate(channel=channel)
+
+
+@command
+@broadcastable("freqcounter", "freqcounter_id")
+def set_statistics(*, freqcounter_id: EquipmentId, enabled: bool) -> None:
+    """Explicitly enable or disable counter statistics.
+
+    :param freqcounter_id: Configured equipment.freqcounter ID; broadcast commands also accept "all".
+    :param enabled: True enables statistics; False disables them.
+    """
+    get_cached_instrument("freqcounter", require_int_id(freqcounter_id, kind="freqcounter")).set_statistics(enabled)

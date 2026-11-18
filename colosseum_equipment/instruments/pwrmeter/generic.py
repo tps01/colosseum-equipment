@@ -52,6 +52,10 @@ class GenericPwrMeter(ScpiInstrumentMixin):
         prefix = self._sensor_prefix(channel)
         self._scpi.write(f"{prefix}CORR:OFFS {offset_db:.3f}")
 
+    def configure_average(self) -> None:
+        """Select dBm power units explicitly before acquisition."""
+        self._scpi.write("UNIT:POW DBM")
+
     def acquire(self, *, channel: int = 1) -> None:
         """Start and complete a new measurement before a fetch-style statistic."""
         ch = self._require_channel(channel)
@@ -62,7 +66,8 @@ class GenericPwrMeter(ScpiInstrumentMixin):
 
     def measure_power_dbm(self, *, channel: int = 1) -> float:
         prefix = self._sensor_prefix(channel)
-        return self._scpi.query_float(f"{prefix}MEAS:POW?")
+        self._scpi.require_setting("UNIT:POW?", "DBM")
+        return self._scpi.query_float(f"{prefix}FETC?")
 
     def measure_power(self, *, channel: int = 1) -> float:
         """Measured power in dBm (alias of :meth:`measure_power_dbm`)."""

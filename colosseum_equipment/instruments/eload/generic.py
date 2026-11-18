@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from collections.abc import Iterator
+
 from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError
@@ -31,6 +34,21 @@ class GenericEload(ScpiInstrumentMixin):
                 f"eload model `{self._model}` does not support channel {ch} (valid 1..{self._channel_count})",
             )
         return ch
+
+    _channel_command = "INST:NSEL"
+    _always_select_channel = False
+
+    @contextmanager
+    def _selected_channel(self, channel: int) -> Iterator[None]:
+        ch = self._require_channel(channel)
+        if self._channel_count > 1 or self._always_select_channel:
+            with self._scpi.temporary_settings((self._channel_command, self._channel_value(ch))):
+                yield
+        else:
+            yield
+
+    def _channel_value(self, channel: int) -> str:
+        return str(channel)
 
     def _apply_channel(self, channel: int) -> int:
         ch = self._require_channel(channel)
@@ -67,33 +85,33 @@ class GenericEload(ScpiInstrumentMixin):
         self._scpi.write("INP OFF")
 
     def measure_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:VOLT?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEAS:VOLT?")
 
     def measure_current(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:CURR?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEAS:CURR?")
 
     def measure_power_w(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        try:
-            return self._scpi.query_float("MEAS:POW?")
-        except Exception:
-            return self.measure_voltage(channel=channel) * self.measure_current(channel=channel)
+        with self._selected_channel(channel):
+            try:
+                return self._scpi.query_float("MEAS:POW?")
+            except Exception:
+                return self.measure_voltage(channel=channel) * self.measure_current(channel=channel)
 
     def measure_resistance_ohm(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        try:
-            return self._scpi.query_float("MEAS:RES?")
-        except Exception:
-            current = self.measure_current(channel=channel)
-            if abs(current) < 1e-12:
-                return float("inf")
-            return self.measure_voltage(channel=channel) / current
+        with self._selected_channel(channel):
+            try:
+                return self._scpi.query_float("MEAS:RES?")
+            except Exception:
+                current = self.measure_current(channel=channel)
+                if abs(current) < 1e-12:
+                    return float("inf")
+                return self.measure_voltage(channel=channel) / current
 
     def measure_input_state(self, *, channel: int = 1) -> bool:
-        self._apply_channel(channel)
-        return bool(int(float(self._scpi.query("INP?"))))
+        with self._selected_channel(channel):
+            return bool(int(float(self._scpi.query("INP?"))))
 
     def set_slew_rate(self, amps_per_s: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)

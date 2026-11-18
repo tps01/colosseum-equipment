@@ -104,8 +104,8 @@ setpoint alone does not establish voltage at the DUT.
 DMM fixed configuration and fetch
 ---------------------------------
 
-One-shot ``measure_voltage`` configures DC volts and reads a new value. To keep
-configuration fixed over a triggered acquisition (``keysight-edu34450a``)::
+``measure_voltage`` validates DC voltage mode and fetches an existing result.
+Configure and initiate explicitly (``keysight-edu34450a``)::
 
    col.equipment.dmm.set_function(dmm_id=1, function="VOLT:DC", channel=1)
    col.equipment.dmm.set_auto_range(dmm_id=1, enabled=False, channel=1)
@@ -258,10 +258,11 @@ and verify its power::
 
 The simulator's -42.5 dBm is a canned response. Channel power, ACPR and occupied
 bandwidth require their corresponding instrument measurement setup; ordinary
-marker power cannot substitute. Generic fetches and named-model exporters can
-differ in whether they perform a sweep internally: the E4407B trace exporter
-performs a single sweep. See its API/driver notes before correlating trace and
-scalar evidence. Mask setup uses the same CWD → parameters-file directory → run
+marker power cannot substitute. Trace exporters, including E4407B, fetch existing
+data without changing display, detector, trace mode, or acquisition. Use
+``single_sweep`` explicitly when fresh data is required. HP 8563EC is an
+exception: its native transfer leaves trace A in view mode. Select dBm amplitude
+units explicitly before exporting that model. Mask setup uses the same CWD → parameters-file directory → run
 directory lookup order as verification. File exports require artifacts enabled.
 
 Path-loss calibration from a VNA sweep
@@ -273,6 +274,7 @@ frequency/loss) and Touchstone ``.s2p`` are accepted. Loss is nearest-bin only;
 ``programmed = desired - loss_db`` and ``corrected = raw - loss_db``::
 
    col.equipment.vna.set_trace_parameters(vna_id=1, trace=1, parameter="S21", format="MLOG")
+   col.equipment.vna.single_sweep(vna_id=1)
    col.equipment.vna.save_trace_data(vna_id=1, path="vna/s21.csv", parameter="S21")
    col.equipment.load_calibration(filename="outputs/.../vna/s21.csv", key="fixture_a")
    col.equipment.vsg.set_frequency(vsg_id=1, frequency=1e9)
@@ -306,11 +308,12 @@ use the matching ``equipment.vna`` row::
 The marker is explicitly placed at 1.5 GHz before the scalar readback. The
 example accepts -20 +/- 2 dB in MLOG format; tailor that limit to the DUT.
 Negative S11 log magnitude and positive return loss have opposite signs.
-``measure_s_parameter`` performs a new single sweep and returns the peak of the
-formatted trace as one scalar. Its units depend on ``format``; it is neither a
+``measure_s_parameter`` validates the existing parameter/format and returns the
+peak of the existing formatted trace as one scalar. Its units depend on ``format``; it is neither a
 complex S-parameter array nor automatically a value at your chosen frequency.
 Use the explicit marker workflow for a frequency-specific check. Trace export
-also performs a sweep, so its capture can differ from the earlier marker read.
+does not initiate another sweep. Freeze or complete acquisition explicitly when
+trace and marker evidence must refer to one stable acquisition.
 A CSV is not a calibrated Touchstone network. Record calibration kit,
 reference plane and state outside the trace as appropriate. ``anritsu-541xx``
 has explicit export/operation limitations; another model's sequence is not
@@ -322,6 +325,7 @@ wait and then read/export::
    col.equipment.phasenoiseanalyzer.set_carrier_frequency_hz(phasenoiseanalyzer_id=1, frequency_hz=1e9)
    col.equipment.phasenoiseanalyzer.set_offset_start_hz(phasenoiseanalyzer_id=1, offset_hz=100.0)
    col.equipment.phasenoiseanalyzer.set_offset_stop_hz(phasenoiseanalyzer_id=1, offset_hz=1e6)
+   col.equipment.phasenoiseanalyzer.set_integration_bounds_hz(phasenoiseanalyzer_id=1, start_hz=100.0, stop_hz=1e6)
    col.equipment.phasenoiseanalyzer.initiate(phasenoiseanalyzer_id=1)
    col.equipment.phasenoiseanalyzer.wait_complete(phasenoiseanalyzer_id=1, timeout_s=120.0)
    col.equipment.phasenoiseanalyzer.measure_integrated_jitter_s(phasenoiseanalyzer_id=1, start_hz=100.0, stop_hz=1e6, key="jitter")

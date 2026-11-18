@@ -62,7 +62,7 @@ class KeysightInfiniium(GenericOscope):
         return ch
 
     def _require_voltage_channel(self, channel: int) -> None:
-        unit = self._scpi.query(f"CHAN{channel}:UNIT?").strip('"').upper()
+        unit = self._scpi._setting_value(f"CHAN{channel}:UNIT?").strip('"').upper()
         if unit not in {"VOLT", "V"}:
             raise EquipmentCapabilityError("voltage measurements require a voltage channel unit")
 
@@ -76,7 +76,7 @@ class KeysightInfiniium(GenericOscope):
         self._scpi.write(f"TRIG:SWE {token}")
 
     def set_trigger_level_v(self, level_v: float) -> None:
-        source = self._scpi.query("TRIG:EDGE:SOUR?").upper()
+        source = self._scpi._setting_value("TRIG:EDGE:SOUR?").upper()
         if not source.startswith("CHAN") or not source[4:].isdigit():
             raise EquipmentCapabilityError("trigger level requires an analog channel source")
         self._require_channel(int(source[4:]))
@@ -100,14 +100,14 @@ class KeysightInfiniium(GenericOscope):
         self._completed = False
         self._single_pending = False
         self._scpi.write("STOP")
-        self._scpi.query("ADER?")  # discard any event belonging to an older capture
+        self._scpi._setting_value("ADER?")  # discard any event belonging to an older capture
         self._mark_capture()
         self._scpi.write("SING")
         self._single_pending = True
 
     def get_acquire_state(self) -> str:
         if self._single_pending and not self._completed:
-            self._completed = bool(int(self._scpi.query("ADER?")) & 1)
+            self._completed = bool(int(self._scpi._setting_value("ADER?")) & 1)
         return "STOP" if self._completed else "RUN"
 
     def wait_complete(self, *, timeout_s: float) -> None:
@@ -163,27 +163,24 @@ class KeysightInfiniium(GenericOscope):
         ch = self._require_channel(channel)
         self._require_completed()
         self._require_voltage_channel(ch)
-        self._scpi.write(f"WAV:SOUR CHAN{ch}")
-        self._scpi.write("WAV:FORM WORD")
-        self._scpi.write("WAV:BYT LSBF")
-        self._scpi.write("WAV:STR OFF")
-        count = int(self._scpi.query_float("WAV:POIN?"))
-        xinc = self._scpi.query_float("WAV:XINC?")
-        xorigin = self._scpi.query_float("WAV:XOR?")
-        yinc = self._scpi.query_float("WAV:YINC?")
-        yorigin = self._scpi.query_float("WAV:YOR?")
-        raw = self._scpi.read_binary_block("WAV:DATA?")
-        if count < 1 or len(raw) != count * 2:
-            raise EquipmentResponseError("Infiniium WORD payload length differs from preamble")
-        if not all(math.isfinite(v) for v in (xinc, xorigin, yinc, yorigin)) or xinc <= 0:
-            raise EquipmentResponseError("invalid waveform scaling or time axis")
-        values = [value * yinc + yorigin for value in struct.unpack(f"<{count}h", raw)]
-        return values, {
-            "channel": ch,
-            "points": count,
-            "xinc_s": xinc,
-            "xorigin_s": xorigin,
-            "capture_id": self._capture_id,
-            "vertical_units": "V",
-            "encoding": "WORD LSBF",
-        }
+        with self._scpi.temporary_settings(('WAV:SOUR', f'CHAN{ch}'), ('WAV:FORM', 'WORD'), ('WAV:BYT', 'LSBF'), ('WAV:STR', 'OFF')):
+            count = int(self._scpi.query_float("WAV:POIN?"))
+            xinc = self._scpi.query_float("WAV:XINC?")
+            xorigin = self._scpi.query_float("WAV:XOR?")
+            yinc = self._scpi.query_float("WAV:YINC?")
+            yorigin = self._scpi.query_float("WAV:YOR?")
+            raw = self._scpi.read_binary_block("WAV:DATA?")
+            if count < 1 or len(raw) != count * 2:
+                raise EquipmentResponseError("Infiniium WORD payload length differs from preamble")
+            if not all(math.isfinite(v) for v in (xinc, xorigin, yinc, yorigin)) or xinc <= 0:
+                raise EquipmentResponseError("invalid waveform scaling or time axis")
+            values = [value * yinc + yorigin for value in struct.unpack(f"<{count}h", raw)]
+            return values, {
+                "channel": ch,
+                "points": count,
+                "xinc_s": xinc,
+                "xorigin_s": xorigin,
+                "capture_id": self._capture_id,
+                "vertical_units": "V",
+                "encoding": "WORD LSBF",
+            }

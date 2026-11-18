@@ -40,5 +40,7 @@ def test_dmm_measure_voltage(bench_visa_sim, isolated_cwd) -> None:
     from colosseum_equipment.api import dmm
 
     load_config(bench_visa_sim)
+    dmm.set_function(dmm_id=1, function="VOLT:DC")
+    dmm.initiate(dmm_id=1)
     value = dmm.measure_voltage(dmm_id=1, channel=1, key="visa_sim_rail")
     assert value == pytest.approx(3.3, rel=1e-3)

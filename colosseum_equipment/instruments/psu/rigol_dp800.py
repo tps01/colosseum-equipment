@@ -12,6 +12,12 @@ from colosseum_equipment.instruments.psu.generic import GenericPSU
 class RigolDp800(GenericPSU):
     """Shared DP800 overrides; catalog classes keep their own slugs."""
 
+    _channel_command = 'instrument:nselect'
+    _always_select_channel = True
+
+    def _channel_value(self, channel: int) -> str:
+        return str(channel)
+
     def _apply_channel(self, channel: int) -> int:
         ch = self._require_channel(channel)
         self._scpi.write(f"instrument:nselect {ch}")
@@ -30,24 +36,24 @@ class RigolDp800(GenericPSU):
         self._scpi.write("output on" if enabled else "output off")
 
     def get_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("source:voltage:level?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("source:voltage:level?")
 
     def get_current_limit(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("source:current:level?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("source:current:level?")
 
     def get_output(self, *, channel: int = 1) -> bool:
-        self._apply_channel(channel)
-        return bool(int(float(self._scpi.query("output?"))))
+        with self._selected_channel(channel):
+            return bool(int(float(self._scpi.query("output?"))))
 
     def measure_voltage(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("measure:voltage?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("measure:voltage?")
 
     def measure_current(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("measure:current?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("measure:current?")
 
     def set_ovp_v(self, voltage: float, *, channel: int = 1) -> None:
         self._apply_channel(channel)
@@ -70,12 +76,12 @@ class RigolDp800(GenericPSU):
         )
 
     def get_ovp_v(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("source:voltage:protection:level?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("source:voltage:protection:level?")
 
     def get_ocp_a(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("source:current:protection:level?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("source:current:protection:level?")
 
     def clear_protection(self, *, channel: int = 1) -> None:
         self._apply_channel(channel)

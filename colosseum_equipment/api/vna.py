@@ -120,7 +120,7 @@ def measure_marker_value(*, vna_id: int, marker: int = 1, key: str) -> float:
 
 @measurement
 def measure_s11_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
-    """Peak S11 magnitude in dB after a single sweep.
+    """Peak S11 magnitude in dB from the existing configured trace.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
@@ -138,7 +138,7 @@ def measure_s11_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
 
 @measurement
 def measure_s21_magnitude(*, vna_id: int, trace: int = 1, key: str) -> float:
-    """Peak S21 magnitude in dB after a single sweep.
+    """Peak S21 magnitude in dB from the existing configured trace.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 
@@ -163,7 +163,7 @@ def measure_s_parameter(
     format: str = "MLOG",
     key: str,
 ) -> float:
-    """Peak formatted S-parameter value after a single sweep.
+    """Peak formatted S-parameter value from the existing configured trace.
 
     :param vna_id: Configured ``equipment.vna`` ID.
 

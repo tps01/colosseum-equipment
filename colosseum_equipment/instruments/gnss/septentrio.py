@@ -126,9 +126,8 @@ class SeptentrioGnss(_BinaryGnss):
         self._sbf_msgs = "PVTGeodetic+DOP"
         self._nmea_rate_hz = 1.0
         self._sbf_rate_hz = 1.0
-        self._nmea_enabled: dict[str, float] = {"GGA": 1.0, "RMC": 1.0, "GSV": 1.0}
-        self._sbf_enabled: dict[str, float] = {"PVTGeodetic": 1.0, "DOP": 1.0}
-        self._apply_message_profile("default")
+        self._nmea_enabled: dict[str, float] = {}
+        self._sbf_enabled: dict[str, float] = {}
 
     def _wire_suffix(self) -> str:
         return ".sbf"

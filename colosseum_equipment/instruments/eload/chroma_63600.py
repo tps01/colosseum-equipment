@@ -40,6 +40,12 @@ class Chroma63600(GenericEload):
     the high range and L1. Parallel and synchronized multi-frame modes excluded.
     """
 
+    _channel_command = 'CHAN'
+    _always_select_channel = True
+
+    def _channel_value(self, channel: int) -> str:
+        return str(channel)
+
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         count = int(config.get("channels") or config.get("channel_count") or 1)
         if not 1 <= count <= 10:
@@ -83,15 +89,15 @@ class Chroma63600(GenericEload):
         self._scpi.write("LOAD OFF")
 
     def measure_input_state(self, *, channel: int = 1) -> bool:
-        self._apply_channel(channel)
-        state = self._scpi.query("LOAD?").upper()
-        if state not in {"ON", "OFF", "1", "0"}:
-            raise EquipmentResponseError(f"invalid load state {state!r}")
-        return state in {"ON", "1"}
+        with self._selected_channel(channel):
+            state = self._scpi.query("LOAD?").upper()
+            if state not in {"ON", "OFF", "1", "0"}:
+                raise EquipmentResponseError(f"invalid load state {state!r}")
+            return state in {"ON", "1"}
 
     def measure_power_w(self, *, channel: int = 1) -> float:
-        self._apply_channel(channel)
-        return self._scpi.query_float("MEAS:POW?")
+        with self._selected_channel(channel):
+            return self._scpi.query_float("MEAS:POW?")
 
     def set_slew_rate(self, amps_per_s: float, *, channel: int = 1) -> None:
         if amps_per_s <= 0:

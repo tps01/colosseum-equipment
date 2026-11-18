@@ -137,13 +137,6 @@ class BenchDmm(GenericDMM):
         self._require_channel(channel)
         return self._reading("FETC?")
 
-    def _measure(self, function: str, channel: int) -> float:
-        self.set_function(function, channel=channel)
-        # A one-shot must not inherit EXT/BUS triggering or a multi-sample setup.
-        self._scpi.write("TRIG:SOUR IMM")
-        self._scpi.write("TRIG:COUN 1")
-        self._scpi.write("SAMP:COUN 1")
-        return self._reading("READ?")
 
     def measure_voltage_dc(self, channel: int = 1) -> float:
         return self._measure("VOLT:DC", channel)
@@ -214,24 +207,12 @@ class Keithley2001(BenchDmm):
 
     _zero_command = "SYST:AZER:STAT"
 
-    def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
-        super().__init__(transport, config)
-        self._scpi.write("SYST:FETC:FORM SCPI")
-        self._scpi.write("FORM:DATA ASC")
-        self._scpi.write("FORM:ELEM READ")
+
+    def fetch(self, *, channel: int = 1) -> float:
+        self._scpi.require_setting("SYST:FETC:FORM?", "SCPI")
+        with self._scpi.temporary_settings(("FORM:DATA", "ASC"), ("FORM:ELEM", "READ")):
+            return super().fetch(channel=channel)
 
     def set_function(self, function: str, *, channel: int = 1) -> None:
         self._require_channel(channel)
         self._scpi.write(f'SENS:FUNC "{self._function(function)}"')
-
-    def _measure(self, function: str, channel: int) -> float:
-        self.set_function(function, channel=channel)
-        self._scpi.write("INIT:CONT OFF")
-        self._scpi.write("ABOR")
-        self._scpi.write("ARM:LAY1:SOUR IMM")
-        self._scpi.write("ARM:LAY1:COUN 1")
-        self._scpi.write("ARM:LAY2:SOUR IMM")
-        self._scpi.write("ARM:LAY2:COUN 1")
-        self._scpi.write("TRIG:SOUR IMM")
-        self._scpi.write("TRIG:COUN 1")
-        return self._reading("READ?")

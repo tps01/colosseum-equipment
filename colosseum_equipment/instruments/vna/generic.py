@@ -206,14 +206,7 @@ class GenericVna(ScpiInstrumentMixin):
         if export_format == "s2p":
             raise ValueError("S2P export requires a complete two-port matrix; single-trace export supports CSV only")
 
-        display_was_enabled = True
-        try:
-            self.toggle_display(False)
-        except Exception:
-            display_was_enabled = False
-
-        self.single_sweep()
-        self.wait_complete()
+        self._require_trace(trace, parameter, "MLOG")
         frequencies = self._query_frequencies()
         artifact_path = resolve_artifact_path(path)
 
@@ -226,9 +219,6 @@ class GenericVna(ScpiInstrumentMixin):
                 len(values),
             )
         write_trace_csv(artifact_path, frequencies, values)
-
-        if display_was_enabled:
-            self.toggle_display(True)
 
         record_artifact(
             domain="equipment",
@@ -243,10 +233,13 @@ class GenericVna(ScpiInstrumentMixin):
         )
         return artifact_path
 
+    def _require_trace(self, trace: int, parameter: str, fmt: str) -> None:
+        self._scpi.require_setting(f"{self._calc()}:PAR{trace}:DEF?", parameter.upper())
+        self._scpi.require_setting(f"{self._calc()}:PAR{trace}:FORM?", fmt.upper())
+
     def _measure_trace_peak(self, trace: int, parameter: str, fmt: str) -> float:
         self._ensure_scpi_vna(f"measure_{parameter.lower()}_magnitude")
-        self.set_trace_parameters(trace, parameter, fmt)
-        self.single_sweep()
+        self._require_trace(trace, parameter, fmt)
         raw = self._scpi.query(f"{self._calc()}:PAR{trace}:DATA:FDATA?")
         values = parse_vna_trace_values(raw)
         if not values:
@@ -266,5 +259,5 @@ class GenericVna(ScpiInstrumentMixin):
         parameter: str = "S11",
         format: str = "MLOG",
     ) -> float:
-        """Peak formatted trace value after a single sweep."""
+        """Peak formatted value of the existing trace."""
         return self._measure_trace_peak(trace, parameter.upper(), format.upper())

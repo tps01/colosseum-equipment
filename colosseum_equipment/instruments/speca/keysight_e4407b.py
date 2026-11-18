@@ -63,10 +63,6 @@ class KeysightE4407BSpecA(GenericSpecA):
         *,
         include_frequency: bool = True,
     ) -> tuple[list[float], list[float]]:
-        from colosseum_equipment.protocols.scpi import prepare_fast_sweep
-
-        prepare_fast_sweep(self._scpi)
-        self.single_sweep()
         center = self._scpi.query_float("SENS:FREQ:CENT?")
         span = self._scpi.query_float("SENS:FREQ:SPAN?")
         raw = self._scpi.query(f"TRAC:DATA? TRACE{trace}")

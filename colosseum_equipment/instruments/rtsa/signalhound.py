@@ -51,7 +51,6 @@ class SignalHoundSpikeIq(GenericRtsa):
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         if "span" in config:
             raise EquipmentCapabilityError("use sample_rate_hz for IQ rate; span is not sample rate")
-        transport.write("INST:SEL ZS")
         super().__init__(transport, config)
         if "reference_level_dbm" in config:
             self.set_reference_level(float(config["reference_level_dbm"]))
@@ -109,45 +108,45 @@ class SignalHoundSpikeIq(GenericRtsa):
         self._scpi.write(f"TRIG:ZS:POS {position_dbm}")
 
     def save_IQ_data(self, path: str, *, file_format: str = "bin", key: str = "") -> Path:
-        self._scpi.write("FORM:IQ ASC")
-        count = self.get_num_samples()
-        try:
-            values = [float(v) for v in self._scpi.query("FETC:ZS? 1").split(",")]
-        except ValueError as exc:
-            raise EquipmentResponseError("malformed Spike IQ samples") from exc
-        if count < 1 or len(values) != count * 2 or any(not math.isfinite(v) for v in values):
-            raise EquipmentResponseError("Spike IQ data length/values differ from reported capture")
-        rate = self.measure_sample_rate()
-        center = self._scpi.query_float("SENS:ZS:CAP:CENT?")
-        if not math.isfinite(rate) or rate <= 0 or not math.isfinite(center):
-            raise EquipmentResponseError("invalid capture sample rate")
-        # Existing IQ writers consume interleaved little-endian float64 samples.
-        payload = struct.pack(f"<{len(values)}d", *values)
-        export_format = normalize_iq_format(file_format, path)
-        if export_format not in {"bin", "mat", "iq.tar"}:
-            raise EquipmentCapabilityError(f"unsupported IQ export format {export_format!r}")
-        artifact = resolve_artifact_path(path)
-        metadata = {
-            "center_freq_hz": center,
-            "sample_rate_hz": rate,
-            "num_samples": count,
-            "iq_dtype": "float64",
-            "iq_byte_order": "little",
-            "iq_units": "sqrt(mW)",
-            "format": export_format,
-            "run_id": self._run_id,
-        }
-        if export_format == "mat":
-            write_iq_mat(artifact, payload, metadata=metadata)
-        elif export_format == "iq.tar":
-            write_iq_tar(artifact, payload, metadata=metadata)
-        else:
-            write_iq_bin(artifact, payload)
-        record_artifact(
-            domain="equipment",
-            command="save_IQ_data",
-            key=key or f"rtsa_iq_{self._run_id}",
-            path=artifact,
-            value=metadata,
-        )
-        return artifact
+        with self._scpi.temporary_settings(('FORM:IQ', 'ASC')):
+            count = self.get_num_samples()
+            try:
+                values = [float(v) for v in self._scpi.query("FETC:ZS? 1").split(",")]
+            except ValueError as exc:
+                raise EquipmentResponseError("malformed Spike IQ samples") from exc
+            if count < 1 or len(values) != count * 2 or any(not math.isfinite(v) for v in values):
+                raise EquipmentResponseError("Spike IQ data length/values differ from reported capture")
+            rate = self.measure_sample_rate()
+            center = self._scpi.query_float("SENS:ZS:CAP:CENT?")
+            if not math.isfinite(rate) or rate <= 0 or not math.isfinite(center):
+                raise EquipmentResponseError("invalid capture sample rate")
+            # Existing IQ writers consume interleaved little-endian float64 samples.
+            payload = struct.pack(f"<{len(values)}d", *values)
+            export_format = normalize_iq_format(file_format, path)
+            if export_format not in {"bin", "mat", "iq.tar"}:
+                raise EquipmentCapabilityError(f"unsupported IQ export format {export_format!r}")
+            artifact = resolve_artifact_path(path)
+            metadata = {
+                "center_freq_hz": center,
+                "sample_rate_hz": rate,
+                "num_samples": count,
+                "iq_dtype": "float64",
+                "iq_byte_order": "little",
+                "iq_units": "sqrt(mW)",
+                "format": export_format,
+                "run_id": self._run_id,
+            }
+            if export_format == "mat":
+                write_iq_mat(artifact, payload, metadata=metadata)
+            elif export_format == "iq.tar":
+                write_iq_tar(artifact, payload, metadata=metadata)
+            else:
+                write_iq_bin(artifact, payload)
+            record_artifact(
+                domain="equipment",
+                command="save_IQ_data",
+                key=key or f"rtsa_iq_{self._run_id}",
+                path=artifact,
+                value=metadata,
+            )
+            return artifact

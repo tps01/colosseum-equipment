@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments.oscope.generic import GenericOscope
 from colosseum_equipment.instruments.registry import instrument_model
 
@@ -47,10 +48,16 @@ class TekT3dso2000Oscope(GenericOscope):
     def single_acquire(self) -> None:
         self._scpi.write("ARM")
 
-    def measure_vpp(self, channel: int = 1) -> float:
+    def configure_vpp(self, channel: int = 1) -> None:
+        self._require_channel(channel)
         self._scpi.write(f"PACU PKPK,C{channel}")
-        response = self._scpi.query(f"PAVA? CUST{self._meas_slot}")
-        match = re.search(r"PKPK,([0-9.Ee+-]+)", response)
+
+    def measure_vpp(self, channel: int = 1) -> float:
+        self._require_channel(channel)
+        response = self._scpi._setting_value(f"PAVA? CUST{self._meas_slot}")
+        match = re.search(rf"CUST{self._meas_slot}:C{channel},PKPK,([0-9.Ee+-]+)", response)
         if not match:
-            raise ValueError(f"could not parse PKPK from PAVA response: {response!r}")
+            raise EquipmentCapabilityError(
+                f"custom slot is not Vpp on channel {channel}; call configure_vpp(channel=...) first: {response!r}",
+            )
         return float(match.group(1))

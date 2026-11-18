@@ -130,7 +130,6 @@ class UbloxGnss(_BinaryGnss):
         self._parser = UbxStreamParser()
         self._nav: NavPvt | None = None
         self._series = _series_from_model(self._model)
-        self._enable_messages()
 
     def _wire_suffix(self) -> str:
         return ".ubx"

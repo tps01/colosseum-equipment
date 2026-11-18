@@ -61,7 +61,7 @@ hardware. ``rtsa.measure_trace_power_at_frequency`` reads the nearest frequency
 bin and accepts a loaded ``calibration`` key, evaluated at that bin's frequency.
 
 ``rtsa.save_spectrum_trace_data`` accepts ``key`` and ``save_plot=False``. It
-exports the current spectrum on Tek SCPI models; USB RSA acquires one spectrum.
+exports the current spectrum. Use ``acquire_spectrum`` first on USB RSA.
 The optional PNG uses the existing trace style, minor ticks, and scientific
 notation. Bandwidth plots mark both edges; center plots mark the midpoint.
 
@@ -325,8 +325,8 @@ Configure the instrument as ``equipment.rtsa`` ID 1 before running it. The first
     )
 
 For repeatable analysis of the same record, save a trace and pass its path to all
-measurements. On Tek SCPI explicitly call ``acquire`` before exporting; USB export
-acquires its own spectrum::
+measurements. On Tek SCPI call ``acquire`` before exporting. On USB RSA call
+``acquire_spectrum`` before exporting::
 
     col.equipment.rtsa.save_spectrum_trace_data(
         rtsa_id=1, path="traces/signal.csv", key="signal_trace", save_plot=True,

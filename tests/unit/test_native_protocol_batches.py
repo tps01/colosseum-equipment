@@ -415,6 +415,8 @@ def test_native_models_do_not_open_unrelated_visa_endpoints(monkeypatch, kind, c
     with pytest.raises(ProceduralFault):
         open_transport(kind, 1, config)
     opener.assert_not_called()
+
+
 @pytest.mark.parametrize("model", ["RSA306B", "RSA503A", "RSA607A"])
 def test_rsa_frontend_model_support(monkeypatch, tmp_path, model):
     library = RsaLibrary()
@@ -451,5 +453,24 @@ def test_rsa_live_measurement_acquires_exactly_one_spectrum(monkeypatch, tmp_pat
         rtsa.measure_bw(rtsa_id=1, start_hz=100, stop_hz=114, key="width", save_plot=True)
         assert sum(name == "SPECTRUM_AcquireTrace" for name, _ in library.calls) == 1
         assert not any(name == "IQBLK_AcquireIQData" for name, _ in library.calls)
+    finally:
+        dev.close()
+
+
+def test_rsa_connect_and_export_do_not_preset_configure_or_acquire(monkeypatch, tmp_path, unit_runtime_context):
+    dev, library = open_rsa(monkeypatch, tmp_path)
+    try:
+        assert not any(name.startswith(('CONFIG_Set', 'IQBLK_Set', 'SPECTRUM_Set', 'TRIG_Set'))
+                       or name == 'CONFIG_Preset' for name, _ in library.calls)
+        library.calls.clear()
+        artifact = dev.save_spectrum_trace_data(str(tmp_path / 'existing.csv'))
+        assert artifact.read_text().splitlines()[-1] == '114.000000,-30.000000'
+        assert [name for name, _ in library.calls] == ['SPECTRUM_GetSettings', 'SPECTRUM_GetTrace']
+        library.calls.clear()
+        dev.acquire_spectrum(timeout_s=1)
+        assert [name for name, _ in library.calls] == [
+            'SPECTRUM_SetEnable', 'DEVICE_Run', 'SPECTRUM_AcquireTrace',
+            'SPECTRUM_WaitForDataReady', 'DEVICE_Stop',
+        ]
     finally:
         dev.close()

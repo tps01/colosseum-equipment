@@ -60,7 +60,7 @@ class RohdeRtbRtm(GenericOscope):
 
     def get_channel_display(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        return bool(int(float(self._scpi.query(f"CHAN{ch}:STAT?"))))
+        return bool(int(float(self._scpi._setting_value(f"CHAN{ch}:STAT?"))))
 
     def set_record_length(self, points: int) -> None:
         if points < 1:
@@ -78,7 +78,7 @@ class RohdeRtbRtm(GenericOscope):
         self._scpi.write(f"TRIG:A:SOUR {token}")
 
     def set_trigger_level_v(self, level_v: float) -> None:
-        source = self._scpi.query("TRIG:A:SOUR?").upper()
+        source = self._scpi._setting_value("TRIG:A:SOUR?").upper()
         if not source.startswith("CH") or not source[2:].isdigit():
             raise EquipmentCapabilityError("trigger level requires an analog channel source")
         ch = self._require_channel(int(source[2:]))
@@ -118,7 +118,7 @@ class RohdeRtbRtm(GenericOscope):
         self.acquire(timeout_s=float(self._config.get("timeout", 10.0)))
 
     def get_acquire_state(self) -> str:
-        return self._scpi.query("ACQ:STAT?").upper()
+        return self._scpi._setting_value("ACQ:STAT?").upper()
 
     def wait_complete(self, *, timeout_s: float) -> None:
         deadline = time.monotonic() + timeout_s
@@ -135,34 +135,34 @@ class RohdeRtbRtm(GenericOscope):
         ch = self._require_channel(channel)
         if not self.get_acquire_state().startswith("COMP"):
             raise EquipmentCapabilityError("complete the single acquisition before exporting")
-        unit = self._scpi.query(f"PROB{ch}:SET:ATT:UNIT?").strip('"').upper()
+        unit = self._scpi._setting_value(f"PROB{ch}:SET:ATT:UNIT?").strip('"').upper()
         if unit != "V":
             raise EquipmentCapabilityError("voltage waveform export requires a voltage probe unit")
-        self._scpi.write("FORM ASC")
-        self._scpi.write(f"CHAN{ch}:DATA:POIN MAX")
-        header = self._scpi.query(f"CHAN{ch}:DATA:HEAD?").split(",")
-        if len(header) != 4:
-            raise EquipmentResponseError("expected four waveform header fields")
-        count, values_per_sample = int(float(header[2])), int(float(header[3]))
-        if count < 1 or values_per_sample != 1:
-            raise EquipmentCapabilityError("only scalar waveform samples are supported")
-        xinc = self._scpi.query_float(f"CHAN{ch}:DATA:XINC?")
-        xorigin = self._scpi.query_float(f"CHAN{ch}:DATA:XOR?")
-        values = _parse_ascii_waveform(self._scpi.query(f"CHAN{ch}:DATA?"), points_expected=count)
-        if len(values) != count or any(not math.isfinite(v) for v in values):
-            raise EquipmentResponseError("waveform sample count differs from header")
-        if not math.isfinite(xinc) or xinc <= 0 or not math.isfinite(xorigin):
-            raise EquipmentResponseError("invalid waveform time axis")
-        # ASCII channel data is already scaled; never apply ADC scaling again.
-        return values, {
-            "channel": ch,
-            "points": count,
-            "xinc_s": xinc,
-            "xorigin_s": xorigin,
-            "capture_id": self._capture_id,
-            "vertical_units": "V",
-            "encoding": "ASCII",
-        }
+        with self._scpi.temporary_settings(('FORM', 'ASC')):
+            self._scpi.write(f"CHAN{ch}:DATA:POIN MAX")
+            header = self._scpi._setting_value(f"CHAN{ch}:DATA:HEAD?").split(",")
+            if len(header) != 4:
+                raise EquipmentResponseError("expected four waveform header fields")
+            count, values_per_sample = int(float(header[2])), int(float(header[3]))
+            if count < 1 or values_per_sample != 1:
+                raise EquipmentCapabilityError("only scalar waveform samples are supported")
+            xinc = self._scpi.query_float(f"CHAN{ch}:DATA:XINC?")
+            xorigin = self._scpi.query_float(f"CHAN{ch}:DATA:XOR?")
+            values = _parse_ascii_waveform(self._scpi._setting_value(f"CHAN{ch}:DATA?"), points_expected=count)
+            if len(values) != count or any(not math.isfinite(v) for v in values):
+                raise EquipmentResponseError("waveform sample count differs from header")
+            if not math.isfinite(xinc) or xinc <= 0 or not math.isfinite(xorigin):
+                raise EquipmentResponseError("invalid waveform time axis")
+            # ASCII channel data is already scaled; never apply ADC scaling again.
+            return values, {
+                "channel": ch,
+                "points": count,
+                "xinc_s": xinc,
+                "xorigin_s": xorigin,
+                "capture_id": self._capture_id,
+                "vertical_units": "V",
+                "encoding": "ASCII",
+            }
 
 
 @instrument_model("oscope", "rohde-rte1204", "rohde-rtp164")
@@ -209,7 +209,7 @@ class RohdeRteRtp(GenericOscope):
 
     def get_channel_display(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        state = self._scpi.query(f"CHAN{ch}:STAT?").upper()
+        state = self._scpi._setting_value(f"CHAN{ch}:STAT?").upper()
         if state not in {"0", "1", "OFF", "ON"}:
             raise EquipmentResponseError(f"invalid channel display state {state!r}")
         return state in {"1", "ON"}
@@ -234,10 +234,10 @@ class RohdeRteRtp(GenericOscope):
 
     def arm_single(self) -> None:
         self._single_pending = self._single_complete = False
-        if self._scpi.query("ACQ:SEGM:STAT?").upper() not in {"0", "OFF"}:
+        if self._scpi._setting_value("ACQ:SEGM:STAT?").upper() not in {"0", "OFF"}:
             raise EquipmentCapabilityError("disable fast segmentation for scalar waveform capture")
         self._scpi.write("STOP")
-        self._scpi.query("*ESR?")  # Clear stale operation-complete/error events in this owned session.
+        self._scpi._setting_value("*ESR?")  # Clear stale operation-complete/error events in this owned session.
         self._scpi.write("ACQ:COUN 1")
         self._mark_capture()
         self._scpi.write("RUNS")
@@ -254,14 +254,14 @@ class RohdeRteRtp(GenericOscope):
             raise EquipmentCapabilityError("arm a single acquisition before waiting")
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
-            event = int(self._scpi.query("*ESR?"))
+            event = int(self._scpi._setting_value("*ESR?"))
             # IEEE 488.2 query/device/execution/command errors: bits 2..5.
             if event & 0x3C:
                 self._single_pending = False
                 raise EquipmentResponseError(f"scope acquisition reported ESR errors: {event}")
             if event & 1:
                 self._single_pending = False
-                if int(self._scpi.query("ACQ:CURR?")) < 1:
+                if int(self._scpi._setting_value("ACQ:CURR?")) < 1:
                     raise EquipmentResponseError("scope stopped without completing a waveform")
                 self._single_complete = True
                 return
@@ -273,11 +273,11 @@ class RohdeRteRtp(GenericOscope):
         if not self._single_complete:
             raise EquipmentCapabilityError("complete a driver-armed single acquisition before export")
         prefix = f"CHAN{ch}:WAV1"
-        if self._scpi.query(f"{prefix}:HIST:STAT?").upper() not in {"0", "OFF"}:
+        if self._scpi._setting_value(f"{prefix}:HIST:STAT?").upper() not in {"0", "OFF"}:
             raise EquipmentCapabilityError("disable history display before exporting current capture")
-        if self._scpi.query(f"PROB{ch}:SET:ATT:MODE?").upper() not in {"MAN", "MANUAL"}:
+        if self._scpi._setting_value(f"PROB{ch}:SET:ATT:MODE?").upper() not in {"MAN", "MANUAL"}:
             raise EquipmentCapabilityError("select manual probe attenuation/unit for this voltage-only export")
-        unit = self._scpi.query(f"PROB{ch}:SET:ATT:UNIT?").strip('"').upper()
+        unit = self._scpi._setting_value(f"PROB{ch}:SET:ATT:UNIT?").strip('"').upper()
         if unit != "V":
             raise EquipmentCapabilityError("voltage CSV requires a voltage probe unit")
         # These export switches also affect DATA? replies, not just saved files.
@@ -286,7 +286,7 @@ class RohdeRteRtp(GenericOscope):
         return ch, prefix
 
     def _parse_waveform_header(self, prefix: str) -> tuple[float, float, int]:
-        fields = self._scpi.query(f"{prefix}:DATA:HEAD?").split(",")
+        fields = self._scpi._setting_value(f"{prefix}:DATA:HEAD?").split(",")
         try:
             start, stop, size, values_per_sample = (float(v) for v in fields)
             if not all(math.isfinite(v) for v in (start, stop, size, values_per_sample)):
@@ -302,7 +302,7 @@ class RohdeRteRtp(GenericOscope):
     def _read_waveform_points(self, channel: int) -> tuple[list[float], dict[str, Any]]:
         ch, prefix = self._waveform_export_preflight(channel)
         start, stop, count = self._parse_waveform_header(prefix)
-        values = _parse_ascii_waveform(self._scpi.query(f"{prefix}:DATA?"), points_expected=count)
+        values = _parse_ascii_waveform(self._scpi._setting_value(f"{prefix}:DATA?"), points_expected=count)
         if len(values) != count or not all(math.isfinite(v) for v in values):
             raise EquipmentResponseError("invalid waveform values or count")
         # The native header defines Stop as the time of the LAST sample.

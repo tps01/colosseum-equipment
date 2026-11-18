@@ -66,6 +66,12 @@ class SiglentSpd3303(SiglentSpdSingle):
     CH3 permits output switching only; it is not an adjustable CH1/CH2.
     """
 
+    _channel_command = 'INST'
+    _always_select_channel = True
+
+    def _channel_value(self, channel: int) -> str:
+        return self._ch(channel)
+
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         count = resolve_channel_count(config, default=3)
         if count not in (1, 2, 3):
