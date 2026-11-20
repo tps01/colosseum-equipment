@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import colosseum as col
 import pytest
 from colosseum.config import load_config
 
@@ -44,3 +45,10 @@ def test_dmm_measure_voltage(bench_visa_sim, isolated_cwd) -> None:
     dmm.initiate(dmm_id=1)
     value = dmm.measure_voltage(dmm_id=1, channel=1, key="visa_sim_rail")
     assert value == pytest.approx(3.3, rel=1e-3)
+
+
+def test_scpi_common_queries_through_plugin(bench_visa_sim, isolated_cwd) -> None:
+    load_config(bench_visa_sim)
+
+    assert col.equipment.scpi.identify(psu_id=1) == "Colosseum, Generic PSU (Simulated), 0001, 0.1.0"
+    assert col.equipment.scpi.wait_opc(psu_id=1) is None

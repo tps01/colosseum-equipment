@@ -14,7 +14,7 @@ from colosseum.logging import get_logger
 
 from colosseum_equipment.connections import get_transport
 from colosseum_equipment.instruments.registry import kind_id_params
-from colosseum_equipment.protocols.scpi import SCPIHelper
+from colosseum_equipment.protocols.scpi import SCPIHelper, validate_register_mask
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -106,34 +106,43 @@ def _make_scpi_api(name: str, method: str, return_annotation: object) -> Callabl
 
 
 
-def _make_status_api(name: str, method: str, return_annotation: object) -> Callable[..., object]:
+def _make_common_api(
+    method: str,
+    description: str,
+    return_annotation: object,
+    *,
+    takes_mask: bool = False,
+) -> Callable[..., object]:
     params = [
-        *[
-            inspect.Parameter(
-                param,
-                inspect.Parameter.KEYWORD_ONLY,
-                default=None,
-                annotation=int | None,
-            )
-            for param in _KIND_ID_PARAMS
-        ],
+        inspect.Parameter(
+            param,
+            inspect.Parameter.KEYWORD_ONLY,
+            default=None,
+            annotation=int | None,
+        )
+        for param in _KIND_ID_PARAMS
     ]
+    mask_doc = ""
+    if takes_mask:
+        params.insert(0, inspect.Parameter("mask", inspect.Parameter.KEYWORD_ONLY, annotation=int))
+        mask_doc = ":param mask: Register bit mask from 0 through 255.\n"
 
-    action = {
-        "status_byte": "Reading SCPI status byte from %s %s",
-        "esr": "Reading SCPI event status from %s %s",
-        "clear_status": "Clearing SCPI status on %s %s",
-    }[method]
+    def api(**arguments: int | None) -> object:
+        method_args: dict[str, int] = {}
+        if takes_mask:
+            if "mask" not in arguments:
+                raise TypeError(f"{method}() requires the keyword-only argument 'mask'")
+            method_args["mask"] = validate_register_mask(arguments.pop("mask"))
 
-    def api(**instrument_ids: int | None) -> object:
-        kind, equipment_id = _selected_instrument(**instrument_ids)
-        _logger.info(action, kind, equipment_id)
-        helper = _scpi_helper(**instrument_ids)
-        return getattr(helper, method)()
+        kind, equipment_id = _selected_instrument(**arguments)
+        _logger.info("Running SCPI %s on %s %s", method, kind, equipment_id)
+        helper = for_instrument(kind, equipment_id)
+        return getattr(helper, method)(**method_args)
 
-    api.__name__ = name
-    api.__qualname__ = name
+    api.__name__ = method
+    api.__qualname__ = method
     api.__module__ = __name__
+    api.__annotations__["return"] = return_annotation
     api_any: Any = api
     api_any.__signature__ = inspect.Signature(params, return_annotation=return_annotation)
     id_fields = "\n".join(
@@ -141,16 +150,14 @@ def _make_status_api(name: str, method: str, return_annotation: object) -> Calla
         "Pass exactly one instrument ID to this call."
         for param, kind in sorted(_KIND_ID_PARAMS.items())
     )
-    api.__doc__ = f"""SCPI status helper ``{method}`` on exactly one configured instrument.
+    api.__doc__ = f"""{description}
 
-{id_fields}
+{mask_doc}{id_fields}
 
-:raises ValueError: If zero or more than one ``*_id`` is provided.
+:raises ValueError: If the instrument selection or register mask is invalid.
 :raises EquipmentConnectionError: Transport or instrument connection failed.
 """
     return command(api_any)
-
-
 
 
 def _make_drain_error_queue() -> Callable[..., list[str]]:
@@ -204,13 +211,29 @@ def _make_drain_error_queue() -> Callable[..., list[str]]:
     return command(api_any)
 
 
-clear_status = _make_status_api("clear_status", "clear_status", None)
+clear_status = _make_common_api("clear_status", "Clear instrument status (``*CLS``).", None)
 drain_error_queue = _make_drain_error_queue()
+esr = _make_common_api("esr", "Read and clear the event status register (``*ESR?``).", int)
+get_ese = _make_common_api("get_ese", "Read the standard event enable mask (``*ESE?``).", int)
+get_sre = _make_common_api("get_sre", "Read the service request enable mask (``*SRE?``).", int)
+identify = _make_common_api("identify", "Return the trimmed instrument identity (``*IDN?``).", str)
+opc = _make_common_api(
+    "opc",
+    "Request an operation-complete event when pending operations finish (``*OPC``).",
+    None,
+)
+reset = _make_common_api("reset", "Reset the instrument (``*RST``).", None)
+self_test = _make_common_api("self_test", "Run self-test and return its integer result (``*TST?``).", int)
+set_ese = _make_common_api("set_ese", "Write the standard event enable mask (``*ESE``).", None, takes_mask=True)
+set_sre = _make_common_api("set_sre", "Write the service request enable mask (``*SRE``).", None, takes_mask=True)
+wait_opc = _make_common_api("wait_opc", "Wait for an operation-complete reply (``*OPC?``).", None)
+wait_to_continue = _make_common_api(
+    "wait_to_continue",
+    "Tell the instrument to finish pending operations before processing later commands (``*WAI``).",
+    None,
+)
 
 
-
-
-esr = _make_status_api("esr", "esr", int)
 def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
     """Return a SCPI helper for one configured instrument.
 
@@ -224,5 +247,5 @@ def for_instrument(kind: str, equipment_id: int) -> SCPIHelper:
 
 query = _make_scpi_api("query", "query", str)
 query_float = _make_scpi_api("query_float", "query_float", float)
-status_byte = _make_status_api("status_byte", "status_byte", int)
+status_byte = _make_common_api("status_byte", "Read the status byte (``*STB?``).", int)
 write = _make_scpi_api("write", "write", None)

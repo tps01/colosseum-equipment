@@ -9,6 +9,8 @@ devices:
     dialogues:
       - q: "*IDN?"
         r: "Colosseum, Generic PSU (Simulated), 0001, 0.1.0"
+      - q: "*OPC?"
+        r: "+1"
       - q: "OUTP ON"
         r: ""
       - q: "OUTP OFF"

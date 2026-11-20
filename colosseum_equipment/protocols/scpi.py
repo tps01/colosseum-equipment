@@ -91,6 +91,12 @@ def _binary_block_header_step(buffer: bytearray) -> str:
     return "need_more"
 
 
+def validate_register_mask(mask: object) -> int:
+    if isinstance(mask, bool) or not isinstance(mask, int) or not 0 <= mask <= 255:
+        raise ValueError("mask must be an integer from 0 through 255")
+    return int(mask)
+
+
 class SCPIHelper:
     def __init__(self, transport: Transport) -> None:
         self._transport = transport
@@ -210,6 +216,49 @@ class SCPIHelper:
     def clear_status(self) -> None:
         """Clear status registers (``*CLS``)."""
         self.write("*CLS")
+
+    def identify(self) -> str:
+        return self.query("*IDN?")
+
+    def reset(self) -> None:
+        self.write("*RST")
+
+    def self_test(self) -> int:
+        return self._query_integer("*TST?")
+
+    def set_ese(self, *, mask: int) -> None:
+        self.write(f"*ESE {validate_register_mask(mask)}")
+
+    def get_ese(self) -> int:
+        return self._query_integer("*ESE?", byte=True)
+
+    def set_sre(self, *, mask: int) -> None:
+        self.write(f"*SRE {validate_register_mask(mask)}")
+
+    def get_sre(self) -> int:
+        return self._query_integer("*SRE?", byte=True)
+
+    def opc(self) -> None:
+        self.write("*OPC")
+
+    def wait_opc(self) -> None:
+        if (result := self._query_integer("*OPC?")) != 1:
+            raise EquipmentResponseError(f"*OPC? returned {result}; expected 1")
+
+    def wait_to_continue(self) -> None:
+        self.write("*WAI")
+
+    def _query_integer(self, command: str, *, byte: bool = False) -> int:
+        response = self._setting_value(command)
+        if not re.fullmatch(r"[+-]?[0-9]+", response):
+            raise EquipmentResponseError(f"{command} returned an invalid integer: {response!r}")
+        try:
+            value = int(response)
+        except ValueError as exc:
+            raise EquipmentResponseError(f"{command} returned an invalid integer: {response!r}") from exc
+        if byte and not 0 <= value <= 255:
+            raise EquipmentResponseError(f"{command} returned a mask outside 0 through 255: {value}")
+        return value
 
     def drain_error_queue(self, *, max_errors: int = 50) -> list[str]:
         """Drain SCPI system error queue until empty or ``max_errors``.
