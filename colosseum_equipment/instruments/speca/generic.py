@@ -8,6 +8,7 @@ from uuid import uuid4
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentTimeoutError
+from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.registry import best_effort_commands, instrument_model
 from colosseum_equipment.instruments.speca.bandwidth import BandwidthMethod, RefPowerMethod, bandwidth_edges_hz
 from colosseum_equipment.instruments.speca.trace_csv import (
@@ -48,6 +49,9 @@ class GenericSpecA:
             self.set_span(float(config["span"]))
         if "rbw" in config:
             self.set_rbw(float(config["rbw"]))
+
+    def align_all(self) -> None:
+        unsupported(self._model, "align_all")
 
     def set_center_frequency(self, frequency: float) -> None:
         self._scpi.write(f"FREQ:CENT {frequency:.6f}")

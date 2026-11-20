@@ -57,3 +57,29 @@ def test_usbtmc_transport_query_roundtrip() -> None:
 def test_usbtmc_transport_rejects_non_usbtmc_path() -> None:
     with pytest.raises(Exception, match="not a USBTMC"):
         UsbtmcTransport("/dev/ttyUSB0")
+
+
+@pytest.mark.parametrize("ready", [True, False])
+def test_alignment_uses_and_restores_usbtmc_read_deadline(monkeypatch, ready) -> None:
+    from colosseum_equipment.exceptions import EquipmentTimeoutError
+    from colosseum_equipment.protocols.scpi import SCPIHelper
+    from colosseum_equipment.transports import usbtmc
+
+    monkeypatch.setattr(usbtmc.os, "open", lambda *_args: 7)
+    monkeypatch.setattr(usbtmc.os, "write", lambda *_args: None)
+    monkeypatch.setattr(usbtmc.os, "read", lambda *_args: b"0\n")
+    monkeypatch.setattr(usbtmc.time, "monotonic", lambda: 0.0)
+
+    def wait_for_read(_read, _write, _error, timeout):
+        assert timeout == 600.0
+        return ([7] if ready else [], [], [])
+
+    monkeypatch.setattr(usbtmc.select, "select", wait_for_read)
+    transport = UsbtmcTransport("/dev/usbtmc0")
+    helper = SCPIHelper(transport)
+    if ready:
+        helper.align_all("CAL:ALL?", success_code=0)
+    else:
+        with pytest.raises(EquipmentTimeoutError):
+            helper.align_all("CAL:ALL?", success_code=0)
+    assert transport._timeout == 5.0

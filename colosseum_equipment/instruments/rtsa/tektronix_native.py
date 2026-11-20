@@ -181,9 +181,14 @@ class TekNativeRtsa(GenericRtsa):
 
 
 @instrument_model("rtsa", "tektronix-rsa5115b", "tektronix-rsa5126b")
-@supported_commands(*_SPECTRUM, "get_num_samples", "save_IQ_data", "capture_iq", "measure_sample_rate")
+@supported_commands(
+    *_SPECTRUM, "align_all", "preset", "get_num_samples", "save_IQ_data", "capture_iq", "measure_sample_rate",
+)
 class TekRsa5100bNative(TekNativeRtsa):
     """Exact RSA5100B models: finite acquisition, spectrum, recorded IQ, and capture_iq."""
+
+    align_all = TektronixRSA5100BRtsa.align_all
+    preset = TektronixRSA5100BRtsa.preset
 
 
 @instrument_model("rtsa", "tektronix-rsa6114a")

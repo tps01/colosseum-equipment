@@ -30,6 +30,7 @@ from colosseum_equipment.transports.tektronix_rsa import IqAcquisitionInfo, RsaA
 
 
 @supported_commands(
+    "align_all",
     "measure_sample_rate",
     "set_rbw", "set_iq_bandwidth", "set_reference_level", "set_attenuation_db",
     "set_auto_attenuation", "toggle_preamp",
@@ -88,6 +89,10 @@ class TekUsbRsa(GenericRtsa):
         if not math.isfinite(result.value):
             raise EquipmentResponseError(f"RSA API {name} returned a nonfinite value")
         return result.value
+
+    def align_all(self) -> None:
+        self._invalidate()
+        self._api.call("ALIGN_RunAlignment")
 
     def preset(self) -> None:
         self._invalidate()

@@ -83,7 +83,9 @@ def _write_trace_plot(
                 label = (f"Lower: {left:.{precision}e} Hz\nUpper: {right:.{precision}e} Hz\n"
                          f"Bandwidth: {right - left:.3e} Hz")
             if label:
-                axis.text(0.02, 0.97, label, transform=axis.transAxes, va="top", ha="left", fontsize=9,
+                figure.subplots_adjust(top=0.76 if edges_hz is not None else 0.85)
+                axis.text(0.02, 1.04, label, transform=axis.transAxes, va="bottom", ha="left",
+                          fontsize=9, clip_on=False,
                           bbox={"facecolor": "white", "edgecolor": "0.75", "pad": 5})
             axis.set_xlabel(x_label, fontsize=10, labelpad=7)
             axis.set_ylabel(y_label, fontsize=10, labelpad=7)
