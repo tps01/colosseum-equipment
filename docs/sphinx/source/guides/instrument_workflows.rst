@@ -376,15 +376,35 @@ For a relay with a supported channel 1, energize, read back and restore it::
    finally:
        col.equipment.relay.set_relay(relay_id=1, channel=1, enabled=False)
 
-SCPI diagnostics are procedural reads, and some are destructive::
+IEEE 488.2 common commands
+--------------------------
 
-   col.equipment.scpi.status_byte(psu_id=1)
-   col.equipment.scpi.esr(psu_id=1)
-   col.equipment.scpi.drain_error_queue(psu_id=1, max_errors=10)
+For a SCPI-compliant instrument, pass exactly one configured target ID to
+the common-command helpers. The same helpers accept ``serial_id`` for SCPI
+over serial. A VISA resource or a successful identity query alone does
+not establish support for the full set.
 
-``esr`` reads and clears the event register; draining the error queue removes
-entries. Capture these before ``clear_status`` when the error history matters.
-Use exactly one target ID. These calls do not replace numerical acceptance.
+.. code-block:: python
+
+   identity = col.equipment.scpi.identify(psu_id=1)
+   col.equipment.scpi.wait_opc(psu_id=1)
+   status = col.equipment.scpi.status_byte(psu_id=1)
+
+``wait_opc()`` sends ``*OPC?`` and blocks the caller until the instrument
+responds. ``opc()`` sends ``*OPC`` to request an event in the standard
+event status register when pending operations finish. ``wait_to_continue()``
+sends ``*WAI`` to delay subsequent command processing on the instrument.
+Both write helpers return when the write finishes. Blocking queries use the
+configured transport timeout, including ``self_test()``, which returns
+zero on success or the instrument's nonzero result code.
+
+Use ``get_ese()`` and ``set_ese(mask=...)`` for the standard event enable
+register and ``get_sre()`` and ``set_sre(mask=...)`` for the service request
+enable register. Masks are integers from 0 through 255.
+
+``esr()`` reads and clears the event register. ``drain_error_queue()`` removes
+entries. Read these before ``clear_status()`` when the error history matters.
+``reset()`` sends ``*RST``, which can change operating settings and outputs.
 
 GNSS freshness and acquisition
 ------------------------------
