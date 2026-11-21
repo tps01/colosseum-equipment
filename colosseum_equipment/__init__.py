@@ -43,6 +43,7 @@ _IO_CONFIG_SPECS = (
         required_keys=(),
         optional_keys=(
             "driver",
+            "role",
             "resource",
             "model",
             "voltage",
@@ -63,6 +64,7 @@ _IO_CONFIG_SPECS = (
         required_keys=(),
         optional_keys=(
             "driver",
+            "role",
             "resource",
             "model",
             "voltage",
@@ -124,5 +126,24 @@ def register(registry: PluginRegistry) -> None:
     registry.register_shutdown(close_all)
     for kind_spec in config_kind_specs():
         registry.register_config_section(kind_spec.section())
+    registry.register_config_section(
+        ConfigSectionSpec(
+            "equipment.jtag",
+            "jtag_id",
+            required_keys=(),
+            optional_keys=(
+                "driver",
+                "vivado_path",
+                "hw_server_path",
+                "hw_server_url",
+                "xvc_url",
+                "xvc_programming",
+                "target",
+                "device",
+                "clock_hz",
+                "timeout_s",
+            ),
+        ),
+    )
     for io_spec in _IO_CONFIG_SPECS:
         registry.register_config_section(io_spec)

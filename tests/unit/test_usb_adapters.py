@@ -4,7 +4,6 @@ from array import array
 from types import SimpleNamespace
 
 import pytest
-
 from colosseum_equipment.io.backends import _usb, totalphase, usb2any
 from colosseum_equipment.io.backends.factory import open_backend
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
@@ -345,3 +344,55 @@ def test_missing_sdk_is_actionable(monkeypatch):
     monkeypatch.setattr(totalphase, "import_module", lambda name: SimpleNamespace(AA_LIBRARY_LOADED=False))
     with pytest.raises(IoConnectionError, match="incompatible"):
         totalphase.load_api("aa")
+
+@pytest.mark.parametrize("bus", ["spi", "i2c"])
+def test_public_aardvark_target_lifecycle(tp, bus, io_runtime_context, io_bench, monkeypatch):
+    import colosseum as col
+    from colosseum.config import load_config
+    from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentTimeoutError
+    from colosseum_equipment.io.connections import close_all
+
+    load_config(io_bench(f"""
+        [io.{bus}]
+        {bus}_id = 1
+        driver = "totalphase-aardvark"
+        resource = "1234567890"
+        role = "target"
+    """))
+    flags = {"AA_ASYNC_NO_DATA": 0, "AA_ASYNC_I2C_READ": 1, "AA_ASYNC_I2C_WRITE": 2, "AA_ASYNC_SPI": 4}
+    for name, value in flags.items():
+        monkeypatch.setattr(tp, name, value, raising=False)
+    events = []
+    calls = []
+    monkeypatch.setattr(tp, "aa_async_poll", lambda handle, timeout: events.pop(0) if events else 0, raising=False)
+    monkeypatch.setattr(tp, f"aa_{bus}_slave_set_response", lambda handle, data: len(data), raising=False)
+    monkeypatch.setattr(tp, f"aa_{bus}_slave_enable", lambda *args: calls.append(("enable", *args)) or 0, raising=False)
+    monkeypatch.setattr(tp, f"aa_{bus}_slave_disable", lambda handle: calls.append(("disable", handle)) or 0, raising=False)
+    monkeypatch.setattr(tp, "aa_spi_slave_read", lambda h, n: (2, array("B", [1, 2])), raising=False)
+    monkeypatch.setattr(tp, "aa_i2c_slave_read_ext", lambda h, n: (0, 0x50, array("B", [1, 2]), 2), raising=False)
+    monkeypatch.setattr(tp, "aa_i2c_slave_write_stats_ext", lambda h: (0, 2), raising=False)
+    namespace = getattr(col.io, bus)
+    args = {f"{bus}_id": 1}
+    try:
+        with pytest.raises(EquipmentCapabilityError, match="controller"):
+            namespace.configure(**args)
+        with pytest.raises(IoConfigError, match="response length"):
+            namespace.target_start(**args, response=bytes(65), key="invalid")
+        namespace.target_start(**args, response=b"\x03\x04", key="start")
+        with pytest.raises(IoConfigError, match="conflicting"):
+            open_backend("i2c", 2, {"driver": "totalphase-aardvark", "resource": "1234567890"})
+        events.append(tp.AA_ASYNC_SPI if bus == "spi" else tp.AA_ASYNC_I2C_READ)
+        result = namespace.target_receive(**args, key="received")
+        assert (result["event"], result["data_hex"], result["nbytes"]) == ("received", "0102", 2)
+        if bus == "i2c":
+            assert calls[0] == ("enable", 7, 0x50, 2, 0)
+            events.append(tp.AA_ASYNC_I2C_WRITE)
+            assert namespace.target_receive(**args, key="transmitted")["event"] == "transmitted"
+        with pytest.raises(EquipmentTimeoutError, match="no Aardvark"):
+            namespace.target_receive(**args, timeout_ms=0, key="timeout")
+        namespace.target_stop(**args, key="stop")
+        namespace.target_start(**args, response=b"\x05", key="restart")
+    finally:
+        close_all()
+    assert [call[0] for call in calls] == ["enable", "disable", "enable", "disable"]
+    assert tp.opened == tp.closed == 1

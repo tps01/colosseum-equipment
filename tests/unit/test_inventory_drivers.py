@@ -492,10 +492,11 @@ def test_rohde_waveform_keeps_native_scaled_voltage_and_rejects_current_probe():
         scope._read_waveform_points(1)
 
 
-def test_infiniium_word_waveform_uses_signed_little_endian_and_actual_origin():
+@pytest.mark.parametrize("model", ["keysight-dsaz204a", "keysight-mxr104b", "keysight-mxr404b"])
+def test_infiniium_word_waveform_uses_signed_little_endian_and_actual_origin(model):
     scope, io = instrument(
         "oscope",
-        "keysight-dsaz204a",
+        model,
         {
             "ADER?": ["0", "1"],
             "CHAN1:UNIT?": "VOLT",
@@ -620,12 +621,15 @@ def test_nrx_owns_sensor_mapping_and_fresh_bus_trigger_but_fetch_does_not_rearm(
     assert io.events == ["UNIT2:POW?", "FETC2?"]
 
 
-def test_modern_tek_word_waveform_checks_preamble_and_scales_big_endian():
+@pytest.mark.parametrize(
+    ("model", "channel"), [("tektronix-mso58", 8), ("tektronix-mso54b", 4), ("tektronix-mso64b", 4)],
+)
+def test_modern_tek_word_waveform_checks_preamble_and_scales_big_endian(model, channel):
     import struct
 
     scope, io = instrument(
         "oscope",
-        "tektronix-mso58",
+        model,
         {
             "ACQuire:STATE?": "0",
             "WFMO:NR_PT?": "3",
@@ -641,19 +645,19 @@ def test_modern_tek_word_waveform_checks_preamble_and_scales_big_endian():
         },
     )
     io.read_raw = lambda: b"#16" + struct.pack(">3h", -32768, 0, 32767)
-    values, meta = scope._read_waveform_points(8)
+    values, meta = scope._read_waveform_points(channel)
     assert values == [-16382.5, 1.5, 16385]
     assert meta["xorigin_s"] == -1.5
-    assert "DATA:SOU CH8" in io.events
-    scope.set_channel_display(8, True)
-    assert io.events[-1] == "DISP:WAVEV1:CH8:STATE 1"
+    assert f"DATA:SOU CH{channel}" in io.events
+    scope.set_channel_display(channel, True)
+    assert io.events[-1] == f"DISP:WAVEV1:CH{channel}:STATE 1"
     io.responses["WFMO:PT_FMT?"] = "ENV"
     with pytest.raises(EquipmentCapabilityError):
-        scope._read_waveform_points(8)
+        scope._read_waveform_points(channel)
     io.responses["WFMO:PT_FMT?"] = "YT"
     io.read_raw = lambda: b"#14abcd"
     with pytest.raises(EquipmentResponseError):
-        scope._read_waveform_points(8)
+        scope._read_waveform_points(channel)
 
 
 def test_anritsu_binary_trace_uses_operation_bit8_and_little_endian():

@@ -1,4 +1,4 @@
-"""I2C master APIs (``col.io.i2c``). Measurements use domain ``equipment`` in SQLite.
+"""I2C controller and target APIs (``col.io.i2c``). Measurements use domain ``equipment`` in SQLite.
 
 Configured IDs select bench TOML rows. Core records command and measurement
 outcomes and applies its standard optional-failure handling. Unsupported model
@@ -14,7 +14,7 @@ from typing import Any
 from colosseum.decorators import command, measurement
 from colosseum.logging import get_logger
 
-from colosseum_equipment.io.connections import get_backend
+from colosseum_equipment.io.connections import get_bus_backend
 
 _logger = get_logger("colosseum.equipment")
 
@@ -39,7 +39,7 @@ def configure(
     """
     _logger.info("Configuring I2C %s address %s clock %s Hz", i2c_id, address, clock_hz)
     return dict(
-        get_backend("i2c", i2c_id).configure(
+        get_bus_backend("i2c", i2c_id, role="controller").configure(
             address=address,
             address_bits=address_bits,
             clock_hz=clock_hz,
@@ -59,7 +59,7 @@ def read(*, i2c_id: int, nbytes: int, key: str) -> bytes:
     """
     _logger.info("Reading %s bytes from I2C %s", nbytes, i2c_id)
     _ = key
-    return bytes(get_backend("i2c", i2c_id).read(nbytes))
+    return bytes(get_bus_backend("i2c", i2c_id, role="controller").read(nbytes))
 
 
 @command
@@ -70,7 +70,7 @@ def set_pullup(*, i2c_id: int, enabled: bool) -> None:
     :param enabled: ``True`` to enable pull-ups.
     """
     _logger.info("%s pull-ups on I2C %s", "Enabling" if enabled else "Disabling", i2c_id)
-    get_backend("i2c", i2c_id).set_pullup(enabled)
+    get_bus_backend("i2c", i2c_id, role="controller").set_pullup(enabled)
 
 
 @command
@@ -81,7 +81,7 @@ def write(*, i2c_id: int, data: bytes) -> None:
     :param data: Bytes to write; ``b\"\"`` is an address-only ACK probe.
     """
     _logger.info("Writing %s bytes to I2C %s", len(data), i2c_id)
-    get_backend("i2c", i2c_id).write(bytes(data))
+    get_bus_backend("i2c", i2c_id, role="controller").write(bytes(data))
 
 
 @measurement
@@ -102,4 +102,25 @@ def write_read(*, i2c_id: int, write_data: bytes, read_nbytes: int, key: str) ->
         i2c_id,
     )
     _ = key
-    return bytes(get_backend("i2c", i2c_id).write_read(bytes(write_data), read_nbytes))
+    return bytes(get_bus_backend("i2c", i2c_id, role="controller").write_read(bytes(write_data), read_nbytes))
+
+
+@command
+def target_start(*, i2c_id: int, response: bytes, key: str) -> None:
+    """Arm the configured target with a response for controller reads."""
+    _ = key
+    get_bus_backend("i2c", i2c_id, role="target").target_start(bytes(response))
+
+
+@measurement
+def target_receive(*, i2c_id: int, key: str, timeout_ms: int = 1000) -> dict[str, Any]:
+    """Process one target event. Return its type, byte count and any received data as hex."""
+    _ = key
+    return dict(get_bus_backend("i2c", i2c_id, role="target").target_receive(timeout_ms))
+
+
+@command
+def target_stop(*, i2c_id: int, key: str) -> None:
+    """Stop responding as a target and clear the current target session."""
+    _ = key
+    get_bus_backend("i2c", i2c_id, role="target").target_stop()

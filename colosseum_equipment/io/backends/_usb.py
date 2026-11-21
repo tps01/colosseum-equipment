@@ -108,3 +108,24 @@ class UsbBackend:
         if not self._closed:
             self._closed = True
             release(self._session)
+
+def target_wait_ms(value: int) -> int:
+    if type(value) is not int or not 0 <= value <= 2_147_483_647:
+        raise IoConfigError("target timeout_ms must be an integer in 0..2147483647")
+    return value
+
+
+def target_address(config: dict[str, Any]) -> int:
+    value = config.get("address", 0x50)
+    if config.get("address_bits", 7) != 7 or type(value) is not int or not 0x08 <= value <= 0x77:
+        raise IoConfigError("I2C target requires a non-reserved seven-bit address")
+    return value
+
+
+def target_response(value: bytes, maximum: int) -> None:
+    if not 1 <= len(value) <= maximum:
+        raise IoConfigError(f"target response length must be 1..{maximum} bytes")
+
+
+def target_data(data: bytes) -> dict[str, Any]:
+    return {"event": "received", "nbytes": len(data), "data_hex": data.hex()}

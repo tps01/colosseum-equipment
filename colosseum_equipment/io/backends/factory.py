@@ -4,6 +4,7 @@ from typing import Any
 
 from colosseum.logging import get_logger
 
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.io.backends.scpi.dio import ScpiDioBackend
 from colosseum_equipment.io.backends.sim.dio import SimDioBackend
 from colosseum_equipment.io.exceptions import IoConfigError
@@ -118,6 +119,16 @@ def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
 
 def open_i2c_backend(i2c_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
     driver = _driver_name(config)
+    if config.get("role") == "target":
+        if driver == "totalphase-aardvark":
+            from colosseum_equipment.io.backends.totalphase import AardvarkTarget
+
+            return AardvarkTarget(config, bus="i2c")
+        if driver == "ni-845x":
+            from colosseum_equipment.io.backends.ni.i2c_target import Ni8452I2cTarget
+
+            return Ni8452I2cTarget(config)
+        raise EquipmentCapabilityError(f"{driver} does not support I2C target mode")
     if driver == "totalphase-aardvark":
         from colosseum_equipment.io.backends.totalphase import AardvarkI2cBackend
 
@@ -149,6 +160,12 @@ def open_i2c_backend(i2c_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN40
 
 def open_spi_backend(spi_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
     driver = _driver_name(config)
+    if config.get("role") == "target":
+        if driver == "totalphase-aardvark":
+            from colosseum_equipment.io.backends.totalphase import AardvarkTarget
+
+            return AardvarkTarget(config, bus="spi")
+        raise EquipmentCapabilityError(f"{driver} does not support SPI target mode")
     if driver in ("totalphase-aardvark", "totalphase-cheetah"):
         from colosseum_equipment.io.backends.totalphase import TotalPhaseSpiBackend
 
