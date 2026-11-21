@@ -118,12 +118,19 @@ class RsaApiTransport:
             function = getattr(self._dll, name)
             function.argtypes = args
             function.restype = ct.c_int
+        align = getattr(self._dll, "ALIGN_RunAlignment", None)
+        if align is not None:
+            align.argtypes = []
+            align.restype = ct.c_int
 
     def call(self, name: str, *args: object) -> None:
         with self._call_lock:
             if self._closed:
                 raise EquipmentConnectionError("RSA API session is closed")
-            status = int(getattr(self._dll, name)(*args))
+            function = getattr(self._dll, name, None)
+            if function is None:
+                raise EquipmentCapabilityError(f"installed RSA API runtime does not export {name}")
+            status = int(function(*args))
         if status == 3001:  # errorTimeout, documented ReturnStatus value.
             raise EquipmentTimeoutError(f"RSA API {name} timed out")
         if status:

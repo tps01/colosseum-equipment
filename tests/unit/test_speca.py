@@ -171,6 +171,7 @@ def test_measurement_api_reference_power_forwarding(unit_runtime_context, monkey
     ("fwhm", "max"), ("occupied_power", "max"), ("half_prominence", "max"),
 ])
 def test_annotated_measurement_plot(unit_runtime_context, monkeypatch, tmp_path, measurement, method, reference):
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
     from colosseum_equipment.instruments.speca import generic
     from colosseum_equipment.instruments.speca.bandwidth import bandwidth_edges_hz
@@ -209,7 +210,12 @@ def test_annotated_measurement_plot(unit_runtime_context, monkeypatch, tmp_path,
         assert dot.get_xdata()[0] == pytest.approx(result)
         assert dot.get_ydata()[0] == pytest.approx(np.interp(result, frequencies, amplitudes))
         assert axis.texts[0].get_text() == f"Center: {result:.3e} Hz"
-    assert axis.texts[0].get_position() == (.02, .97)
+    figure = figures[0]
+    # Redraw the closed figure at its original DPI after PNG export.
+    FigureCanvasAgg(figure).draw()
+    annotation = axis.texts[0].get_bbox_patch().get_window_extent()
+    assert annotation.y0 >= axis.bbox.y1
+    assert annotation.y1 <= figure.bbox.y1
     assert axis.xaxis.get_minor_locator().__class__.__name__ == "AutoMinorLocator"
     assert axis.yaxis.get_minor_locator().__class__.__name__ == "AutoMinorLocator"
     assert artifacts[0]["value"]["source_key"] == "signal"

@@ -239,6 +239,29 @@ def open_rsa(monkeypatch, tmp_path, library=None, **config):
     return dev, library
 
 
+def test_rsa_alignment_uses_native_status_and_discards_capture(monkeypatch, tmp_path, unit_runtime_context):
+    from colosseum_equipment.api import rtsa
+
+    dev, library = open_rsa(monkeypatch, tmp_path, num_samples=4)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: dev)
+    try:
+        assert "ALIGN_RunAlignment" not in [name for name, _ in library.calls]
+        dev.acquire()
+        rtsa.align_all(rtsa_id=1)
+        assert library.calls[-1] == ("ALIGN_RunAlignment", ())
+        assert library.ALIGN_RunAlignment.argtypes == []
+        with pytest.raises(EquipmentCapabilityError):
+            dev.save_IQ_data(str(tmp_path / "stale.bin"))
+
+        dev.run()
+        library.errors["ALIGN_RunAlignment"] = 123
+        with pytest.raises(EquipmentResponseError, match="ALIGN_RunAlignment failed with status 123"):
+            rtsa.align_all(rtsa_id=1)
+        assert library.calls[-2:] == [("DEVICE_Stop", ()), ("ALIGN_RunAlignment", ())]
+    finally:
+        dev.close()
+
+
 @pytest.mark.parametrize("configured_rate", [None, 1000.0, 2000.0])
 def test_rsa_sample_rate_setting_refused_and_config_remains_a_check(monkeypatch, tmp_path, configured_rate):
     config = {} if configured_rate is None else {"sample_rate_hz": configured_rate}

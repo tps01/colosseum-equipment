@@ -114,6 +114,25 @@ class SCPIHelper:
     def query_float(self, command: str) -> float:
         return parse_float(self._setting_value(command))
 
+    def align_all(self, command: str, *, success_code: int) -> None:
+        """Run one blocking alignment query with enough time for its status reply."""
+        previous = getattr(self._transport, "_timeout", None)
+        setter = getattr(self._transport, "set_timeout_s", None)
+        if callable(setter) and previous is not None and previous < 600.0:
+            try:
+                setter(600.0)
+                response = self.query(command)
+            finally:
+                setter(previous)
+        else:
+            response = self.query(command)
+        try:
+            status = float(response)
+        except ValueError as exc:
+            raise EquipmentResponseError(f"{command} returned an invalid alignment status: {response!r}") from exc
+        if status != success_code:
+            raise EquipmentResponseError(f"{command} alignment failed with status {response!r}")
+
     def _setting_value(self, query: str) -> str:
         value = self.query(query)
         # Some scopes echo the SCPI header when HEADER is enabled. Preserve

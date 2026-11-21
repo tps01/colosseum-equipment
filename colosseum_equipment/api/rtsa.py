@@ -102,6 +102,17 @@ def acquire(*, rtsa_id: int, timeout_s: float = 60.0) -> str:
 
 
 @command
+@broadcastable("rtsa", "rtsa_id")
+def align_all(*, rtsa_id: EquipmentId) -> None:
+    """Run internal self-alignment on a supported analyzer and wait for its result.
+
+    :param rtsa_id: Configured ``equipment.rtsa`` ID or ``"all"``.
+    """
+    _logger.info("Running internal alignment on RTSA %s", rtsa_id)
+    get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).align_all()
+
+
+@command
 def capture_iq(
     *,
     rtsa_id: int,

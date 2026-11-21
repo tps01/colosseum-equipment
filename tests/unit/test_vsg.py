@@ -16,6 +16,30 @@ from colosseum_equipment.transports.visa import VISATransport
 from tests.support.stubs import RfStubTransport
 
 
+@pytest.mark.parametrize(("enabled", "mode", "message"), [
+    (True, "none", "Enabling modulation on VSG 1"),
+    (True, "  oFF ", "Enabling modulation on VSG 1"),
+    (True, " ", "Enabling modulation on VSG 1"),
+    (True, "AM", "Enabling AM modulation on VSG 1"),
+    (False, "AM", "Disabling modulation on VSG 1"),
+])
+def test_vsg_modulation_log_does_not_change_driver_arguments(
+    unit_runtime_context, enabled, mode, message,
+) -> None:
+    from colosseum_equipment.api import vsg
+
+    instrument = MagicMock()
+    with (
+        patch.object(vsg, "get_cached_instrument", return_value=instrument),
+        patch.object(vsg._logger, "info") as info,
+    ):
+        vsg.set_modulation(vsg_id=1, enabled=enabled, modulation_type=mode)
+
+    log_args = info.call_args.args
+    assert log_args[0] % log_args[1:] == message
+    instrument.set_modulation.assert_called_once_with(enabled, mode)
+
+
 def test_generic_vsg_scpi_fallbacks_write_commands() -> None:
     transport = RfStubTransport({"*OPC?": "1"})
     inst = build_instrument("vsg", 1, {"model": "generic"}, transport)

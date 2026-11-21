@@ -167,6 +167,61 @@ def test_vsg_set_power_and_frequency_retune(unit_runtime_context, tmp_path: Path
         assert any(cmd.startswith("POW:AMPL 15.000") for cmd in transport.written)
 
 
+@pytest.mark.parametrize("loss,correction", [(-10.0, "+10"), (5.0, "-5"), (0.0, "+0")])
+@pytest.mark.parametrize("operation", ["play_iq", "set_power", "set_frequency"])
+def test_vsg_calibration_info_logs_match_programmed_power(
+    unit_runtime_context, tmp_path, caplog, loss, correction, operation,
+):
+    path = tmp_path / "cal.csv"
+    path.write_text(f"frequency_hz,value\n1000000000,0\n2000000000,{loss}\n", encoding="utf-8")
+    cal_api.load_calibration(filename=str(path), key="cable")
+    transport = RfStubTransport({})
+    inst = build_instrument("vsg", 1, {"model": "generic"}, transport)
+    with patch("colosseum_equipment.api.vsg.get_cached_instrument", return_value=inst):
+        vsg_api.play_iq(vsg_id=1, filename="waveform.bin", center_freq_hz=1e9,
+                        amplitude_dbm=-10.0, sample_clock_hz=100e6)
+        if operation != "set_frequency":
+            vsg_api.set_frequency(vsg_id=1, frequency=2e9)
+        transport.written.clear()
+        caplog.clear()
+        with caplog.at_level("INFO", logger="colosseum.equipment"), patch.object(
+            vsg_api._logger, "handlers", [caplog.handler],
+        ):
+            if operation == "play_iq":
+                vsg_api.play_iq(vsg_id=1, filename="waveform.bin", center_freq_hz=2e9,
+                                amplitude_dbm=-10.0, sample_clock_hz=100e6, calibration="cable")
+            elif operation == "set_power":
+                vsg_api.set_power(vsg_id=1, power_dbm=-10.0, calibration="cable")
+            else:
+                vsg_api.set_frequency(vsg_id=1, frequency=2e9, calibration="cable")
+    programmed = -10.0 - loss
+    assert f"POW:AMPL {programmed:.3f}" in " ".join(transport.written)
+    message = next(record.getMessage() for record in caplog.records
+                   if record.levelname == "INFO" and "calibration=cable" in record.getMessage())
+    assert "VSG 1" in message
+    assert "2000000000" in message
+    assert "requested post-path power -10" in message
+    assert f"programming {programmed:g} dBm" in message
+    assert f"applied correction={correction} dB" in message
+    if operation == "play_iq":
+        assert "waveform.bin" in message
+
+
+def test_uncalibrated_vsg_logs_remain_concise(unit_runtime_context, caplog):
+    inst = build_instrument("vsg", 1, {"model": "generic"}, RfStubTransport({}))
+    with (
+        patch("colosseum_equipment.api.vsg.get_cached_instrument", return_value=inst),
+        patch.object(vsg_api._logger, "handlers", [caplog.handler]),
+        caplog.at_level("INFO", logger="colosseum.equipment"),
+    ):
+        vsg_api.play_iq(vsg_id=1, filename="waveform.bin", center_freq_hz=1e9,
+                        amplitude_dbm=-10.0, sample_clock_hz=100e6)
+        vsg_api.set_power(vsg_id=1, power_dbm=-5.0)
+    assert "Playing waveform.bin on VSG 1 at 1000000000.0 Hz and -10.0 dBm" in caplog.text
+    assert "Setting output power on VSG 1 to -5.0 dBm" in caplog.text
+    assert "applied correction" not in caplog.text
+
+
 def test_play_iq_records_carrier_and_applies_calibration(
     unit_runtime_context,
     tmp_path: Path,

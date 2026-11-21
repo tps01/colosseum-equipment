@@ -5,6 +5,7 @@ from __future__ import annotations
 import tarfile
 import builtins
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -21,6 +22,86 @@ from colosseum_equipment.protocols.scpi import format_definite_length_block
 from scipy.io import loadmat
 
 from tests.support.stubs import RfStubTransport
+
+
+@pytest.mark.parametrize(("kind", "model", "query", "status"), [
+    ("speca", "keysight-n9010b", "CAL:ALL?", "0"),
+    ("rtsa", "tektronix-rsa5100b", "*CAL", "1"),
+    ("rtsa", "tektronix-rsa5103b", "*CAL", "1"),
+    ("rtsa", "tektronix-rsa5115b", "*CAL", "1"),
+    ("rtsa", "tektronix-rsa5126b", "*CAL", "1"),
+])
+def test_align_all_uses_model_status_and_restores_timeout(
+    unit_runtime_context, monkeypatch, kind, model, query, status,
+):
+    from colosseum_equipment.api import rtsa, speca
+
+    transport = RfStubTransport()
+    transport._timeout = 5.0
+    timeout = Mock(side_effect=lambda value: setattr(transport, "_timeout", value))
+    read = Mock(return_value=status)
+    monkeypatch.setattr(transport, "set_timeout_s", timeout, raising=False)
+    monkeypatch.setattr(transport, "query", read)
+    inst = build_instrument(kind, 1, {"model": model}, transport)
+    api = speca if kind == "speca" else rtsa
+    monkeypatch.setattr(api, "get_cached_instrument", lambda *args: inst)
+    ids = {f"{kind}_id": 1}
+    read.assert_not_called()
+
+    api.align_all(**ids)
+    read.assert_called_once_with(query)
+    assert [call.args for call in timeout.call_args_list] == [(600.0,), (5.0,)]
+    assert transport._timeout == 5.0
+
+    for reply in (str(1 - int(status)), "invalid"):
+        read.return_value = reply
+        with pytest.raises(EquipmentResponseError, match="alignment"):
+            api.align_all(**ids)
+        assert transport._timeout == 5.0
+    read.side_effect = TimeoutError("alignment timed out")
+    with pytest.raises(TimeoutError, match="alignment timed out"):
+        api.align_all(**ids)
+    assert transport._timeout == 5.0
+
+    transport._timeout = 650.0
+    read.side_effect = None
+    read.return_value = status
+    timeout.reset_mock()
+    api.align_all(**ids)
+    timeout.assert_not_called()
+    assert not transport.written
+
+
+@pytest.mark.parametrize(("kind", "model"), [
+    ("speca", "generic"), ("speca", "keysight-e4440a"),
+    ("rtsa", "generic"), ("rtsa", "tektronix-rsa6000"), ("rtsa", "tektronix-rsa6114a"),
+])
+def test_unverified_analyzer_alignment_does_not_send_a_command(kind, model, monkeypatch):
+    transport = RfStubTransport()
+    read = Mock()
+    monkeypatch.setattr(transport, "query", read)
+    inst = build_instrument(kind, 1, {"model": model}, transport)
+    with pytest.raises(EquipmentCapabilityError, match="align_all"):
+        inst.align_all()
+    read.assert_not_called()
+    assert not transport.written
+
+
+@pytest.mark.parametrize("model", ["tektronix-rsa5115b", "tektronix-rsa5126b"])
+def test_native_rsa_explicit_preset(unit_runtime_context, monkeypatch, model):
+    from colosseum_equipment.api import rtsa
+
+    transport = RfStubTransport()
+    read = Mock(return_value="1")
+    monkeypatch.setattr(transport, "query", read)
+    inst = build_instrument("rtsa", 1, {"model": model}, transport)
+    monkeypatch.setattr(rtsa, "get_cached_instrument", lambda *args: inst)
+    assert not transport.written
+    read.assert_not_called()
+
+    rtsa.preset(rtsa_id=1)
+    assert transport.written == ["*RST"]
+    read.assert_called_once_with("*OPC?")
 
 
 @pytest.mark.parametrize("file_format", ["bin", "iq.tar"])
