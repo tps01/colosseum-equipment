@@ -107,20 +107,34 @@ def write_read(*, i2c_id: int, write_data: bytes, read_nbytes: int, key: str) ->
 
 @command
 def target_start(*, i2c_id: int, response: bytes, key: str) -> None:
-    """Arm the configured target with a response for controller reads."""
+    """Arm the configured target with a response for controller reads.
+
+    :param i2c_id: Configured I2C target ID.
+    :param key: Evidence key for this operation.
+    :param response: Bytes to return to the controller.
+    """
     _ = key
     get_bus_backend("i2c", i2c_id, role="target").target_start(bytes(response))
 
 
 @measurement
 def target_receive(*, i2c_id: int, key: str, timeout_ms: int = 1000) -> dict[str, Any]:
-    """Process one target event. Return its type, byte count and any received data as hex."""
+    """Process one target event. Return its type, byte count and any received data as hex.
+
+    :param i2c_id: Configured I2C target ID.
+    :param key: Evidence key for this operation.
+    :param timeout_ms: Maximum wait for an event in milliseconds.
+    """
     _ = key
     return dict(get_bus_backend("i2c", i2c_id, role="target").target_receive(timeout_ms))
 
 
 @command
 def target_stop(*, i2c_id: int, key: str) -> None:
-    """Stop responding as a target and clear the current target session."""
+    """Stop responding as a target and clear the current target session.
+
+    :param i2c_id: Configured I2C target ID.
+    :param key: Evidence key for this operation.
+    """
     _ = key
     get_bus_backend("i2c", i2c_id, role="target").target_stop()

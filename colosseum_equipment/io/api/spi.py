@@ -78,20 +78,34 @@ def transfer(*, spi_id: int, data: bytes, key: str) -> bytes:
 
 @command
 def target_start(*, spi_id: int, response: bytes, key: str) -> None:
-    """Arm the configured target with a response for controller reads."""
+    """Arm the configured target with a response for controller reads.
+
+    :param spi_id: Configured SPI target ID.
+    :param key: Evidence key for this operation.
+    :param response: Bytes to return to the controller.
+    """
     _ = key
     get_bus_backend("spi", spi_id, role="target").target_start(bytes(response))
 
 
 @measurement
 def target_receive(*, spi_id: int, key: str, timeout_ms: int = 1000) -> dict[str, Any]:
-    """Process one target event. Return its type, byte count and any received data as hex."""
+    """Process one target event. Return its type, byte count and any received data as hex.
+
+    :param spi_id: Configured SPI target ID.
+    :param key: Evidence key for this operation.
+    :param timeout_ms: Maximum wait for an event in milliseconds.
+    """
     _ = key
     return dict(get_bus_backend("spi", spi_id, role="target").target_receive(timeout_ms))
 
 
 @command
 def target_stop(*, spi_id: int, key: str) -> None:
-    """Stop responding as a target and clear the current target session."""
+    """Stop responding as a target and clear the current target session.
+
+    :param spi_id: Configured SPI target ID.
+    :param key: Evidence key for this operation.
+    """
     _ = key
     get_bus_backend("spi", spi_id, role="target").target_stop()

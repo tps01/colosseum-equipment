@@ -29,6 +29,7 @@ API_MODULES: tuple[tuple[str, str, str], ...] = (
     ("eload", "colosseum_equipment.api.eload", "col.equipment.eload"),
     ("freqcounter", "colosseum_equipment.api.freqcounter", "col.equipment.freqcounter"),
     ("gnss", "colosseum_equipment.api.gnss", "col.equipment.gnss"),
+    ("jtag", "colosseum_equipment.api.jtag", "col.equipment.jtag"),
     ("oscope", "colosseum_equipment.api.oscope", "col.equipment.oscope"),
     ("phasenoiseanalyzer", "colosseum_equipment.api.phasenoiseanalyzer", "col.equipment.phasenoiseanalyzer"),
     ("psu", "colosseum_equipment.api.psu", "col.equipment.psu"),

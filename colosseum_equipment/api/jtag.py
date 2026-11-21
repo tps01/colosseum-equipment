@@ -91,31 +91,56 @@ def _dispatch(jtag_id: int, key: str, operation: str, overrides: dict[str, Any],
 
 @command
 def register_server(*, jtag_id: int, key: str) -> dict[str, Any]:
-    """Register a Quartus remote server using the bench's credential environment variable."""
+    """Register a Quartus remote server using the bench's credential environment variable.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    """
     return _dispatch(jtag_id, key, "register_server", {})
 
 
 @measurement
 def list_targets(*, jtag_id: int, key: str, **options: Any) -> dict[str, Any]:
-    """List targets for the configured JTAG backend."""
+    """List targets for the configured JTAG backend.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param options: Per-operation JTAG settings.
+    """
     return _dispatch(jtag_id, key, "list_targets", options)
 
 
 @measurement
 def list_devices(*, jtag_id: int, key: str, **options: Any) -> dict[str, Any]:
-    """Read ordered devices, exact selectors, and available IDCODEs."""
+    """Read ordered devices, exact selectors, and available IDCODEs.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param options: Per-operation JTAG settings, including the target selector.
+    """
     return _dispatch(jtag_id, key, "list_devices", options)
 
 
 @measurement
 def get_clock(*, jtag_id: int, key: str, **options: Any) -> dict[str, Any]:
-    """Read the clock reported for the selected target."""
+    """Read the clock reported for the selected target.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param options: Per-operation JTAG settings.
+    """
     return _dispatch(jtag_id, key, "get_clock", options | {"clock_hz": None})
 
 
 @command
 def set_clock(*, jtag_id: int, clock_hz: int, key: str, **options: Any) -> dict[str, Any]:
-    """Apply and report a clock in Hz with the backend-specific scope."""
+    """Apply and report a clock in Hz with the backend-specific scope.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param clock_hz: Requested JTAG clock in Hz.
+    :param options: Per-operation JTAG settings.
+    """
     if clock_hz is None:
         raise ValueError("clock_hz must be a positive integer")
     return _dispatch(jtag_id, key, "set_clock", options | {"clock_hz": clock_hz})
@@ -125,7 +150,14 @@ def set_clock(*, jtag_id: int, clock_hz: int, key: str, **options: Any) -> dict[
 def scan(
     *, jtag_id: int, steps: Sequence[dict[str, Any]], key: str, scope: str = "chain", **options: Any,
 ) -> dict[str, Any]:
-    """Run TAP and IR/DR steps in one batch job using chain or device scope."""
+    """Run TAP and IR/DR steps in one batch job using chain or device scope.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param steps: Ordered TAP state changes or IR/DR shifts with a bit count and hex TDI.
+    :param scope: Chain scope for Vivado or device scope for Quartus.
+    :param options: Per-operation JTAG settings.
+    """
     vectors = []
     for step in steps:
         if set(step) == {"state"} and step["state"] in {"RESET", "IDLE", "IRPAUSE", "DRPAUSE"}:
@@ -153,7 +185,14 @@ def program_device(
     *, jtag_id: int, image: str | Path, key: str,
     while_tethered: Callable[[], None] | None = None, **options: Any,
 ) -> dict[str, Any]:
-    """Program FPGA SRAM, optionally running a callback during Quartus evaluation."""
+    """Program FPGA SRAM, optionally running a callback during Quartus evaluation.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param image: Path to a prebuilt bitstream or PDI for the selected device.
+    :param while_tethered: Bounded callback to run while a time-limited Quartus image is active.
+    :param options: Per-operation JTAG settings.
+    """
     if while_tethered is not None and not callable(while_tethered):
         raise TypeError("while_tethered must be a callback")
     return _dispatch(jtag_id, key, "program_device", options, image=_file(image, (".bit", ".pdi", ".sof")),
@@ -162,7 +201,12 @@ def program_device(
 
 @measurement
 def list_cfgmem_parts(*, jtag_id: int, key: str, **options: Any) -> dict[str, Any]:
-    """Enumerate flash parts from the backend or the bench configuration."""
+    """Enumerate flash parts from the backend or the bench configuration.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param options: Per-operation JTAG settings.
+    """
     return _dispatch(jtag_id, key, "list_cfgmem_parts", options)
 
 
@@ -201,7 +245,16 @@ def program_cfgmem(
     initialization_pdi: str | Path | None = None,
     **options: Any,
 ) -> dict[str, Any]:
-    """Program and verify a prebuilt configuration-memory image."""
+    """Program and verify a prebuilt configuration-memory image.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param image: Path to a prebuilt configuration-memory image.
+    :param flash_part: Exact configuration-memory part selector.
+    :param fsbl: Optional Zynq first-stage bootloader ELF.
+    :param initialization_pdi: Versal initialization PDI required for supported flash workflows.
+    :param options: Per-operation JTAG settings.
+    """
     return _flash(jtag_id, "program_cfgmem", key, image, flash_part, fsbl, initialization_pdi, options)
 
 
@@ -216,7 +269,16 @@ def verify_cfgmem(
     initialization_pdi: str | Path | None = None,
     **options: Any,
 ) -> dict[str, Any]:
-    """Compare flash to the image without requesting flash erase or write."""
+    """Compare flash to the image without requesting flash erase or write.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param image: Path to a prebuilt configuration-memory image.
+    :param flash_part: Exact configuration-memory part selector.
+    :param fsbl: Optional Zynq first-stage bootloader ELF.
+    :param initialization_pdi: Versal initialization PDI required for supported flash workflows.
+    :param options: Per-operation JTAG settings.
+    """
     return _flash(jtag_id, "verify_cfgmem", key, image, flash_part, fsbl, initialization_pdi, options)
 
 
@@ -230,7 +292,15 @@ def boot_from_cfgmem(
     boot_timeout_s: float = 30,
     **options: Any,
 ) -> dict[str, Any] | CommandResult:
-    """Soft-boot an FPGA, or reset a SoC through bounded board callbacks."""
+    """Soft-boot an FPGA, or reset a SoC through bounded board callbacks.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param reset: Optional board reset callback used with check_boot.
+    :param check_boot: Callback returning whether the expected image has booted.
+    :param boot_timeout_s: Time in seconds allowed for boot confirmation.
+    :param options: Per-operation JTAG settings.
+    """
     if not 0 < boot_timeout_s < float("inf"):
         raise ValueError("boot_timeout_s must be finite and positive")
     if reset is None:
@@ -265,7 +335,15 @@ def run_tcl(
     args: Sequence[str] = (),
     **options: Any,
 ) -> dict[str, Any]:
-    """Execute one trusted local Tcl file or inline script on the selected target."""
+    """Execute one trusted local Tcl file or inline script on the selected target.
+
+    :param jtag_id: Configured JTAG bench ID.
+    :param key: Evidence key for this operation.
+    :param script: Local Tcl script path. Supply either script or tcl.
+    :param tcl: Inline Tcl source.
+    :param args: Arguments exposed to the Tcl script as argv.
+    :param options: Per-operation JTAG settings.
+    """
     if (script is None) == (tcl is None):
         raise ValueError("Supply exactly one of script or tcl")
     if isinstance(args, str) or not all(isinstance(arg, str) for arg in args):

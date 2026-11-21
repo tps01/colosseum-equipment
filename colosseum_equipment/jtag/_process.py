@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,7 @@ def _launch(
     env = os.environ.copy()
     command: list[str] | str = [str(tool), *args]
     flags = 0
-    if os.name == "nt":
+    if sys.platform == "win32":
         flags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
         if tool.suffix.lower() in {".bat", ".cmd"}:
             # Only fixed flags, a relative Tcl filename and a numeric listen port reach cmd.
@@ -41,7 +42,7 @@ def _launch(
                 stdout=stream,
                 stderr=subprocess.STDOUT,
                 creationflags=flags,
-                start_new_session=os.name != "nt",
+                start_new_session=sys.platform != "win32",
             )
     except OSError as exc:
         raise EquipmentConnectionError(f"Cannot launch {tool}: {exc}") from exc
