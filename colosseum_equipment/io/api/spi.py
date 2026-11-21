@@ -1,4 +1,4 @@
-"""SPI master APIs (``col.io.spi``). Measurements use domain ``equipment`` in SQLite.
+"""SPI controller and target APIs (``col.io.spi``). Measurements use domain ``equipment`` in SQLite.
 
 Configured IDs select bench TOML rows. Core records command and measurement
 outcomes and applies its standard optional-failure handling. Unsupported model
@@ -14,7 +14,7 @@ from typing import Any
 from colosseum.decorators import command, measurement
 from colosseum.logging import get_logger
 
-from colosseum_equipment.io.connections import get_backend
+from colosseum_equipment.io.connections import get_bus_backend
 
 _logger = get_logger("colosseum.equipment")
 
@@ -47,7 +47,7 @@ def configure(
         chip_select,
     )
     return dict(
-        get_backend("spi", spi_id).configure(
+        get_bus_backend("spi", spi_id, role="controller").configure(
             clock_hz=clock_hz,
             mode=mode,
             chip_select=chip_select,
@@ -73,4 +73,39 @@ def transfer(*, spi_id: int, data: bytes, key: str) -> bytes:
     """
     _logger.info("Transferring %s bytes on SPI %s", len(data), spi_id)
     _ = key
-    return bytes(get_backend("spi", spi_id).transfer(bytes(data)))
+    return bytes(get_bus_backend("spi", spi_id, role="controller").transfer(bytes(data)))
+
+
+@command
+def target_start(*, spi_id: int, response: bytes, key: str) -> None:
+    """Arm the configured target with a response for controller reads.
+
+    :param spi_id: Configured SPI target ID.
+    :param key: Evidence key for this operation.
+    :param response: Bytes to return to the controller.
+    """
+    _ = key
+    get_bus_backend("spi", spi_id, role="target").target_start(bytes(response))
+
+
+@measurement
+def target_receive(*, spi_id: int, key: str, timeout_ms: int = 1000) -> dict[str, Any]:
+    """Process one target event. Return its type, byte count and any received data as hex.
+
+    :param spi_id: Configured SPI target ID.
+    :param key: Evidence key for this operation.
+    :param timeout_ms: Maximum wait for an event in milliseconds.
+    """
+    _ = key
+    return dict(get_bus_backend("spi", spi_id, role="target").target_receive(timeout_ms))
+
+
+@command
+def target_stop(*, spi_id: int, key: str) -> None:
+    """Stop responding as a target and clear the current target session.
+
+    :param spi_id: Configured SPI target ID.
+    :param key: Evidence key for this operation.
+    """
+    _ = key
+    get_bus_backend("spi", spi_id, role="target").target_stop()

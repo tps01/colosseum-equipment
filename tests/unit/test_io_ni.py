@@ -659,3 +659,63 @@ def test_close_all_releases_845x_session(
     close_all()
     assert "io:backend:i2c:1" not in ctx.resource_cache
     assert fake.closed_devices
+
+
+def test_ni_8452_target_processes_events_and_closes(io_runtime_context, io_bench):
+    from colosseum_equipment.exceptions import EquipmentTimeoutError
+
+    fake = _FakeNi845x()
+    calls = []
+    events = iter([(2, 5), (3, 1), (4, 6), (0, 0)])
+
+    def wait(handle, config, timeout, event, flags):
+        assert timeout == 20
+        event_type, event_flags = next(events)
+        _set_out(event, event_type)
+        _set_out(flags, event_flags)
+        return 0
+
+    def read(handle, config, limit, size, data, cleared):
+        assert limit == 128
+        data[0], data[1] = 0xaa, 0xbb
+        _set_out(size, 2)
+        _set_out(cleared, True)
+        return 0
+
+    def write(handle, config, size, data):
+        calls.append(bytes(data[:size]))
+        return 0
+
+    fake.ni845xI2cSlaveConfigurationOpen = lambda config: _set_out(config, 80) or 0
+    fake.ni845xI2cSlaveConfigurationSetAddress = lambda config, address: calls.append(address) or 0
+    fake.ni845xI2cSlaveConfigurationClose = lambda config: calls.append("close") or 0
+    fake.ni845xI2cSlaveStart = lambda handle, config: calls.append("start") or 0
+    fake.ni845xI2cSlaveStop = lambda handle, config: calls.append("stop") or 0
+    fake.ni845xI2cSlaveWaitForEvent = wait
+    fake.ni845xI2cSlaveRead = read
+    fake.ni845xI2cSlaveWrite = write
+    fake.ni845xI2cSlaveGetWriteInfo = lambda handle, config, count: _set_out(count, 1) or 0
+    ni845x_api.set_ni845x_library(fake)
+    load_config(io_bench("""
+        [io.i2c]
+        i2c_id = 1
+        driver = "ni-845x"
+        resource = "Dev1"
+        model = "usb-8452"
+        role = "target"
+        address = 0x42
+    """))
+    try:
+        col.io.i2c.target_start(i2c_id=1, response=b"\xfe", key="arm")
+        with pytest.raises(IoConfigError, match="already in use"):
+            Ni845xI2cBackend(resource="Dev1", model="usb-8452")
+        received = col.io.i2c.target_receive(i2c_id=1, key="received", timeout_ms=20)
+        assert received == {"address": 0x42, "event": "received", "flags": 5, "nbytes": 2, "data_hex": "aabb"}
+        assert col.io.i2c.target_receive(i2c_id=1, key="requested", timeout_ms=20)["event"] == "read_requested"
+        assert col.io.i2c.target_receive(i2c_id=1, key="transmitted", timeout_ms=20)["event"] == "transmitted"
+        with pytest.raises(EquipmentTimeoutError, match="no NI I2C"):
+            col.io.i2c.target_receive(i2c_id=1, key="timeout", timeout_ms=20)
+    finally:
+        close_all()
+    assert calls == [0x42, "start", b"\xfe", "stop", "close"]
+    assert len(fake.closed_devices) == 1

@@ -2,6 +2,8 @@
 
 ## Documentation
 
+- [JTAG setup for Vivado and Quartus](docs/jtag.md)
+
 API reference (GitHub Pages): <https://tps01.github.io/colosseum-equipment/>
 
 Framework hub: <https://tps01.github.io/colosseum-core/>

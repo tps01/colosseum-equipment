@@ -17,6 +17,21 @@ additional profiles, source references and remaining category work.
 
 ## Implemented subsets
 
+### Ethernet PHY waveform capture
+
+Equipment 0.24 adds exact model recognition and analog waveform export for
+`tektronix-mso54b`, `tektronix-mso64b`, `keysight-mxr104b`, and
+`keysight-mxr404b`. They use the existing Tektronix and Infiniium capture
+drivers. The already registered `rohde-rtp164` also exports analog waveforms.
+These profiles cover scope acquisition and voltage CSV export. Ethernet eye
+alignment and vendor compliance applications require a separate workflow.
+The new profiles were exercised with offline transport fixtures.
+
+- [Tektronix 4/5/6 Series programmer manual](https://www.tek.com/en/manual/oscilloscope/4-5-6-series-mso-programmer-manual-5-series-mso-low-profile)
+- [Keysight MXR/EXR programmer guide](https://go.keysight.com/us/en/assets/9018-18183/programming-guides/9018-18183.pdf)
+
+### Original inventory profiles
+
 Models below use the vendor prefix shown; for example `keysight-34410a`.
 Unsupported public operations raise `EquipmentCapabilityError` before sending
 commands. Existing model registrations are retained. Shared ASCII framing and IQ TAR

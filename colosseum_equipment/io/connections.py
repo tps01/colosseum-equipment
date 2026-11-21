@@ -7,6 +7,7 @@ from colosseum.context import get_context
 from colosseum.logging import get_logger
 
 from colosseum_equipment._cache import cached_resource, close_cached_resources
+from colosseum_equipment.exceptions import EquipmentCapabilityError
 
 _logger = get_logger("colosseum.io")
 
@@ -45,6 +46,13 @@ def get_backend(kind: str, resource_id: int) -> Any:  # noqa: ANN401
             driver,
         ),
     )
+
+
+def get_bus_backend(kind: str, resource_id: int, *, role: str) -> Any:  # noqa: ANN401
+    configured = get_config(kind, resource_id).get("role", "controller")
+    if configured != role:
+        raise EquipmentCapabilityError(f"io.{kind} requires role = {role!r} for this operation")
+    return get_backend(kind, resource_id)
 
 
 def close_all() -> None:
