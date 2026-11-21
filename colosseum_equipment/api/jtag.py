@@ -72,6 +72,8 @@ def _dispatch(jtag_id: int, key: str, operation: str, overrides: dict[str, Any],
     settings = _settings(driver, settings, overrides)
     if driver == "vivado" and operation == "register_server":
         raise EquipmentCapabilityError("Vivado connects through hw_server_url")
+    if driver != "quartus" and fields.get("while_tethered") is not None:
+        raise EquipmentCapabilityError("Tethered evaluation requires Quartus")
     if operation == "scan":
         _validate_scope(driver, fields.pop("scope"), fields["steps"])
     clock = settings.get("clock_hz")
@@ -147,9 +149,15 @@ def scan(
 
 
 @command
-def program_device(*, jtag_id: int, image: str | Path, key: str, **options: Any) -> dict[str, Any]:
-    """Program FPGA configuration SRAM or load a Versal PDI."""
-    return _dispatch(jtag_id, key, "program_device", options, image=_file(image, (".bit", ".pdi", ".sof")))
+def program_device(
+    *, jtag_id: int, image: str | Path, key: str,
+    while_tethered: Callable[[], None] | None = None, **options: Any,
+) -> dict[str, Any]:
+    """Program FPGA SRAM, optionally running a callback during Quartus evaluation."""
+    if while_tethered is not None and not callable(while_tethered):
+        raise TypeError("while_tethered must be a callback")
+    return _dispatch(jtag_id, key, "program_device", options, image=_file(image, (".bit", ".pdi", ".sof")),
+                     while_tethered=while_tethered)
 
 
 @measurement

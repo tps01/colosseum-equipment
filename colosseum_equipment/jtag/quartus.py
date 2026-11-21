@@ -25,7 +25,7 @@ from colosseum_equipment.exceptions import (
 from ._process import _launch, _record_log, _stop, _tail, scan_row
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
 _LOCK = RLock()
 _TCL = Path(__file__).with_name("quartus_jtag.tcl")
@@ -34,6 +34,7 @@ _OPERATIONS = {"program_device": ("p", ".sof"), "program_cfgmem": ("pvi", ".jic"
 _CABLE = re.compile(r"\s*(\d+)\)\s+(.+?)\s*")
 _DEVICE = re.compile(r"\s+([0-9a-fA-F]{8})(?:\s+(.*?))?\s*")
 _CLOCK = re.compile(r"\s*(\d+(?:\.\d+)?)\s*([kKmM]?)(?:Hz)?\s*", re.IGNORECASE)
+_EVALUATION_PROMPT = "Please enter i for info and q to quit"
 
 
 def _tool(name: str, root: Path) -> Path:
@@ -65,16 +66,26 @@ class _Job:
         self.log = work / "quartus.log"
         self.deadline = deadline
 
-    def call(self, name: str, *args: str, private: bool = False, restoring: bool = False) -> str:
+    def call(
+        self, name: str, *args: str, private: bool = False, restoring: bool = False, reply: bytes | None = None,
+        while_tethered: Callable[[], None] | None = None,
+    ) -> str:
         tool = _tool(name, self.root)
         deadline = time.monotonic() + 5 if restoring else self.deadline
         if deadline <= time.monotonic():
             raise EquipmentTimeoutError(f"No time remains to run {name}")
         log = None if private else self.log
         offset = self.log.stat().st_size if not private and self.log.exists() else 0
-        proc = _launch(tool, list(args), self.work, log)
+        proc = _launch(tool, list(args), self.work, log, pipe_stdin=reply is not None)
+        tethered = False
         try:
-            payload, _ = proc.communicate(timeout=max(0, deadline - time.monotonic()))
+            try:
+                if while_tethered is not None:
+                    tethered = self._wait_for_tether(proc)
+                    if tethered:
+                        while_tethered()
+            finally:
+                payload, _ = proc.communicate(input=reply, timeout=max(0, deadline - time.monotonic()))
         except subprocess.TimeoutExpired:
             raise EquipmentTimeoutError(f"{name} timed out") from None
         finally:
@@ -89,7 +100,20 @@ class _Job:
             detail = f": {_tail(self.log)}" if not private else "; check the Quartus server and credentials"
             error = EquipmentConnectionError if private else EquipmentResponseError
             raise error(f"{name} failed{detail}")
+        if while_tethered is not None and not tethered:
+            raise EquipmentResponseError("Quartus finished without opening a tethered evaluation")
         return "" if private else output
+
+    def _wait_for_tether(self, proc: subprocess.Popen[bytes]) -> bool:
+        while proc.poll() is None:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise EquipmentTimeoutError("Quartus did not reach its tethered evaluation prompt in time")
+            tail = _tail(self.log)
+            if "Configuration succeeded" in tail and _EVALUATION_PROMPT in tail:
+                return True
+            time.sleep(min(0.1, remaining))
+        return False
 
 
 def _inventory(output: str) -> list[dict[str, Any]]:
@@ -195,7 +219,9 @@ def _program(job: _Job, request: dict[str, Any], settings: dict[str, Any], targe
     # The programmer's operation grammar uses semicolons and @ as separators.
     staged = job.work / f"image{extension}"
     shutil.copyfile(image, staged)
-    job.call("quartus_pgm", "-c", target, "-m", "jtag", "-o", f"{flags};{staged.name}{device}")
+    # Legacy Quartus waits for 'q' after configuring a time-limited SOF and retries on EOF.
+    job.call("quartus_pgm", "-c", target, "-m", "jtag", "-o", f"{flags};{staged.name}{device}",
+             reply=None if flash else b"q\n", while_tethered=request.get("while_tethered"))
     return result
 
 

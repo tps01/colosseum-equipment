@@ -133,6 +133,7 @@ _ROWS = {
     "scan_row": ("scans", ("register", "bits", "tdo")),
 }
 _BATCH_ARGS = ["-mode", "batch", "-source", "driver.tcl", "-nolog", "-nojournal"]
+_OUTCOME_FIELDS = ("configured", "flash_written", "flash_verified")
 
 
 def _result_row(tag: str, fields: list[str], result: dict[str, Any]) -> None:
@@ -164,7 +165,7 @@ def _decode_result(path: Path) -> dict[str, Any]:
     for name in ("clock_hz", "requested_clock_hz"):
         if name in result:
             result[name] = int(result[name]) if result[name] else None
-    for name in ("configured", "flash_written", "flash_verified", "temporary_device_configuration", "clock_adjusted"):
+    for name in (*_OUTCOME_FIELDS, "temporary_device_configuration", "clock_adjusted"):
         if name in result:
             result[name] = None if not result[name] else result[name] in ("true", "1")
     return result
@@ -193,7 +194,17 @@ def _execute(vivado: Path, work: Path, request: dict[str, Any], end: float) -> d
             time.sleep(POLL_S)
         proc.wait(timeout=max(0, end - time.monotonic()))
     except subprocess.TimeoutExpired as exc:
-        raise EquipmentTimeoutError(f"Vivado {request['operation']} timed out: {_tail(log)}") from exc
+        operation = request["operation"]
+        try:
+            outcome = _decode_result(work / "result")
+        except (OSError, ValueError, IndexError):
+            raise EquipmentTimeoutError(f"Vivado {operation} timed out: {_tail(log)}") from exc
+        if "error" in outcome:
+            detail = f"operation failed in {outcome['phase']}: {outcome['error']}"
+        else:
+            evidence = ", ".join(f"{name}={outcome[name]}" for name in _OUTCOME_FIELDS if name in outcome)
+            detail = f"operation completed ({evidence})" if evidence else "operation completed"
+        raise EquipmentTimeoutError(f"Vivado {operation} cleanup timed out after {detail}") from exc
     finally:
         _stop(proc)
     try:
@@ -227,6 +238,10 @@ def _job(vivado: Path, endpoint: str, request: dict[str, Any], end: float, key: 
             output = _execute(vivado, work, dict(request, hw_server_url=endpoint), end)
             status = "ERROR" if "error" in output else "PASS"
             return output
+        except EquipmentTimeoutError as exc:
+            with (work / "vivado.log").open("a", encoding="utf-8") as stream:
+                stream.write(f"\nColosseum: {exc}\n")
+            raise
         finally:
             _record_log(work / "vivado.log", key, request["operation"], status)
 

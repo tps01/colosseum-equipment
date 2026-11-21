@@ -234,6 +234,20 @@ def test_reuse_default_server_without_owning_it(fake_vivado, io_runtime_context,
 def test_timeout_preserves_log(fake_vivado, io_runtime_context):
     configure, _ = fake_vivado
     configure()
-    with pytest.raises(EquipmentTimeoutError):
+    with pytest.raises(EquipmentTimeoutError, match="run_tcl timed out"):
         col.equipment.jtag.run_tcl(jtag_id=1, key="timeout", tcl="after 5000", timeout_s=1)
     assert list(io_runtime_context.output_dir.glob("jtag/*.log"))
+
+
+def test_program_timeout_during_cleanup_reports_configuration(fake_vivado, io_runtime_context, tmp_path, monkeypatch):
+    configure, launches = fake_vivado
+    configure()
+    monkeypatch.setenv("FAKE_VIVADO_STALL_ON_CLOSE", "1")
+    bit = tmp_path / "image.bit"
+    bit.touch()
+    with pytest.raises(EquipmentTimeoutError, match="cleanup timed out.*configured=True"):
+        col.equipment.jtag.program_device(jtag_id=1, image=bit, key="bit", timeout_s=2)
+    logs = list(io_runtime_context.output_dir.glob("jtag/*.log"))
+    assert len(logs) == 1
+    assert "cleanup timed out" in logs[0].read_text(encoding="utf-8")
+    assert len(launches) == 1

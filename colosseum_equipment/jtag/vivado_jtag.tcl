@@ -339,11 +339,12 @@ proc ::colosseum_jtag::main {} {
         if {[dict get $opts -errorcode] eq {COLOSSEUM CAPABILITY}} { emit kind capability }
         puts stderr [dict get $opts -errorinfo]
     }
+    # Publish the operation result before any hardware cleanup can block.
+    emit complete
+    close $result
     if {$opened ne ""} { catch {close_hw_target $opened} }
     if {$server ne ""} { catch {disconnect_hw_server $server} }
     catch {close_hw_manager}
-    emit complete
-    close $result
     exit $failed
 }
 

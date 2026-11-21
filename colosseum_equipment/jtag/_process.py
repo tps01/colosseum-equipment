@@ -18,7 +18,9 @@ from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentConnectionError
 
 
-def _launch(tool: Path, args: list[str], cwd: Path, log: Path | None) -> subprocess.Popen[bytes]:
+def _launch(
+    tool: Path, args: list[str], cwd: Path, log: Path | None, *, pipe_stdin: bool = False,
+) -> subprocess.Popen[bytes]:
     env = os.environ.copy()
     command: list[str] | str = [str(tool), *args]
     flags = 0
@@ -35,7 +37,7 @@ def _launch(tool: Path, args: list[str], cwd: Path, log: Path | None) -> subproc
                 command,
                 cwd=cwd,
                 env=env,
-                stdin=subprocess.DEVNULL,
+                stdin=subprocess.PIPE if pipe_stdin else subprocess.DEVNULL,
                 stdout=stream,
                 stderr=subprocess.STDOUT,
                 creationflags=flags,

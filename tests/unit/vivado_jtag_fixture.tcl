@@ -19,7 +19,10 @@ proc get_hw_targets {args} {
     return target
 }
 proc open_hw_target {args} { set ::opened 1 }
-proc close_hw_target {target} { set ::opened 0 }
+proc close_hw_target {target} {
+    if {[info exists ::env(FAKE_VIVADO_STALL_ON_CLOSE)]} { after 30000 }
+    set ::opened 0
+}
 proc current_hw_target {} { return target }
 proc get_hw_devices {args} {
     if {[info exists ::env(FAKE_VERSAL_DONE)] && $::env(FAKE_VERSAL_DONE) ne "missing_dap"} {

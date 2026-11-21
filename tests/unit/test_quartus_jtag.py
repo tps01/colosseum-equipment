@@ -54,6 +54,12 @@ elif tool == "quartus_pgm":
     assert args[-1].endswith("@2")
     if (state / "stall").exists():
         time.sleep(20)
+    if args[-1].startswith("p;image.sof") and not (state / "untethered").exists():
+        (state / "evaluation_open").touch()
+        print("Configuration succeeded", flush=True)
+        print("Please enter i for info and q to quit:", flush=True)
+        assert sys.stdin.readline() == "q\n"
+        (state / "evaluation_closed").touch()
     print("Quartus Programmer was successful")
 """.replace("HARDWARE", repr(_TCL))
 
@@ -68,9 +74,10 @@ def bench(io_runtime_context, io_bench, monkeypatch, tmp_path):
     calls = []
     launch = quartus._launch
 
-    def fake_launch(tool, args, cwd, log):
+    def fake_launch(tool, args, cwd, log, *, pipe_stdin=False):
         calls.append((tool.stem, args))
-        return launch(Path(sys.executable), ["-B", "-c", _TOOLS, tool.stem, str(tmp_path), *args], cwd, log)
+        return launch(Path(sys.executable), ["-B", "-c", _TOOLS, tool.stem, str(tmp_path), *args], cwd, log,
+                      pipe_stdin=pipe_stdin)
 
     monkeypatch.setattr(quartus, "_launch", fake_launch)
     load_config(io_bench(f"""
@@ -111,6 +118,37 @@ def test_inventory_and_flash(bench, tmp_path):
     resets = []
     boot = api.boot_from_cfgmem(**selected, key="boot", reset=lambda: resets.append(1), check_boot=lambda: bool(resets))
     assert boot["boot_method"] == "board_reset"
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_tethered_callback_runs_before_quartus_quits(bench, tmp_path, fail):
+    _, selected = bench
+    image = tmp_path / "evaluation.sof"
+    image.touch()
+
+    def check_evaluation():
+        assert (tmp_path / "evaluation_open").exists()
+        assert not (tmp_path / "evaluation_closed").exists()
+        if fail:
+            raise RuntimeError("boot failed")
+
+    if fail:
+        with pytest.raises(RuntimeError, match="boot failed"):
+            col.equipment.jtag.program_device(**selected, key="sof", image=image, while_tethered=check_evaluation)
+    else:
+        result = col.equipment.jtag.program_device(**selected, key="sof", image=image, while_tethered=check_evaluation)
+        assert result["configured"]
+    assert (tmp_path / "evaluation_closed").exists()
+
+
+def test_tethered_callback_requires_an_evaluation_prompt(bench, tmp_path):
+    _, selected = bench
+    image = tmp_path / "regular.sof"
+    image.touch()
+    (tmp_path / "untethered").touch()
+    with pytest.raises(EquipmentResponseError, match="without opening a tethered evaluation"):
+        col.equipment.jtag.program_device(**selected, key="sof", image=image,
+                                          while_tethered=lambda: pytest.fail("unexpected callback"))
 
 
 def test_stp_and_temporary_clock(bench, tmp_path):

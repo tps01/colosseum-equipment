@@ -25,6 +25,10 @@ Explicit launcher paths or roots take precedence over XILINX_VIVADO and PATH.
 An explicit hardware-server endpoint is externally managed. Otherwise the run
 tries to reuse the local server on port 3121 and starts a private loopback
 server if needed. Equipment shuts down owned servers at run end. The
+bench running Colosseum needs Vivado. A remote host with the JTAG cable
+can run AMD's standalone hardware server with matching cable drivers and the
+same Vivado release. Set `hw_server_url` to that host and use `list_targets`
+and `list_devices` to verify the cable and chain before programming. The
 hardware-server host must be able to reach the XVC endpoint. Use
 xvc_programming only with an endpoint qualified for programming, such as an
 external XVC-to-JTAG bridge. Debug Bridge IP supports debug access.
@@ -63,11 +67,14 @@ True when board evidence identifies the expected image. A positive check
 counts only if it returns before the boot deadline.
 
 Dry runs skip vendor programs. With artifacts enabled, each job retains a log
-under jtag/. The operations were exercised with offline fixtures. Match Vivado
-and hardware-server releases and qualify flash, boot, cable and JTAG clock
+under jtag/. If Vivado stalls after the operation returns, the timeout and log
+identify cleanup as the failing phase and include any reported configuration or
+flash verification status. The operation is not retried. The operations were
+exercised with offline fixtures. Qualify flash, boot, cable and JTAG clock
 behavior on your board before relying on the results.
 
 - [Vivado Tcl target commands](https://docs.amd.com/r/2025.2-English/ug835-vivado-tcl-commands/open_hw_target)
+- [Connecting to a remote hardware server](https://docs.amd.com/r/2024.2-English/ug908-vivado-programming-debugging/Connecting-to-a-Remote-hw_server-Running-on-a-Lab-Machine)
 - [FPGA and MPSoC memory workflows](https://docs.amd.com/r/2023.1-English/ug908-vivado-programming-debugging/Configuration-and-Boot-Memory-Verify-and-Readback-for-FPGAs-or-MPSoCs)
 - [Versal configuration memory](https://docs.amd.com/r/2025.2-English/ug908-vivado-programming-debugging/Programming-a-Configuration-Memory-Device-Versal-Devices)
 
@@ -113,6 +120,10 @@ device's documented IR width for `ir_bits`. `run_tcl` scripts receive
 
 Use a prebuilt SOF for direct programming and a prebuilt active-serial JIC for
 flash program/verify. Identify the board's expected flash part with `flash_part`.
+For a time-limited SOF, pass a bounded `while_tethered` callback to
+`program_device` to exercise the FPGA before Quartus closes the evaluation.
+The callback runs after successful configuration at the Quartus evaluation
+prompt. Use the same cable from any vendor tools started by the callback.
 `list_cfgmem_parts` lists the names declared in the bench's `cfgmem_parts` and
 reports `parts_source="bench"`. Quartus reports the expected name with
 `flash_part_source="bench"` and `flash_part_verified=false`. The programmer's
