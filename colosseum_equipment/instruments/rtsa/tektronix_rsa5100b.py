@@ -11,6 +11,7 @@ from colosseum.logging import get_logger
 from colosseum_equipment._paths import resolve_artifact_path
 from colosseum_equipment.evidence import record_artifact
 from colosseum_equipment.exceptions import EquipmentResponseError, EquipmentTimeoutError
+from colosseum_equipment.instruments._capabilities import unsupported
 from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.rtsa.generic import GenericRtsa
 from colosseum_equipment.instruments.rtsa.iq_export import (
@@ -58,6 +59,11 @@ class TektronixRSA5100BRtsa(GenericRtsa):
         active = self._scpi.query("DISP:WIND:ACT:MEAS?").upper()
         if "SPEC" not in active:
             self._scpi.write("DISP:WIND:ACT:MEAS SPECtrum")
+
+    def align_all(self) -> None:
+        if self._model == "tektronix-rsa6000":
+            unsupported(self._model, "align_all")
+        self._scpi.align_all("*CAL", success_code=1)
 
     def preset(self) -> None:
         self._scpi.write("*RST")

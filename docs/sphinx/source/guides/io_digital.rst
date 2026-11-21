@@ -220,7 +220,8 @@ master transactions. All implementations remain within this plugin.
      - Supported operations
    * - Aardvark
      - ``totalphase-aardvark``
-     - I2C master (7/10-bit), pull-ups, repeated START; SPI master, CS 0
+     - I2C controller (7/10-bit) and target (7-bit), pull-ups, repeated START as
+       controller. SPI controller and target on CS 0.
    * - Cheetah
      - ``totalphase-cheetah``
      - SPI master, CS 0..2, queued transfers
@@ -248,6 +249,51 @@ firmware may impose tighter limits and return an error. Cheetah supports
 367 Hz..8 MHz. SPI dividers are rounded down in frequency for USB2ANY.
 Vendor-selected actual rates are available as backend ``actual_clock_hz``;
 SPI backends and Aardvark I2C also write them to the debug log.
+
+SPI and I2C target mode
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Set ``role = "target"`` on the bus row to make the adapter respond to a
+separate controller. The Aardvark supports both buses. NI USB-8452 supports
+I2C target mode through the NI-845x slave API. The USB-8451, Cheetah, and
+USB2ANY profiles continue to provide their controller operations.
+
+.. code-block:: toml
+
+   [io.spi]
+   spi_id = 1
+   driver = "totalphase-aardvark"
+   resource = "FILL_IN_HERE"
+   role = "target"
+   mode = 0
+
+Call ``target_start(response=..., key=...)`` with the configured bus ID to arm
+the target. After the external controller starts, call
+``target_receive(timeout_ms=..., key=...)`` for each event. A received event
+contains ``event="received"``, ``nbytes``, and ``data_hex``. I2C also reports
+completed read responses as ``event="transmitted"`` with the count of bytes
+the adapter sent. A wait with no event raises ``EquipmentTimeoutError``; zero
+milliseconds polls without waiting. Use ``target_stop(key=...)`` in cleanup.
+Colosseum also stops owned targets at run end.
+
+For I2C, use ``[io.i2c]`` and configure an unshifted non-reserved 7-bit
+``address``. Use ``driver = "ni-845x"`` and ``model = "usb-8452"`` for NI.
+The external controller supplies the clock. Aardvark responses are preloaded
+and may be up to 64 bytes. NI waits for the host to service read requests.
+Keep calling ``target_receive`` while the external controller is active;
+an NI ``read_requested`` event means Colosseum supplied the response
+to the adapter, and a later ``transmitted`` event reports the actual count.
+NI reports the vendor event flags, and a received event can represent a
+buffer-sized chunk of a longer controller write. See the NI manual for
+event flag definitions.
+
+A target row reserves its adapter for the run. Use a separate adapter for
+the controller and match the voltage, ground, pull-ups, and SPI mode to the
+fixture. For SPI, compare the DUT's recorded MISO bytes separately from the
+MOSI bytes received by the adapter.
+
+References: `Aardvark target API <https://www.totalphase.com/support/articles/200468316-aardvark-i2c-spi-host-adapter-user-manual/>`_,
+`NI-845x manual (chapter 10) <https://download.ni.com/support/manuals/371746e.pdf>`_.
 
 Runtime installation and licensing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

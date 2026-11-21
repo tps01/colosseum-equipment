@@ -1,7 +1,7 @@
 """Infiniium single-shot acquisition with ADER event completion and WORD data.
 
 Manuals: Keysight Infiniium Programmer's Guide 9018-07141 / 90000 series
-9018-06975. Basic analog voltage acquisition; segmented acquisition excluded.
+9018-06975 and MXR/EXR 9018-18183. Basic analog voltage acquisition; segmented acquisition excluded.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from colosseum_equipment.instruments.oscope.generic import GenericOscope
 from colosseum_equipment.instruments.registry import instrument_model
 
 
-@instrument_model("oscope", "keysight-dsaz204a", "keysight-dsa71254")
+@instrument_model("oscope", "keysight-dsaz204a", "keysight-dsa71254", "keysight-mxr104b", "keysight-mxr404b")
 @supported_commands(
     "set_channel_display",
     "get_channel_display",

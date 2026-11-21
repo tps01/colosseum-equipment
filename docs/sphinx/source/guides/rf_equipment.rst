@@ -196,6 +196,20 @@ API reference
 Public ``col.equipment.*`` RF APIs are documented in Python docstrings on the
 ``colosseum_equipment.api`` modules (``vsg``, ``asg``, ``speca``, ``rtsa``, ``vna``).
 
+Analyzer self-alignment
+-----------------------
+
+Run ``col.equipment.speca.align_all(speca_id=...)`` on Keysight X-Series
+analyzers, or ``col.equipment.rtsa.align_all(rtsa_id=...)`` on Tektronix
+RSA5100B-family SCPI and direct USB RSA analyzers. These commands wait for
+the instrument's result and raise on failure. Allow several minutes for SCPI
+alignment. On the direct USB path, alignment stops an active acquisition
+and discards cached IQ data.
+
+``col.equipment.rtsa.preset(rtsa_id=...)`` resets the native RSA5115B and
+RSA5126B and waits for reset completion. Use ``align_all`` to explicitly run
+self-alignment.
+
 Trace center frequency
 ----------------------
 

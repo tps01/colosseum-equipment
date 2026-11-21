@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 
 from colosseum_equipment.exceptions import EquipmentResponseError
-from colosseum_equipment.instruments._capabilities import supported_commands
+from colosseum_equipment.instruments._capabilities import supported_commands, unsupported
 from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.speca.generic import GenericSpecA
 from colosseum_equipment.instruments.speca.trace_csv import frequency_axis, parse_trace_amplitudes
@@ -27,6 +27,7 @@ from colosseum_equipment.instruments.speca.trace_csv import frequency_axis, pars
     "keysight-e4440a",
 )
 @supported_commands(
+    "align_all",
     "set_center_frequency",
     "set_start_frequency",
     "set_stop_frequency",
@@ -58,6 +59,10 @@ from colosseum_equipment.instruments.speca.trace_csv import frequency_axis, pars
 class KeysightSpectrumAnalyzer(GenericSpecA):
     """Spectrum mode only; scalar markers and linear-frequency trace CSV."""
 
+    def align_all(self) -> None:
+        if self._model == "keysight-e4440a":
+            unsupported(self._model, "align_all")
+        self._scpi.align_all("CAL:ALL?", success_code=0)
 
     def preset(self) -> None:
         self._scpi.write("INST:SEL SA")

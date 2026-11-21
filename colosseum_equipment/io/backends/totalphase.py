@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from array import array
 from importlib import import_module
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from colosseum.logging import get_logger
 
+from colosseum_equipment.exceptions import EquipmentTimeoutError
 from colosseum_equipment.io.backends._usb import (
     Session,
     UsbBackend,
@@ -21,8 +22,15 @@ from colosseum_equipment.io.backends._usb import (
     count,
     size,
     spi_settings,
+    target_address,
+    target_data,
+    target_response,
+    target_wait_ms,
 )
 from colosseum_equipment.io.exceptions import IoConfigError, IoConnectionError
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _logger = get_logger("colosseum.io")
 _MODULES = {"aa": "aardvark_py", "ch": "cheetah_py", "bg": "beagle_py"}
@@ -376,3 +384,100 @@ class TotalPhaseSpiBackend(UsbBackend):
             count(received, len(data), "SPI transfer")
             count(len(reply), len(data), "SPI transfer buffer")
             return bytes(reply)
+
+# Target mode uses a dedicated adapter session. Controller SPI/I2C rows may
+# still share an adapter with each other through the original shared session.
+class AardvarkTarget(UsbBackend):
+    def __init__(self, config: dict[str, Any], *, bus: str) -> None:
+        self._bus = bus
+        self._address = target_address(config) if bus == "i2c" else None
+        self._mode = int(config.get("mode", 0))
+        if bus == "spi":
+            spi_settings(1, self._mode, int(config.get("chip_select", 0)), int(config.get("bits_per_word", 8)), 0)
+        self._pullup = bool(config.get("pullup", True))
+        self._active = False
+        self._session = open_session("aa", config, exclusive=True)
+
+    def target_start(self, response: bytes) -> None:
+        target_response(response, 64)
+        session = self.session()
+        api, handle = session.api, session.handle
+        with session.lock:
+            if self._active:
+                raise IoConfigError("stop the Aardvark target before starting another response")
+            self._discard_events(session)
+            if self._bus == "spi":
+                checked(api.aa_spi_configure(handle, self._mode >> 1, self._mode & 1, api.AA_SPI_BITORDER_MSB),
+                        "aa_spi_configure")
+                count(api.aa_spi_slave_set_response(handle, array("B", response)), len(response),
+                      "aa_spi_slave_set_response")
+                self._enable(api.aa_spi_slave_enable, handle)
+            else:
+                checked(api.aa_i2c_pullup(handle, api.AA_I2C_PULLUP_BOTH if self._pullup else api.AA_I2C_PULLUP_NONE),
+                        "aa_i2c_pullup")
+                count(api.aa_i2c_slave_set_response(handle, array("B", response)), len(response),
+                      "aa_i2c_slave_set_response")
+                self._enable(api.aa_i2c_slave_enable, handle, self._address, len(response), 0)
+
+    def _enable(self, enable: Callable[..., int], *args: object) -> None:
+        # Communication failures can leave the device enabled despite a negative status.
+        self._active = True
+        try:
+            checked(enable(*args), f"aa_{self._bus}_slave_enable")
+        except IoConnectionError:
+            self.target_stop()
+            raise
+
+    def target_receive(self, timeout_ms: int) -> dict[str, Any]:
+        session = self.session()
+        api, handle = session.api, session.handle
+        with session.lock:
+            if not self._active:
+                raise IoConfigError("start the Aardvark target before receiving")
+            pending = checked(api.aa_async_poll(handle, target_wait_ms(timeout_ms)), "aa_async_poll")
+            if pending == api.AA_ASYNC_NO_DATA:
+                raise EquipmentTimeoutError("no Aardvark target event before the timeout")
+            if self._bus == "spi" and pending & api.AA_ASYNC_SPI:
+                received, data = api.aa_spi_slave_read(handle, 65535)
+                count(received, len(data), "aa_spi_slave_read")
+                return target_data(bytes(data))
+            if self._bus == "i2c" and pending & api.AA_ASYNC_I2C_READ:
+                status, addr, data, received = api.aa_i2c_slave_read_ext(handle, 65535)
+                _i2c_status(status)
+                count(received, len(data), "aa_i2c_slave_read_ext")
+                return {**target_data(bytes(data)), "address": addr}
+            if self._bus == "i2c" and pending & api.AA_ASYNC_I2C_WRITE:
+                status, written = api.aa_i2c_slave_write_stats_ext(handle)
+                _i2c_status(status)
+                return {"event": "transmitted", "nbytes": written, "address": self._address}
+            raise IoConnectionError(f"unexpected Aardvark target event {pending:#x}")
+
+    def target_stop(self) -> None:
+        session = self.session()
+        with session.lock:
+            if self._active:
+                action = f"aa_{self._bus}_slave_disable"
+                checked(getattr(session.api, action)(session.handle), action)
+                self._active = False
+                self._discard_events(session)
+
+    def _discard_events(self, session: Session) -> None:
+        api, handle = session.api, session.handle
+        for _ in range(256):
+            pending = checked(api.aa_async_poll(handle, 0), "aa_async_poll")
+            if not pending:
+                return
+            if pending & api.AA_ASYNC_SPI:
+                api.aa_spi_slave_read(handle, 65535)
+            if pending & api.AA_ASYNC_I2C_READ:
+                api.aa_i2c_slave_read_ext(handle, 65535)
+            if pending & api.AA_ASYNC_I2C_WRITE:
+                api.aa_i2c_slave_write_stats_ext(handle)
+        raise IoConnectionError("could not clear pending Aardvark target events")
+
+    def close(self) -> None:
+        if not self._closed:
+            try:
+                self.target_stop()
+            finally:
+                super().close()

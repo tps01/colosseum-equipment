@@ -68,6 +68,28 @@ a timeout. These transports never treat USB HID as VISA SCPI.
 The original ``bk-8500`` model uses raw binary serial at 9600 baud by default
 and disables CR/LF termination. Its explicit ``baudrate`` overrides that default.
 
+JTAG keys
+---------
+
+JTAG uses an installed vendor toolchain. The default ``driver`` is ``vivado``.
+Select ``quartus`` for Intel FPGA targets. See :doc:`guides/jtag` for
+vendor-specific settings and examples.
+
+.. code-block:: toml
+
+   [equipment.jtag]
+   jtag_id = 1                                  # required integer id
+   driver = "vivado"
+   # vivado_path = "/opt/amd/Vivado/2025.2"      # launcher or installation root
+   # hw_server_path = "/opt/amd/Vivado/2025.2"   # server launcher or installation root
+   # hw_server_url = "lab.example:3121"         # optional externally managed server
+   # xvc_url = "xvc.example:2542"               # optional Xilinx Virtual Cable endpoint
+   # xvc_programming = true                     # enable only for a qualified XVC endpoint
+   # target = "TARGET_SELECTOR"                 # from list_targets
+   # device = "DEVICE_SELECTOR"                 # from list_devices
+   # clock_hz = 1000000                          # optional requested JTAG clock
+   # timeout_s = 300                             # per-operation timeout in seconds
+
 HTTP relay keys
 ---------------
 

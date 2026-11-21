@@ -52,6 +52,9 @@ class GenericRtsa(ScpiInstrumentMixin):
         if "sample_rate_hz" in config:
             self.set_sample_rate(float(config["sample_rate_hz"]))
 
+    def align_all(self) -> None:
+        unsupported(self._model, "align_all")
+
     def preset(self) -> None:
         self._scpi.write("*RST")
         wait_opc(self._scpi)

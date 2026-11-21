@@ -258,13 +258,6 @@ def play_iq(
 
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
     """
-    _logger.info(
-        "Playing %s on VSG %s at %s Hz and %s dBm",
-        filename,
-        vsg_id,
-        center_freq_hz,
-        amplitude_dbm,
-    )
     inst = get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg"))
     programmed = amplitude_dbm
     if calibration is not None:
@@ -272,6 +265,17 @@ def play_iq(
             amplitude_dbm,
             key=calibration,
             frequency_hz=center_freq_hz,
+        )
+        _logger.info(
+            "Playing %s on VSG %s at %s Hz: requested post-path power %g dBm; programming %g dBm "
+            "(calibration=%s, applied correction=%+g dB)",
+            filename, vsg_id, center_freq_hz, amplitude_dbm, programmed,
+            calibration, programmed - amplitude_dbm,
+        )
+    else:
+        _logger.info(
+            "Playing %s on VSG %s at %s Hz and %s dBm",
+            filename, vsg_id, center_freq_hz, amplitude_dbm,
         )
     inst.play_iq(filename, center_freq_hz, programmed, sample_clock_hz)
     _cal.bind_frequency(inst, center_freq_hz)
@@ -438,6 +442,11 @@ def set_frequency(*, vsg_id: EquipmentId, frequency: float, calibration: str | N
     if calibration is not None:
         desired = _cal.require_desired_power(inst)
         programmed = _cal.programmed_power_dbm(desired, key=calibration, frequency_hz=frequency)
+        _logger.info(
+            "Retuning power on VSG %s at %s Hz: requested post-path power %g dBm; programming %g dBm "
+            "(calibration=%s, applied correction=%+g dB)",
+            vsg_id, frequency, desired, programmed, calibration, programmed - desired,
+        )
         inst.set_power(programmed)
         _cal.remember_desired_power(inst, desired, key=calibration)
 
@@ -453,12 +462,13 @@ def set_modulation(*, vsg_id: EquipmentId, enabled: bool, modulation_type: str =
 
     :param modulation_type: Modulation type string accepted by the configured model.
     """
-    _logger.info(
-        "%s %s modulation on VSG %s",
-        "Enabling" if enabled else "Disabling",
-        modulation_type,
-        vsg_id,
-    )
+    mode = modulation_type.strip()
+    if not enabled:
+        _logger.info("Disabling modulation on VSG %s", vsg_id)
+    elif mode.lower() in {"", "none", "off"}:
+        _logger.info("Enabling modulation on VSG %s", vsg_id)
+    else:
+        _logger.info("Enabling %s modulation on VSG %s", mode, vsg_id)
     get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg")).set_modulation(enabled, modulation_type)
 
 
@@ -535,14 +545,19 @@ def set_power(*, vsg_id: EquipmentId, power_dbm: float, calibration: str | None 
 
     :param calibration: Key from :func:`colosseum_equipment.api.calibration.load_calibration`.
     """
-    _logger.info("Setting output power on VSG %s to %s dBm", vsg_id, power_dbm)
     inst = get_cached_instrument("vsg", require_int_id(vsg_id, kind="vsg"))
     if calibration is None:
+        _logger.info("Setting output power on VSG %s to %s dBm", vsg_id, power_dbm)
         _cal.clear_desired_power(inst)
         inst.set_power(power_dbm)
         return
     frequency = _cal.require_frequency(inst, what="set_power")
     programmed = _cal.programmed_power_dbm(power_dbm, key=calibration, frequency_hz=frequency)
+    _logger.info(
+        "Setting power on VSG %s at %s Hz: requested post-path power %g dBm; programming %g dBm "
+        "(calibration=%s, applied correction=%+g dB)",
+        vsg_id, frequency, power_dbm, programmed, calibration, programmed - power_dbm,
+    )
     inst.set_power(programmed)
     _cal.remember_desired_power(inst, power_dbm, key=calibration)
 

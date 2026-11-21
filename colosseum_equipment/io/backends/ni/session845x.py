@@ -20,6 +20,7 @@ class _Session:
     lib: Any
     voltage: float
     refs: int = 0
+    exclusive: bool = False
 
 
 def acquire_session(
@@ -28,6 +29,7 @@ def acquire_session(
     voltage: float,
     library: str | None = None,
     timeout_ms: int | None = None,
+    exclusive: bool = False,
 ) -> _Session:
     """Open or reuse a device session. Voltage must match an existing session."""
     if not resource:
@@ -38,6 +40,8 @@ def acquire_session(
     with _lock:
         existing = _sessions.get(resource)
         if existing is not None:
+            if exclusive or existing.exclusive:
+                raise IoConfigError(f"ni-845x resource {resource!r} is already in use")
             if abs(existing.voltage - voltage) > 0.05:
                 raise IoConfigError(
                     f"ni-845x resource {resource!r} already opened at "
@@ -66,7 +70,7 @@ def acquire_session(
         except Exception:
             lib.ni845xClose(handle)
             raise
-        session = _Session(resource=resource, handle=handle, lib=lib, voltage=voltage, refs=1)
+        session = _Session(resource=resource, handle=handle, lib=lib, voltage=voltage, refs=1, exclusive=exclusive)
         _sessions[resource] = session
         return session
 

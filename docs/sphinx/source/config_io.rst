@@ -61,6 +61,7 @@ and ``ni-845x``. Any other driver, including an empty one, raises
 
    [io.i2c]
    i2c_id = 1                         # required integer id
+   role = "controller"                # default; use "target" with a supported adapter
    driver = "ni-845x"                 # totalphase-aardvark, ti-usb2any, sim, or ni-845x
    resource = "USB0::0x3923::..."     # NI: USB resource; Total Phase/USB2ANY: adapter serial
    model = "usb-8452"                 # optional; ni-845x passes it
@@ -82,6 +83,7 @@ io.spi
 
    [io.spi]
    spi_id = 1
+   role = "controller"                # default; use "target" with a supported adapter
    driver = "ni-845x"
    resource = "USB0::0x3923::..."     # NI USB resource (or adapter serial for TP/USB2ANY)
    model = "usb-8452"

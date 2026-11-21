@@ -49,6 +49,17 @@ def abort(*, speca_id: EquipmentId) -> None:
 
 @command
 @broadcastable("speca", "speca_id")
+def align_all(*, speca_id: EquipmentId) -> None:
+    """Run internal self-alignment on a supported analyzer and wait for its result.
+
+    :param speca_id: Configured ``equipment.speca`` ID or ``"all"``.
+    """
+    _logger.info("Running internal alignment on SpecA %s", speca_id)
+    get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).align_all()
+
+
+@command
+@broadcastable("speca", "speca_id")
 def apply_mask_setup(*, speca_id: EquipmentId, mask: str, key: str = "") -> None:
     """Apply mask JSON ``setup`` fields (center/span/ref/RBW) to this SpecA.
 

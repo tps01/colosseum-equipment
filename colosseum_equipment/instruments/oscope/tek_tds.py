@@ -146,10 +146,17 @@ class TekTdsOscope(TekMdo4000Oscope):
             }
 
 
+_TEK_WAVE_VIEW_CHANNELS = {
+    "tektronix-mso58": 8,
+    "tektronix-mso64": 4,
+    "tektronix-mso54b": 4,
+    "tektronix-mso64b": 4,
+}
+
+
 @instrument_model(
     "oscope",
-    "tektronix-mso58",
-    "tektronix-mso64",
+    *_TEK_WAVE_VIEW_CHANNELS,
     "tektronix-tbs2204b",
     "tektronix-mso4104",
     "tektronix-tds7704b",
@@ -181,13 +188,14 @@ class TekWfmOutOscope(TekMdo4000Oscope):
     """077-1305-05, Waveform Transfer and appendix D (analog YT only).
 
     https://download.tek.com/manual/5_6-Series-MSO54-MSO56-MSO58-MSO58L-MSO64-Programmer-Manual_EN-US_077130505.pdf
+    B-series: Tektronix 077-1898-05, Display Control and Waveform Transfer.
     Also: TBS2000B 077-1149-03, MSO4000 programmer manual waveform group,
     TDS7000/CSA7000 PHP014070 waveform group (family reference for TDS7704B).
     No immediate-measurement aliases or digital FlexChannel exports.
     """
 
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
-        maximum = 8 if str(config.get("model")).lower() == "tektronix-mso58" else 4
+        maximum = _TEK_WAVE_VIEW_CHANNELS.get(str(config.get("model")).lower(), 4)
         channels = int(config.get("channels") or maximum)
         if not 1 <= channels <= maximum:
             raise EquipmentCapabilityError(f"model has {maximum} analog channels")
@@ -195,14 +203,14 @@ class TekWfmOutOscope(TekMdo4000Oscope):
 
     def set_channel_display(self, channel: int, enabled: bool) -> None:
         ch = self._require_channel(channel)
-        if self._model in {"tektronix-mso58", "tektronix-mso64"}:
+        if self._model in _TEK_WAVE_VIEW_CHANNELS:
             self._scpi.write(f"DISP:WAVEV1:CH{ch}:STATE {int(enabled)}")
         else:
             super().set_channel_display(ch, enabled)
 
     def get_channel_display(self, channel: int) -> bool:
         ch = self._require_channel(channel)
-        if self._model in {"tektronix-mso58", "tektronix-mso64"}:
+        if self._model in _TEK_WAVE_VIEW_CHANNELS:
             return bool(int(self._scpi._setting_value(f"DISP:WAVEV1:CH{ch}:STATE?")))
         return super().get_channel_display(ch)
 

@@ -67,6 +67,9 @@ class UsbtmcTransport(Transport):
         except OSError as exc:
             raise EquipmentConnectionError(f"Failed to open `{device}`: {exc}") from exc
 
+    def set_timeout_s(self, timeout_s: float) -> None:
+        self._timeout = float(timeout_s)
+
     def _require_fd(self) -> int:
         if self._fd is None:
             raise EquipmentConnectionError(f"USBTMC device `{self._path}` is closed")
