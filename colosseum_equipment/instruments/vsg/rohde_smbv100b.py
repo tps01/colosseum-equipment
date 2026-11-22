@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from colosseum_equipment.instruments._capabilities import supported_commands, unsupported
 from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
+from colosseum_equipment.instruments.vsg.waveform_upload import _waveform_name
 from colosseum_equipment.protocols.scpi import wait_opc
 
 if TYPE_CHECKING:
@@ -46,7 +47,7 @@ class RohdeSmbv100bVsg(GenericVSG):
         self._scpi.write("OUTP ON" if enabled else "OUTP OFF")
 
     def select_waveform(self, remote_name: str) -> None:
-        self._scpi.write(f'SOUR:BB:ARB:WAV:SEL "{self._waveform_name(remote_name)}"')
+        self._scpi.write(f'SOUR:BB:ARB:WAV:SEL "{_waveform_name(remote_name)}"')
 
     def set_arb_state(self, enabled: bool) -> None:
         self._scpi.write("SOUR:BB:ARB:STAT ON" if enabled else "SOUR:BB:ARB:STAT OFF")
@@ -58,7 +59,7 @@ class RohdeSmbv100bVsg(GenericVSG):
         amplitude_dbm: float,
         sample_clock_hz: float,
     ) -> None:
-        self._waveform_name(filename)
+        _waveform_name(filename)
         if not all(math.isfinite(v) for v in (center_freq_hz, amplitude_dbm, sample_clock_hz)) or min(center_freq_hz, sample_clock_hz) <= 0:
             raise ValueError("playback needs finite power and positive frequency/clock")
         self.select_waveform(filename)
@@ -105,7 +106,7 @@ class RohdeSmbv100bVsg(GenericVSG):
         self._scpi.write(f"SOUR:BB:MCCW:STAT {'ON' if enabled else 'OFF'}")
 
     def upload_waveform(self, local_path: str, remote_name: str, *, first_last_blanking: bool = False, method: str = "auto") -> None:
-        self._waveform_name(remote_name)
+        _waveform_name(remote_name)
         if method not in {"auto", "tcpip"}:
             unsupported(self._model, "upload_waveform", detail="native waveform upload uses SCPI binary transfer")
         if first_last_blanking:
@@ -120,8 +121,7 @@ class RohdeSmbv100bVsg(GenericVSG):
         wait_opc(self._scpi)
 
     def delete_waveform(self, remote_name: str) -> None:
-        self._scpi.write(f'MMEM:DEL "{self._waveform_name(remote_name)}"')
-        wait_opc(self._scpi)
+        super().delete_waveform(_waveform_name(remote_name))
 
     def set_ref_source(self, source: str) -> None:
         token = source.strip().upper()
@@ -129,10 +129,3 @@ class RohdeSmbv100bVsg(GenericVSG):
         if token not in {"INT", "EXT"}:
             raise ValueError("reference source must be INT or EXT")
         self._scpi.write(f"ROSC:SOUR {token}")
-
-
-    @staticmethod
-    def _waveform_name(name: str) -> str:
-        if not name or any(char in name for char in '\r\n"'):
-            raise ValueError("waveform name must be nonempty without quotes or line breaks")
-        return name

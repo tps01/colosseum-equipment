@@ -78,7 +78,6 @@ class LegacyScpiCw(GenericVSG):
 
     References: SMIQ operating manual vol.2 1125.5610.12-11, SOURce/OUTPut;
     8648A/B/C/D operation guide, ch.2 SCPI; 8360 L user guide, SCPI summary.
-    Source URLs and dialect decisions: docs/equipment/inventory-manual-analysis.md.
     """
 
     def set_power(self, power_dbm: float) -> None:

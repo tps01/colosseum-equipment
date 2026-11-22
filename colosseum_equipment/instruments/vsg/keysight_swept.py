@@ -1,7 +1,7 @@
 """PSG/MXG sourcing, step/list sweeps and MXG vector playback.
 
 References: E8251-90256 (PSG C), E8251-90356 (PSG D), N5180-90004
-(MXG A), N5180-90057 (MXG B). See inventory-manual-analysis.md.
+(MXG A), N5180-90057 (MXG B).
 """
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import math
 from colosseum_equipment.instruments._capabilities import supported_commands, unsupported
 from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
+from colosseum_equipment.instruments.vsg.waveform_upload import _waveform_name
 from colosseum_equipment.protocols.scpi import wait_opc
 
 _COMMANDS = (
@@ -199,17 +200,17 @@ class KeysightSweptGenerator(GenericVSG):
 
     def select_waveform(self, remote_name: str) -> None:
         self._require_arb("select_waveform")
-        self._scpi.write(f'RAD:ARB:WAV "{_waveform_name(remote_name)}"')
+        super().select_waveform(_waveform_name(remote_name))
 
     def set_arb_state(self, enabled: bool) -> None:
         self._require_arb("set_arb_state")
-        self._scpi.write(f"RAD:ARB:STAT {'ON' if enabled else 'OFF'}")
+        super().set_arb_state(enabled)
 
     def set_arb_sample_clock(self, sample_clock_hz: float) -> None:
         if not math.isfinite(sample_clock_hz) or sample_clock_hz <= 0:
             raise ValueError("ARB clock must be finite and positive")
         self._require_arb("set_arb_sample_clock")
-        self._scpi.write(f"RAD:ARB:SCL:RATE {sample_clock_hz:.6f}")
+        super().set_arb_sample_clock(sample_clock_hz)
 
     def set_arb_trigger_source(self, source: str) -> None:
         token = source.strip().upper()
@@ -227,11 +228,11 @@ class KeysightSweptGenerator(GenericVSG):
         if not all(math.isfinite(v) for v in (center_freq_hz, amplitude_dbm, sample_clock_hz)) or min(center_freq_hz, sample_clock_hz) <= 0:
             raise ValueError("playback needs finite power and positive frequency/clock")
         self._require_arb("play_iq")
-        self.select_waveform(filename)
+        super().select_waveform(filename)
         self.set_frequency(center_freq_hz)
         self.set_power(amplitude_dbm)
-        self.set_arb_sample_clock(sample_clock_hz)
-        self.set_arb_state(True)
+        super().set_arb_sample_clock(sample_clock_hz)
+        super().set_arb_state(True)
         self._scpi.write("OUTP:MOD ON")
 
     def upload_waveform(self, local_path: str, remote_name: str, *, first_last_blanking: bool = False, method: str = "auto") -> None:
@@ -241,16 +242,9 @@ class KeysightSweptGenerator(GenericVSG):
 
     def delete_waveform(self, remote_name: str) -> None:
         self._require_arb("delete_waveform")
-        self._scpi.write(f'MMEM:DEL "{_waveform_name(remote_name)}"')
-        wait_opc(self._scpi)
+        super().delete_waveform(_waveform_name(remote_name))
 
     def delete_all_waveforms(self) -> None:
         self._require_arb("delete_all_waveforms")
         self._scpi.write("MMEM:DEL:WFM")
         wait_opc(self._scpi)
-
-
-def _waveform_name(name: str) -> str:
-    if not name or any(char in name for char in '\r\n"'):
-        raise ValueError("waveform name must be nonempty without quotes or line breaks")
-    return name

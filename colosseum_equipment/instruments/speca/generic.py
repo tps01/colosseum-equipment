@@ -68,11 +68,14 @@ class GenericSpecA:
     def set_rbw(self, rbw: float) -> None:
         self._scpi.write(f"BAND:RES {rbw:.6f}")
 
+    def _marker_command(self, marker: int) -> str:
+        return f"CALC:MARK{marker}"
+
     def toggle_marker(self, marker: int, enabled: bool) -> None:
-        self._scpi.write(f"CALC:MARK{marker}:STAT {'ON' if enabled else 'OFF'}")
+        self._scpi.write(f"{self._marker_command(marker)}:STAT {'ON' if enabled else 'OFF'}")
 
     def peak_search(self, marker: int = 1) -> None:
-        self._scpi.write(f"CALC:MARK{marker}:MAX")
+        self._scpi.write(f"{self._marker_command(marker)}:MAX")
 
     def next_peak_right(self, marker: int = 1) -> None:
         self._scpi.write(f"CALC:MARK{marker}:MAX:NEXT")
@@ -89,14 +92,14 @@ class GenericSpecA:
         self._scpi.write(f"CALC:MARK{marker}:X CENT")
 
     def toggle_delta_marker(self, marker: int, enabled: bool) -> None:
-        self._scpi.write(f"CALC:MARK{marker}:DELT:STAT {'ON' if enabled else 'OFF'}")
+        self._scpi.write(f"{self._marker_command(marker)}:DELT:STAT {'ON' if enabled else 'OFF'}")
 
     def set_marker_delta_reference(self, marker: int, reference_marker: int) -> None:
         self._scpi.write(f"CALC:MARK{marker}:DELT:REF {int(reference_marker)}")
 
     def measure_marker_delta_frequency(self, marker: int = 1) -> float:
         """Read delta-marker frequency offset in hertz (last sweep; does not re-arm)."""
-        return self._scpi.query_float(f"CALC:MARK{marker}:DELT:X?")
+        return self._scpi.query_float(f"{self._marker_command(marker)}:DELT:X?")
 
     def measure_marker_delta_power(self, marker: int = 1) -> float:
         """Read delta-marker amplitude in dB (last sweep; does not re-arm)."""
@@ -142,7 +145,7 @@ class GenericSpecA:
 
     def measure_marker_frequency(self, marker: int = 1) -> float:
         """Read marker frequency in hertz from the last completed sweep."""
-        return self._scpi.query_float(f"CALC:MARK{marker}:X?")
+        return self._scpi.query_float(f"{self._marker_command(marker)}:X?")
 
     def _try_query_float(self, command: str) -> float | None:
         try:

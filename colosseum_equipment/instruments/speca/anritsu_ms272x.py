@@ -85,50 +85,35 @@ class AnritsuMs272x(GenericSpecA):
         self.arm_sweep()
         self.wait_complete(timeout_s=float(self._config.get("timeout", 60.0)))
 
-    def _marker(self, marker: int) -> str:
+    def _marker_command(self, marker: int) -> str:
         if isinstance(marker, bool) or not isinstance(marker, int) or not 1 <= marker <= 6:
             raise ValueError("MS272x marker number must be 1..6")
         return f"CALC:MARK{marker}"
 
-    def toggle_marker(self, marker: int, enabled: bool) -> None:
-        self._scpi.write(f"{self._marker(marker)}:STAT {'ON' if enabled else 'OFF'}")
-
-    def peak_search(self, marker: int = 1) -> None:
-        self._scpi.write(f"{self._marker(marker)}:MAX")
-
     def set_marker_frequency(self, marker: int, frequency_hz: float) -> None:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         if not math.isfinite(frequency_hz) or frequency_hz < 0:
             raise ValueError("marker frequency must be finite and nonnegative")
         self._scpi.write(f"{command}:X {frequency_hz:.6f}")
 
-    def measure_marker_frequency(self, marker: int = 1) -> float:
-        return self._scpi.query_float(f"{self._marker(marker)}:X?")
-
     def measure_marker_power(self, marker: int = 1) -> float:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         self._scpi.require_setting("UNIT:POW?", "DBM")
         return self._scpi.query_float(f"{command}:Y?")
 
     def next_peak_left(self, marker: int = 1) -> None:
-        self._scpi.write(f"{self._marker(marker)}:MAX:LEFT")
+        self._scpi.write(f"{self._marker_command(marker)}:MAX:LEFT")
 
     def next_peak_right(self, marker: int = 1) -> None:
-        self._scpi.write(f"{self._marker(marker)}:MAX:RIGH")
+        self._scpi.write(f"{self._marker_command(marker)}:MAX:RIGH")
 
     def set_marker_to_center(self, marker: int = 1) -> None:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         center = self._scpi.query_float("FREQ:CENT?")
         self._scpi.write(f"{command}:X {center:.6f}")
 
-    def toggle_delta_marker(self, marker: int, enabled: bool) -> None:
-        self._scpi.write(f"{self._marker(marker)}:DELT:STAT {'ON' if enabled else 'OFF'}")
-
-    def measure_marker_delta_frequency(self, marker: int = 1) -> float:
-        return self._scpi.query_float(f"{self._marker(marker)}:DELT:X?")
-
     def measure_marker_delta_power(self, marker: int = 1) -> float:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         self._scpi.require_setting("UNIT:POW?", "DBM")
         return self._scpi.query_float(f"{command}:DELT:Y?")
 

@@ -42,9 +42,8 @@ uses an `http(s)://` `resource` URL (optional `username` / `password`).
 For the 0.6.0 additions from `misc_equipment.xlsx`, see the
 [inventory rollout](https://github.com/tps01/colosseum-equipment/blob/develop/docs/equipment/inventory-rollout.md). It lists each named model's
 implemented subset, command references, hardware qualification requirements and
-remaining category work. The [manual analysis](https://github.com/tps01/colosseum-equipment/blob/develop/docs/equipment/inventory-manual-analysis.md)
-records the follow-up source audit, native dialects and unresolved entries. Those drivers explicitly refuse inherited operations
-outside their documented subset, rather than relying on best-effort warnings.
+remaining category work. These drivers explicitly refuse inherited operations
+outside their documented subset.
 
 | `model` slug | Kind | Manual | Notes |
 | --- | --- | --- | --- |

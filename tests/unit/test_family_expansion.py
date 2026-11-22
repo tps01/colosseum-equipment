@@ -120,8 +120,12 @@ def test_trace_averaging_uses_family_commands_without_rearming(model, commands):
 @pytest.mark.parametrize(("model", "marker"), [("rohde-fpc1500", 7), ("anritsu-ms2721b", 7), ("keysight-n9010b", 13), ("rohde-fpc1500", True)])
 def test_invalid_marker_is_rejected_before_io(model, marker):
     inst, io = driver("speca", model)
-    with pytest.raises(ValueError):
-        inst.set_marker_to_center(marker)
+    operations = [inst.set_marker_to_center]
+    if model in {"anritsu-ms2721b", "rohde-fpc1500"}:
+        operations.extend([inst.peak_search, inst.measure_marker_frequency])
+    for operation in operations:
+        with pytest.raises(ValueError):
+            operation(marker)
     assert io.events == []
 
 
@@ -181,6 +185,16 @@ def test_vector_arb_requires_installed_baseband_and_uses_native_trigger():
     with pytest.raises(EquipmentCapabilityError):
         inst.set_arb_state(True)
     assert io.events == ["*OPT?"]
+
+
+def test_vector_playback_checks_the_baseband_option_once():
+    inst, io = driver("vsg", "keysight-n5182b", {"*OPT?": "503,656"})
+    inst.play_iq("WFM1:test", 1e9, -20, 1e6)
+    assert io.events == [
+        "*OPT?", 'RAD:ARB:WAV "WFM1:test"', "FREQ:MODE CW", "FREQ:CW 1000000000.000000",
+        "UNIT:POW DBM", "POW:MODE FIX", "POW:AMPL -20.000DBM",
+        "RAD:ARB:SCL:RATE 1000000.000000", "RAD:ARB:STAT ON", "OUTP:MOD ON",
+    ]
 
 
 def test_option_dependent_modulation_checks_capability_before_writes():

@@ -26,6 +26,12 @@ _FTP_BLOCK_SIZE = 8192
 _METHODS = frozenset({"auto", "ftp", "tcpip"})
 
 
+def _waveform_name(name: str) -> str:
+    if not name or any(char in name for char in '\r\n"'):
+        raise ValueError("waveform name must be nonempty without quotes or line breaks")
+    return name
+
+
 def _is_tcpip_resource(resource: str) -> bool:
     return resource.upper().startswith("TCPIP")
 

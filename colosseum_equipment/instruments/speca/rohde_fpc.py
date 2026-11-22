@@ -65,52 +65,43 @@ class RohdeFpc1500(GenericSpecA):
         self.arm_sweep()
         self.wait_complete(timeout_s=float(self._config.get("timeout", 60.0)))
 
-    def _marker(self, marker: int, *, delta: bool = False) -> str:
+    def _marker_command(self, marker: int, *, delta: bool = False) -> str:
         minimum = 2 if delta else 1
         if isinstance(marker, bool) or not isinstance(marker, int) or not minimum <= marker <= 6:
             raise ValueError(f"FPC marker number must be {minimum}..6")
         return f"CALC:{'DELT' if delta else 'MARK'}{marker}"
 
-    def toggle_marker(self, marker: int, enabled: bool) -> None:
-        self._scpi.write(f"{self._marker(marker)}:STAT {'ON' if enabled else 'OFF'}")
-
-    def peak_search(self, marker: int = 1) -> None:
-        self._scpi.write(f"{self._marker(marker)}:MAX")
-
     def set_marker_frequency(self, marker: int, frequency_hz: float) -> None:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         if not math.isfinite(frequency_hz) or frequency_hz < 0:
             raise ValueError("marker frequency must be finite and nonnegative")
         self._scpi.write(f"{command}:X {frequency_hz:.6f}")
 
-    def measure_marker_frequency(self, marker: int = 1) -> float:
-        return self._scpi.query_float(f"{self._marker(marker)}:X?")
-
     def measure_marker_power(self, marker: int = 1) -> float:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         self._scpi.require_setting("UNIT:POW?", "DBM")
         return self._scpi.query_float(f"{command}:Y?")
 
     def next_highest_peak(self, marker: int = 1) -> None:
-        self._scpi.write(f"{self._marker(marker)}:MAX:NEXT")
+        self._scpi.write(f"{self._marker_command(marker)}:MAX:NEXT")
 
     def set_marker_to_center(self, marker: int = 1) -> None:
-        command = self._marker(marker)
+        command = self._marker_command(marker)
         center = self._scpi.query_float("FREQ:CENT?")
         self._scpi.write(f"{command}:X {center:.6f}")
 
     def toggle_delta_marker(self, marker: int, enabled: bool) -> None:
-        command = self._marker(marker, delta=True)
+        command = self._marker_command(marker, delta=True)
         # A normal marker command converts a delta marker back to normal.
         if not enabled:
-            command = self._marker(marker)
+            command = self._marker_command(marker)
         self._scpi.write(f"{command}:STAT ON")
 
     def measure_marker_delta_frequency(self, marker: int = 1) -> float:
-        return self._scpi.query_float(f"{self._marker(marker, delta=True)}:X:REL?")
+        return self._scpi.query_float(f"{self._marker_command(marker, delta=True)}:X:REL?")
 
     def measure_marker_delta_power(self, marker: int = 1) -> float:
-        command = self._marker(marker, delta=True)
+        command = self._marker_command(marker, delta=True)
         self._scpi.require_setting("UNIT:POW?", "DBM")
         return self._scpi.query_float(f"{command}:Y?")
 
