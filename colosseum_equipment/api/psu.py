@@ -61,7 +61,9 @@ def get_fault_status(*, psu_id: int, channel: int = 1, key: str) -> str:
     :param channel: Physical channel (1-based); availability depends on the model.
     :param key: Unique evidence key for this measurement.
 
-    :returns: Raw fault/status register response; interpretation depends on the supply.
+    :returns: Model-specific fault/status response: N6705 and Genesys SCPI
+        return a decimal questionable-condition register; native Genesys returns
+        two hexadecimal digits. HMP4040 returns ``ovp=0|1,fuse=0|1``.
     """
     _logger.info("Reading fault status from PSU %s channel %s", psu_id, channel)
     _ = key

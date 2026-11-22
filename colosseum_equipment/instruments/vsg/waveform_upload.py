@@ -150,7 +150,7 @@ def _upload_via_scpi(
     remote_name: str,
     payload: bytes,
 ) -> None:
-    prefix = f'MMEM:DATA "{remote_name}"'
+    prefix = f'MMEM:DATA "{remote_name}",'
     message_len = len(f"{prefix} ".encode("ascii")) + len(format_definite_length_block(payload)) + 1
     _logger.info(
         "VSG TCPIP waveform upload starting: %d bytes -> %s",

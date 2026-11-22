@@ -255,7 +255,7 @@ def test_upload_waveform_tcp_binary_block(tmp_path) -> None:
     )
     inst.upload_waveform(str(waveform), "WFM1:IQ.bin", method="tcpip")
     assert len(transport.raw_written) == 1
-    assert b'MMEM:DATA "WFM1:IQ.bin" ' in transport.raw_written[0]
+    assert b'MMEM:DATA "WFM1:IQ.bin", ' in transport.raw_written[0]
     assert transport.raw_written[0].endswith(b"\n")
     assert seen["chunk_size"] == seen["nbytes"] == len(transport.raw_written[0])
 

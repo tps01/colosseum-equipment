@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from colosseum_equipment.exceptions import EquipmentCapabilityError
+from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
 from colosseum_equipment.instruments._capabilities import supported_commands
 from colosseum_equipment.instruments.psu.generic import GenericPSU
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -54,8 +54,20 @@ class KeysightE3644A(GenericPSU):
         return self.measure_voltage(channel=channel) * self.measure_current(channel=channel)
 
 
+_HMP_COMMANDS = (
+    "toggle_ocp",
+    "get_ocp_enabled",
+    "clear_protection",
+    "get_fault_status",
+    *_BASIC,
+    "set_ovp_v",
+    "get_ovp_v",
+)
+
+
 @instrument_model("psu", "rohde-hmp4040")
-@supported_commands(*_BASIC, "set_ovp_v", "get_ovp_v")
+@supported_commands(*_HMP_COMMANDS)
+@_confirmed_generic_commands(*_HMP_COMMANDS)
 class RohdeHmp4040(GenericPSU):
     """Manual: https://www.rohde-schwarz.com/manual/hmp
 
@@ -83,9 +95,34 @@ class RohdeHmp4040(GenericPSU):
     def measure_power_w(self, *, channel: int = 1) -> float:
         return self.measure_voltage(channel=channel) * self.measure_current(channel=channel)
 
+    def toggle_ocp(self, enabled: bool, *, channel: int = 1) -> None:
+        # HMP electronic fuse trips at the programmed current limit.
+        self._apply_channel(channel)
+        self._scpi.write(f"FUSE {'ON' if enabled else 'OFF'}")
 
-@instrument_model("psu", "keysight-n6705a")
-@supported_commands(
+    def get_ocp_enabled(self, *, channel: int = 1) -> bool:
+        with self._selected_channel(channel):
+            raw = self._scpi.query("FUSE?").strip()
+            if raw not in {"0", "1"}:
+                raise EquipmentResponseError("invalid HMP fuse state")
+            return raw == "1"
+
+    def clear_protection(self, *, channel: int = 1) -> None:
+        # Clears OVP only; does not re-enable an output or cancel its fuse.
+        self._apply_channel(channel)
+        self._scpi.write("VOLT:PROT:CLE")
+
+    def get_fault_status(self, *, channel: int = 1) -> str:
+        with self._selected_channel(channel):
+            ovp = self._scpi.query("VOLT:PROT:TRIP?").strip()
+            fuse = self._scpi.query("FUSE:TRIP?").strip()
+            if ovp not in {"0", "1"} or fuse not in {"0", "1"}:
+                raise EquipmentResponseError("invalid HMP protection trip state")
+            return f"ovp={ovp},fuse={fuse}"
+
+
+_N6705_COMMANDS = (
+    "get_fault_status",
     *_BASIC,
     "set_ovp_v",
     "get_ovp_v",
@@ -94,6 +131,11 @@ class RohdeHmp4040(GenericPSU):
     "clear_protection",
     "set_slew_voltage",
 )
+
+
+@instrument_model("psu", "keysight-n6705a")
+@supported_commands(*_N6705_COMMANDS)
+@_confirmed_generic_commands(*_N6705_COMMANDS)
 class KeysightN6705A(GenericPSU):
     """Basic sourcing only. Installed modules determine output ranges/capabilities.
 
@@ -103,7 +145,7 @@ class KeysightN6705A(GenericPSU):
     def __init__(self, transport: Transport, config: dict[str, Any]) -> None:
         count = int(config.get("channels") or config.get("channel_count") or 4)
         if count < 1 or count > 4:
-            raise EquipmentCapabilityError("N6705A has at most four module slots")
+            raise EquipmentCapabilityError("N6705 has at most four module slots")
         super().__init__(transport, {**config, "channels": count})
 
     def _write_channel(self, command: str, value: str, channel: int) -> None:
@@ -160,3 +202,10 @@ class KeysightN6705A(GenericPSU):
 
     def set_slew_voltage(self, volts_per_s: float, *, channel: int = 1) -> None:
         self._write_channel("VOLT:SLEW", str(volts_per_s), channel)
+
+    def get_fault_status(self, *, channel: int = 1) -> str:
+        ch = self._require_channel(channel)
+        raw = self._scpi.query(f"STAT:QUES:COND? (@{ch})").strip()
+        if not raw.isdecimal() or int(raw) > 65535:
+            raise EquipmentResponseError("invalid N6705 questionable condition register")
+        return raw

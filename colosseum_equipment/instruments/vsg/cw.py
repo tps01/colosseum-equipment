@@ -8,22 +8,11 @@ from __future__ import annotations
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError
 from colosseum_equipment.instruments._capabilities import supported_commands
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
 
 
-@instrument_model(
-    "vsg",
-    "keysight-e8257d",
-    "keysight-e8257c",
-    "keysight-e8241a",
-    "keysight-e4422b",
-    "keysight-n5183a",
-    "keysight-n5183b",
-    "rohde-smb100a",
-    "rohde-sma100b",
-)
-@supported_commands(
+_CW_COMMANDS = (
     "set_frequency",
     "set_power",
     "set_output",
@@ -34,6 +23,17 @@ from colosseum_equipment.instruments.vsg.generic import GenericVSG
     "wait_complete",
     "set_ref_source",
 )
+
+
+@instrument_model(
+    "vsg",
+    "keysight-e8241a",
+    "keysight-e4422b",
+    "rohde-smb100a",
+    "rohde-sma100b",
+)
+@supported_commands(*_CW_COMMANDS)
+@_confirmed_generic_commands(*_CW_COMMANDS)
 class CwSignalGenerator(GenericVSG):
     """Common documented CW subset; no ARB, modulation or option-dependent sweeps.
 

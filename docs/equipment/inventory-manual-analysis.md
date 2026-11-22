@@ -1,5 +1,98 @@
 # Remaining inventory: manual analysis and implementation
 
+## Nine-family expansion (0.27.0)
+
+This pass starts from develop `253922f` (0.26.3). It extends existing public
+`col.equipment.speca`, `vsg`, and `psu` operations without changing their
+signatures or adding dependencies. Verification is against manufacturer-authored
+programming references and synthetic recording transports, **not physical hardware**.
+The earlier warning cleanup is incorporated into these expanded subsets.
+
+| Kind / family | Profiles | Added or corrected operations | Reference sections |
+| --- | --- | --- | --- |
+| SpecA / Keysight X-Series | N9000A, N9010A/B, N9020A/B, N9030A | Left/right/next-highest peaks; marker at center; delta mode and passive delta reads; trace modes, average count/type | [N9060-90027 spectrum reference](https://www.manualslib.com/manual/3476579/Keysight-X-Series.html), spectrum markers pp.315–323 and trace modes p.514; A/B revisions retain the existing swept-SA profile. |
+| SpecA / R&S FPC | FPC1500 | Normal/delta markers, next-highest peak, marker at center, detector, trace mode, averaging count, attenuation/auto attenuation, synchronized abort | [1178.4130.02 v13](https://www.batronix.com/files/Rohde-%26-Schwarz/Spectrum-Analyser/FPC1500/FPC_UserManual_en.pdf), spectrum remote commands pp.260–287. |
+| SpecA / Anritsu Spectrum Master | MS2721B, MS2723B, MS2720T | Normal/delta markers, left/right peaks, marker at center, detector, averaging count and trace processing | [10580-00176](https://dl.cdn-anritsu.com/en-us/test-measurement/files/Manuals/Programming-Manual/10580-00176.pdf), pp.21–23,29–34; [10580-00341K](https://dl.cdn-anritsu.com/en-us/test-measurement/files/Manuals/Programming-Manual/10580-00341K.pdf), SPA CALCulate and SENSe groups. |
+| VSG / Keysight PSG | E8257C/D | ALC, attenuation, explicit degree phase, blanking; validated step/list sweeps; option-aware analog and pulse modulation | [E8251-90256](https://wyomingelectronicsinc.s3.us-east-2.amazonaws.com/uploads/E8267C.pdf) and [E8251-90356](https://www.keysight.com/gh/en/assets/9018-04965/programming-guides/9018-04965.pdf), frequency/power, list/sweep and analog modulation groups. |
+| VSG / Keysight MXG | N5181B, N5182B, N5183A/B | Same sourcing/sweep controls with MXG timing; N5182B native ARB playback, clock, trigger, upload/delete with installed-baseband checks | [N5180-90004](https://www.keysight.com/zz/en/assets/9018-06044/reference-guides/9018-06044.pdf) (A-series family reference) and [N5180-90057](https://www.manualslib.com/manual/1254217/Keysight-N5171b-Exg.html) (B-series), list/sweep pp.83–95, analog modulation pp.248–306, dual ARB pp.341–385 and memory pp.181–182. |
+| VSG / R&S SMBV | SMBV100B | Native MCCW count/spacing/state, ARB clock/trigger, dBm power readback, native .wv upload/delete; remove unverified BB:STAT playback write | [1178.4460.02](https://www.manualslib.com/manual/1561959/Rohde-And-Schwarz-Smbv100b.html), MMEMory pp.624–627, ARB pp.737–778, MCCW pp.779–795. |
+| PSU / R&S HMP | HMP4040 | Electronic fuse enable/readback, OVP clearing and combined OVP/fuse trip readback | [HMP SCPI Programmer's Manual](https://www.batronix.com/files/Rohde-%26-Schwarz/Power-Supplies/HMP/HMP_SCPI_ProgrammersManual_en.pdf), pp.26–30. |
+| PSU / Keysight N6705 | N6705A/C | N6705C now shares the verified channel-list sourcing/protection implementation; passive per-channel questionable-condition readback | [N6705 programmer reference](https://www.keysight.com.cn/cn/zh/assets/9018-03616/programming-guides/9018-03616.pdf); [N6705C operating/service guide](https://www.manualslib.com/manual/1462465/Keysight-N6705c.html), SCPI chapter, especially status pp.327–330 and A/B compatibility section. |
+| PSU / TDK Genesys | tdk-genesys, tdk-genesys-serial | SCPI fault-condition readback; native serial foldback enable/readback, hexadecimal fault and CV/CC condition readback | [LAN 83-034-100 Rev F](https://paperzz.com/doc/7122147/user-manual-for-lan-genesystm-power-supplies), section 11.8; [750/1500 W manual](https://www.atecorp.com/getmedia/13512e00-f13e-448e-9adc-d54daa8115e8/gen600-2-6-manual.pdf), sections 7.7.5 and 7.8. |
+
+### Behavior and compatibility
+
+- Spectrum marker frequency operations are for a frequency-domain sweep. Set
+  marker/delta state before the explicit acquisition, then read results; fetch
+  never re-arms. FPC delta markers are 2–6 with marker 1 as their fixed reference;
+  disabling delta mode converts the chosen marker to normal. Its delta X read
+  uses `X:REL?`, not the absolute `X?`. Anritsu uses `MARKn:DELT`, while
+  X-Series uses `MARKn:MODE DELT` and checks that mode before a delta read.
+- Anritsu `set_average_type` selects trace-A processing (`NONE`, `SCAL`, `MAX`,
+  `MIN`), whereas X-Series selects the averaging domain (`LOG`, `RMS`, `SCAL`).
+  FPC uses `DISP:TRACn:MODE AVER` and `SWE:COUN`; it has two spectrum traces.
+  FPC abort sends `ABOR;*WAI` before subsequent work. Its CSV export now checks
+  the active dBm unit before transfer, so watt traces cannot be mislabeled. Existing acquisition,
+  completion, CSV export and zero-span CSV restrictions are retained.
+- Keysight sweep operations stop an earlier continuous sweep, configure the
+  swept and fixed axes, direction, immediate triggers and continuous execution.
+  They never enable RF. List configuration loads points without initiating.
+  CW frequency/power setters leave the corresponding sweep mode. Power settings
+  and power lists explicitly select dBm; phase uses a `DEG` suffix. Output
+  blanking uses `OUTP:BLAN:STAT`; binary upload uses the required comma
+  between filename and block (also corrected in the shared Keysight uploader). PSG uses
+  millisecond dwell increments (1 ms–60 s); MXG accepts 0.1 ms–100 s.
+  `step_power` requires an integral number of the requested increments.
+- Optional Keysight modulation checks `*OPT?` before operational writes:
+  analog AM/FM/PM requires UNT; internal pulse on PSG D requires UNU/UNW,
+  MXG B requires UNW, and PSG C documents it as a model capability. N5182B
+  ARB requires 656/657. Analog models reject ARB before any I/O. Modulation
+  toggles retain the instrument's source/depth settings. Existing Keysight
+  `play_iq` does not turn RF on; existing SMBV `play_iq` does.
+- SMBV upload transfers a complete, unmodified native `.wv` file using
+  `MMEM:DATA "path", <block>` and completion. It accepts `auto`/`tcpip` only;
+  raw BIN/MAT/iq.tar conversion, FTP and generated marker blanking are not
+  provided. First/last blanking must already be encoded in the waveform.
+  MCCW bandwidth still depends on installed hardware and carrier spacing.
+- HMP OCP means its electronic fuse at the current limit, not an independently
+  adjustable ampere threshold. Clearing protection clears OVP without enabling
+  an output or canceling its fuse. Fault text is `ovp=0|1,fuse=0|1`; selected
+  channels are restored after readback. N6705/Genesys SCPI fault text is the raw
+  decimal condition register; native Genesys returns two uppercase hex digits.
+  These passive registers do not clear latched events.
+
+### Capability boundaries and warning policy
+
+Matching generic methods inside documented subsets use
+`_confirmed_generic_commands`; vendor overrides send their verified dialect
+without a fallback warning. Unverified catalog profiles (for example EXG
+N5171B/N5172B) retain the warning-and-send policy. E4440A keeps its original
+PSA subset: X-Series extensions refuse before I/O rather than inheriting them.
+No other CW profiles gain PSG/MXG sweep or vector controls.
+
+Remaining exclusions are intentional and still raise `EquipmentCapabilityError`:
+
+- Analyzer screenshots, licensed channel-power/ACPR/OBW application commands,
+  arbitrary delta references, and unverified trigger controls. FPC directional
+  peak searches and adjustable spectrum sweep-point counts remain unavailable;
+  Anritsu has no verified next-highest peak or independent B/C trace-mode setter.
+- Analog generator ARB; Keysight ARB marker editing and option-431 multitone
+  synthesis; independent pulse-generator output enable; unverified reference
+  lock readback. SMBV ARB marker editing, delete-all, and inherited Keysight
+  analog/list controls are excluded instead of sending a mismatched dialect.
+- N6705 module-dependent sense/current-slew/tracking controls and independent
+  OCP level; HMP remote sense/current-slew/tracking and independent OCP level;
+  Genesys OVP disabling, programmable OCP level and slew/sense controls.
+  Genesys `clear_protection` remains unavailable: the manual's fault-recovery
+  sequence enables output, which must not be hidden inside a clear operation.
+
+The regression suite checks all nine families, model boundaries, passive reads,
+invalid input before writes, option refusal, binary framing, native CR/hex
+replies, channel restoration, quiet confirmed commands, unverified warnings,
+and public measurement/broadcast delegation. Hardware/firmware qualification
+remains outstanding.
+
+
 Version 0.6.0 continues the `misc_equipment.xlsx` rollout inside existing kinds.
 The second implementation pass added 24 identities; the third resolved four more: RTE1204, RTP164,
 Fluke 289 and Fluke 189. The rollout now has **83 identities / 85 kind/model

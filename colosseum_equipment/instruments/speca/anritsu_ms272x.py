@@ -14,15 +14,14 @@ from typing import TYPE_CHECKING, Any
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError, EquipmentTimeoutError
 from colosseum_equipment.instruments._capabilities import supported_commands
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 from colosseum_equipment.instruments.speca.generic import GenericSpecA
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
-@instrument_model("speca", "anritsu-ms2721b", "anritsu-ms2723b", "anritsu-ms2720t")
-@supported_commands(
+_MS272X_COMMANDS = (
     "set_center_frequency",
     "set_start_frequency",
     "set_stop_frequency",
@@ -39,7 +38,26 @@ if TYPE_CHECKING:
     "measure_bw",
     "measure_center_frequency_hz",
     "measure_trace_power_at_frequency",
+    "toggle_marker",
+    "peak_search",
+    "set_marker_frequency",
+    "measure_marker_frequency",
+    "measure_marker_power",
+    "next_peak_left",
+    "next_peak_right",
+    "set_marker_to_center",
+    "toggle_delta_marker",
+    "measure_marker_delta_frequency",
+    "measure_marker_delta_power",
+    "set_detector",
+    "set_averaging_count",
+    "set_average_type",
 )
+
+
+@instrument_model("speca", "anritsu-ms2721b", "anritsu-ms2723b", "anritsu-ms2720t")
+@supported_commands(*_MS272X_COMMANDS)
+@_confirmed_generic_commands(*_MS272X_COMMANDS)
 class AnritsuMs272x(GenericSpecA):
     """SPA mode must already be selected; mode changes need a long settling time.
 
@@ -66,6 +84,71 @@ class AnritsuMs272x(GenericSpecA):
     def single_sweep(self) -> None:
         self.arm_sweep()
         self.wait_complete(timeout_s=float(self._config.get("timeout", 60.0)))
+
+    def _marker(self, marker: int) -> str:
+        if isinstance(marker, bool) or not isinstance(marker, int) or not 1 <= marker <= 6:
+            raise ValueError("MS272x marker number must be 1..6")
+        return f"CALC:MARK{marker}"
+
+    def toggle_marker(self, marker: int, enabled: bool) -> None:
+        self._scpi.write(f"{self._marker(marker)}:STAT {'ON' if enabled else 'OFF'}")
+
+    def peak_search(self, marker: int = 1) -> None:
+        self._scpi.write(f"{self._marker(marker)}:MAX")
+
+    def set_marker_frequency(self, marker: int, frequency_hz: float) -> None:
+        command = self._marker(marker)
+        if not math.isfinite(frequency_hz) or frequency_hz < 0:
+            raise ValueError("marker frequency must be finite and nonnegative")
+        self._scpi.write(f"{command}:X {frequency_hz:.6f}")
+
+    def measure_marker_frequency(self, marker: int = 1) -> float:
+        return self._scpi.query_float(f"{self._marker(marker)}:X?")
+
+    def measure_marker_power(self, marker: int = 1) -> float:
+        command = self._marker(marker)
+        self._scpi.require_setting("UNIT:POW?", "DBM")
+        return self._scpi.query_float(f"{command}:Y?")
+
+    def next_peak_left(self, marker: int = 1) -> None:
+        self._scpi.write(f"{self._marker(marker)}:MAX:LEFT")
+
+    def next_peak_right(self, marker: int = 1) -> None:
+        self._scpi.write(f"{self._marker(marker)}:MAX:RIGH")
+
+    def set_marker_to_center(self, marker: int = 1) -> None:
+        command = self._marker(marker)
+        center = self._scpi.query_float("FREQ:CENT?")
+        self._scpi.write(f"{command}:X {center:.6f}")
+
+    def toggle_delta_marker(self, marker: int, enabled: bool) -> None:
+        self._scpi.write(f"{self._marker(marker)}:DELT:STAT {'ON' if enabled else 'OFF'}")
+
+    def measure_marker_delta_frequency(self, marker: int = 1) -> float:
+        return self._scpi.query_float(f"{self._marker(marker)}:DELT:X?")
+
+    def measure_marker_delta_power(self, marker: int = 1) -> float:
+        command = self._marker(marker)
+        self._scpi.require_setting("UNIT:POW?", "DBM")
+        return self._scpi.query_float(f"{command}:DELT:Y?")
+
+    def set_detector(self, detector: str) -> None:
+        token = detector.strip().upper()
+        if token not in {"POS", "NEG", "SAMP", "RMS"}:
+            raise ValueError("MS272x detector must be POS, NEG, SAMP or RMS")
+        self._scpi.write(f"DET {token}")
+
+    def set_averaging_count(self, count: int) -> None:
+        if isinstance(count, bool) or not isinstance(count, int) or not 2 <= count <= 65535:
+            raise ValueError("MS272x average count must be 2..65535")
+        self._scpi.write(f"AVER:COUN {count}")
+
+    def set_average_type(self, average_type: str) -> None:
+        # On these instruments TYPE selects trace processing, not log/RMS units.
+        token = average_type.strip().upper()
+        if token not in {"NONE", "SCAL", "MAX", "MIN"}:
+            raise ValueError("MS272x average type must be NONE, SCAL, MAX or MIN")
+        self._scpi.write(f"AVER:TYPE {token}")
 
     def _fetch_trace(
         self,
