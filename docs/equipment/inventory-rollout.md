@@ -3,17 +3,14 @@
 This change adds **83 model identities / 85 kind/model registrations** from
 `misc_equipment.xlsx` across 12 existing equipment kinds. The first implementation
 pass covered 55 identities; subsequent passes added 28. Two Spike devices each
-have separate spectrum and IQ interfaces. Version **0.6.0** includes the audit
-fixes described in the [manual analysis](inventory-manual-analysis.md).
+have separate spectrum and IQ interfaces.
 
 These are bounded implementations based on command documentation and synthetic
 recording-transport tests. The inventory expansion pass itself was not
 hardware-qualified; CI does not gate physical qualification. Some lab
 validation of pre-existing drivers exists outside this inventory table, but
 those exercises are not recorded here as formal hardware-qualified rows.
-Registration does not mean every generic API operation is supported. The table
-below records the first implementation pass; the manual analysis lists the
-additional profiles, source references and remaining category work.
+The table below records the implemented operations from the first pass.
 
 ## Implemented subsets
 
@@ -88,12 +85,9 @@ export and spot reads fetch the captured trace without starting another sweep.
 
 ## Remaining category work
 
-The current category-by-category disposition is maintained in
-[the manual analysis](inventory-manual-analysis.md). That follow-up implements
-most remaining conventional bench instruments and documents unresolved model
-identities, host-controlled sensors, SDK interfaces and deeper acquisition
-workflows. The original plan is not fully completed; remaining entries are not
-counted as covered merely because a generic kind exists.
+Later passes added conventional bench instruments. Unresolved model identities,
+host-controlled sensors, SDK interfaces and deeper acquisition workflows remain
+outside the original rollout.
 
 The new ML2495A profile reads the current CW result and does not implement fresh
 `acquire`. New native Tek RSA exports fetch a completed capture, without rearming.

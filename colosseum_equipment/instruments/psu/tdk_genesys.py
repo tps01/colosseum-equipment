@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, Any
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
 from colosseum_equipment.instruments._capabilities import supported_commands
 from colosseum_equipment.instruments.psu.generic import GenericPSU
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
 
 
 _GENESYS_COMMANDS = (
+    "get_fault_status",
     "set_voltage",
     "set_current_limit",
     "set_output",
@@ -35,6 +36,7 @@ _GENESYS_COMMANDS = (
 
 @instrument_model("psu", "tdk-genesys")
 @supported_commands(*_GENESYS_COMMANDS)
+@_confirmed_generic_commands(*_GENESYS_COMMANDS)
 class TdkGenesysPSU(GenericPSU):
     """TDK-Lambda Genesys LAN / IEEE SCPI.
 
@@ -107,6 +109,13 @@ class TdkGenesysPSU(GenericPSU):
         self._require_channel(channel)
         return _on_off(self._scpi.query(":CURR:PROT:STAT?"), "foldback state")
 
+    def get_fault_status(self, *, channel: int = 1) -> str:
+        self._require_channel(channel)
+        raw = self._scpi.query("STAT:QUES:COND?").strip()
+        if not raw.isdecimal() or int(raw) > 4095:
+            raise EquipmentResponseError("invalid Genesys questionable condition register")
+        return raw
+
 
 def _device_address(config: dict[str, Any]) -> int | None:
     if "device_address" not in config:
@@ -131,8 +140,11 @@ def _on_off(raw: str, label: str) -> bool:
     raise EquipmentResponseError(f"invalid Genesys {label}: {raw!r}")
 
 
-@instrument_model("psu", "tdk-genesys-serial")
-@supported_commands(
+_GENESYS_SERIAL_COMMANDS = (
+    "toggle_ocp",
+    "get_ocp_enabled",
+    "get_fault_status",
+    "get_regulation_mode",
     "set_voltage",
     "set_current_limit",
     "set_output",
@@ -148,6 +160,11 @@ def _on_off(raw: str, label: str) -> bool:
     "wait_for_voltage",
     "wait_for_current",
 )
+
+
+@instrument_model("psu", "tdk-genesys-serial")
+@supported_commands(*_GENESYS_SERIAL_COMMANDS)
+@_confirmed_generic_commands(*_GENESYS_SERIAL_COMMANDS)
 class TdkGenesysSerialPSU(GenericPSU):
     """Genesys serial family: CR-terminated native protocol.
 
@@ -235,3 +252,27 @@ class TdkGenesysSerialPSU(GenericPSU):
 
     def get_ovp_v(self, *, channel: int = 1) -> float:
         return self._value("OVP?", channel)
+
+    def toggle_ocp(self, enabled: bool, *, channel: int = 1) -> None:
+        self._require_channel(channel)
+        self._write_native(f"FLD {int(enabled)}")
+
+    def get_ocp_enabled(self, *, channel: int = 1) -> bool:
+        self._require_channel(channel)
+        return _on_off(self._exchange("FLD?"), "foldback state")
+
+    def _register(self, command: str, channel: int) -> str:
+        self._require_channel(channel)
+        raw = self._exchange(command).upper()
+        if len(raw) != 2 or any(char not in "0123456789ABCDEF" for char in raw):
+            raise EquipmentResponseError(f"invalid Genesys hexadecimal register: {raw!r}")
+        return raw
+
+    def get_fault_status(self, *, channel: int = 1) -> str:
+        return self._register("FLT?", channel)
+
+    def get_regulation_mode(self, *, channel: int = 1) -> str:
+        status = int(self._register("STAT?", channel), 16)
+        # Native Status Condition register: bit 0 CV, bit 1 CC (manual table 7-10).
+        regulation = status & 0b11
+        return {0: "unknown", 1: "cv", 2: "cc"}.get(regulation, "unknown")

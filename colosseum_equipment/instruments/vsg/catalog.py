@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from colosseum_equipment.instruments.registry import instrument_model
 from colosseum_equipment.instruments.vsg.generic import GenericVSG
+from colosseum_equipment.instruments.vsg.keysight_swept import KeysightSweptGenerator
 from colosseum_equipment.instruments.vsg.rigol_dsg3136b import RigolDsg3136bFamily
 
 # TODO: Validate rigol-dsg3030 inherited commands against its vendor manual and hardware.
@@ -82,14 +83,10 @@ class KeysightN5171b(GenericVSG):
 class KeysightN5172b(GenericVSG):
     """Manual: https://www.keysight.com/vn/en/support/N5182B/mxg-x-series-rf-vector-signal-generator-9-khz-6-ghz.html"""
 
-# TODO: Validate keysight-n5181b inherited commands against its vendor manual and hardware.
-
 @instrument_model("vsg", "keysight-n5181b")
-class KeysightN5181b(GenericVSG):
+class KeysightN5181b(KeysightSweptGenerator):
     """Manual: https://www.keysight.com/vn/en/support/N5182B/mxg-x-series-rf-vector-signal-generator-9-khz-6-ghz.html"""
 
-# TODO: Validate keysight-n5182b inherited commands against its vendor manual and hardware.
-
 @instrument_model("vsg", "keysight-n5182b")
-class KeysightN5182b(GenericVSG):
+class KeysightN5182b(KeysightSweptGenerator):
     """Manual: https://www.keysight.com/vn/en/support/N5182B/mxg-x-series-rf-vector-signal-generator-9-khz-6-ghz.html"""

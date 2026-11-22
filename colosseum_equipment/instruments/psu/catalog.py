@@ -8,6 +8,7 @@ docstring is the manual link.
 from __future__ import annotations
 
 from colosseum_equipment.instruments.psu.generic import GenericPSU
+from colosseum_equipment.instruments.psu.bench import KeysightN6705A
 from colosseum_equipment.instruments.psu.rigol_dp800 import RigolDp700, RigolDp800
 from colosseum_equipment.instruments.psu.siglent_spd_single import SiglentSpd3303, SiglentSpdSingle
 from colosseum_equipment.instruments.registry import instrument_model
@@ -116,8 +117,6 @@ class SiglentSpd1168x(SiglentSpdSingle):
 class SiglentSpd1305x(SiglentSpdSingle):
     """Manual: https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download"""
 
-# TODO: Validate keysight-n6705c inherited commands against its vendor manual and hardware.
-
 @instrument_model("psu", "keysight-n6705c")
-class KeysightN6705c(GenericPSU):
+class KeysightN6705c(KeysightN6705A):
     """Manual: https://www.keysight.com/us/en/assets/9018-04227/service-manuals/9018-04227.pdf"""
