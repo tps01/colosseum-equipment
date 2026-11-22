@@ -161,3 +161,12 @@ def test_numeric_read_does_not_mistake_channel_in_echoed_header_for_value():
     transport = Mock()
     transport.query.return_value = ':CH1:SCALE 2.5'
     assert SCPIHelper(transport).query_float('CH1:SCAle?') == 2.5
+
+
+@pytest.mark.parametrize(
+    ("response", "expected"),
+    [("1.e3", 1000.0), ("12.E+2", 1200.0), (":CH1:SCALE -2.e-3", -0.002)],
+)
+def test_query_float_accepts_trailing_decimal_point_before_exponent(response, expected):
+    transport = RfStubTransport({"CH1:SCAle?": response})
+    assert SCPIHelper(transport).query_float("CH1:SCAle?") == expected

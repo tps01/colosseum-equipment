@@ -17,7 +17,7 @@ _logger = get_logger("colosseum.equipment")
 
 
 def parse_float(text: str) -> float:
-    match = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", text)
+    match = re.search(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?", text)
     if not match:
         raise EquipmentResponseError(f"No numeric value in response: {text!r}")
     return float(match.group(0))
