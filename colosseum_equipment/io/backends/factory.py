@@ -62,7 +62,13 @@ def _initial_output(config: dict[str, Any]) -> int:
 
 
 def open_dio_backend(dio_id: int, config: dict[str, Any]) -> Any:  # noqa: ANN401
+    from colosseum_equipment.transports.digilent import DRIVER, MODEL
+
     driver = _driver_name(config)
+    if driver == DRIVER or str(config.get("model") or "").lower() == MODEL:
+        from colosseum_equipment.io.backends.digilent import DigilentDio
+
+        return DigilentDio(config)
     if driver == "sim":
         return SimDioBackend.from_cache(
             dio_id=dio_id,

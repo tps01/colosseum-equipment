@@ -1,0 +1,20 @@
+# Replace the placeholder with the AD3 serial shown in the WaveForms Device Manager.
+# Use the same serial and optional library path in each role for one physical AD3.
+
+[equipment.oscope]
+oscope_id = 1
+driver = "digilent-dwf"
+model = "digilent-analog-discovery-3"
+resource = "210000000000"
+
+[equipment.asg]
+asg_id = 1
+driver = "digilent-dwf"
+model = "digilent-analog-discovery-3"
+resource = "210000000000"
+
+[io.dio]
+dio_id = 1
+driver = "digilent-dwf"
+model = "digilent-analog-discovery-3"
+resource = "210000000000"

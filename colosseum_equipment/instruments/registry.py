@@ -183,6 +183,8 @@ _CONFIG_KIND_ADDRESS: dict[str, str] = {
     "serial": "either",
 }
 _CONFIG_KIND_EXTRA: dict[str, tuple[str, ...]] = {
+    "asg": ("library",),
+    "oscope": ("library",),
     "serial": ("baudrate", "sim_read"),
     "gnss": ("baudrate", "connection", "sim_read"),
 }
