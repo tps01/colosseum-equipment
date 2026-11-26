@@ -54,6 +54,13 @@ class _StaticScpiLoad(GenericEload):
     def set_resistance(self, resistance: float, *, channel: int = 1) -> None:
         self._set_static_level("RES", resistance, channel)
 
+    def set_slew_rate(self, amps_per_s: float, *, channel: int = 1) -> None:
+        self._require_channel(channel)
+        if not isfinite(amps_per_s) or amps_per_s <= 0:
+            raise ValueError("slew rate must be finite and positive")
+        # The load expects A/us. The public API uses A/s.
+        self._scpi.write(f"SOUR:CURR:SLEW:POS {amps_per_s / 1e6}")
+
     def engage(self, *, channel: int = 1) -> None:
         self._require_channel(channel)
         self._scpi.write("SOUR:INP:STAT ON")
