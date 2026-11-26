@@ -145,13 +145,14 @@ drivers for output/protection/sense SCPI; catalog slugs inherit generic commands
 with one-time warnings.
 
 **Eload deep API (named-model workflow tier):** `itech-it8600`, `chroma-8600`,
-and `agilent-6050` cover CC/CV/CP/CR dialect differences; transient/list and
-protection use generic SCPI on other catalog models.
+and `agilent-6050` cover CC/CV/CP/CR dialect differences. Rigol DL3000 and
+Siglent SDL1000X have documented static setup and readback. Their transient,
+list, and protection methods retain the catalog's best-effort behavior.
 
 **DMM deep API (named-model workflow tier):** `keysight-edu34450a`,
 `keysight-34401a`, and `keithley-dmm6500` are reference measure/configure
-drivers; configure→``initiate``→``fetch`` and AC/4W one-shots use generic SCPI
-elsewhere.
+drivers. Keysight Truevolt models support function-qualified settings and
+explicit configure, initiate, and scalar fetch.
 
 **VSG waveforms:** `upload_waveform` accepts local `.bin`, `.mat`, or `.iq.tar`
 (converted to 16-bit interleaved I/Q); then `play_iq` with the remote filename.
@@ -334,20 +335,20 @@ docstring records the manual link.
 | `siglent-sdm3055` | dmm | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `siglent-sdm3065x` | dmm | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
 | `keysight-34401a` | dmm | <https://www.keysight.com/us/en/assets/9018-01063/user-manuals/9018-01063.pdf> | `Keysight34401A` family overrides; other methods best-effort |
-| `keysight-34460a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | generic SCPI |
-| `keysight-34461a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | generic SCPI |
-| `keysight-34465a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | generic SCPI |
-| `keysight-34470a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | generic SCPI |
+| `keysight-34460a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | Keysight Truevolt scalar configuration and fetch; hardware qualification outstanding |
+| `keysight-34461a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | Keysight Truevolt scalar configuration and fetch; hardware qualification outstanding |
+| `keysight-34465a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | Keysight Truevolt scalar configuration and fetch; hardware qualification outstanding |
+| `keysight-34470a` | dmm | <https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html> | Keysight Truevolt scalar configuration and fetch; hardware qualification outstanding |
 | `keithley-dmm6500` | dmm | <https://www.tek.com/en/support/datasheets-manuals-software-downloads> | `KeithleyDmm6500Family` family overrides; other methods best-effort |
 | `keithley-dmm7510` | dmm | <https://www.tek.com/en/support/datasheets-manuals-software-downloads> | generic SCPI |
-| `rigol-dl3021` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | generic SCPI |
-| `rigol-dl3021a` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | generic SCPI |
-| `rigol-dl3031` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | generic SCPI |
-| `rigol-dl3031a` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | generic SCPI |
-| `siglent-sdl1020x` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
-| `siglent-sdl1020x-e` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
-| `siglent-sdl1030x` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
-| `siglent-sdl1030x-e` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | generic SCPI |
+| `rigol-dl3021` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | DL3000 static setpoints, input control, and readback; hardware qualification outstanding |
+| `rigol-dl3021a` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | DL3000 static setpoints, input control, and readback; hardware qualification outstanding |
+| `rigol-dl3031` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | DL3000 static setpoints, input control, and readback; hardware qualification outstanding |
+| `rigol-dl3031a` | eload | <https://www.rigolna.com/europe/products/dc-load/DL3000.html> | DL3000 static setpoints, input control, and readback; hardware qualification outstanding |
+| `siglent-sdl1020x` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | SDL1000X static setpoints, input control, short, and readback; hardware qualification outstanding |
+| `siglent-sdl1020x-e` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | SDL1000X static setpoints, input control, short, and readback; hardware qualification outstanding |
+| `siglent-sdl1030x` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | SDL1000X static setpoints, input control, short, and readback; hardware qualification outstanding |
+| `siglent-sdl1030x-e` | eload | <https://www.siglent.com/na/service-support/resource-center/?current=siglent-manual-download> | SDL1000X static setpoints, input control, short, and readback; hardware qualification outstanding |
 | `bk-8500` | eload | <https://www.bkprecision.com/> | Native 26-byte binary serial static subset; transient/list/protection/preset refused; hardware qualification outstanding |
 | `bk-8600` | eload | <https://www.bkprecision.com/> | generic SCPI |
 | `tektronix-fca3000` | freqcounter | <https://www.tek.com/en/frequency-counter/mca3000-manual/fca3000-and-fca3100-series-mca3000-series> | existing driver |

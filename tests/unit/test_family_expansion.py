@@ -390,3 +390,95 @@ def test_fpc_csv_refuses_non_dbm_trace_before_changing_transfer_settings(unit_ru
     with pytest.raises(EquipmentCapabilityError):
         inst.save_trace_data("traces/watts.csv")
     assert io.events == ["UNIT:POW?"]
+
+
+@pytest.mark.parametrize("model", [
+    "keysight-34460a", "keysight-34461a", "keysight-34465a", "keysight-34470a",
+])
+def test_truevolt_public_setup_and_passive_fetch(model, unit_runtime_context, monkeypatch):
+    from colosseum_equipment.api import dmm
+
+    meter, io = driver("dmm", model, {"CONF?": '"VOLT:DC +10,+0.001"', "FETC?": "4.98"})
+    monkeypatch.setattr(dmm, "get_cached_instrument", lambda *args: meter)
+    dmm.set_function(dmm_id=1, function="VOLT:DC")
+    dmm.set_range(dmm_id=1, value=10.0)
+    dmm.set_auto_range(dmm_id=1, enabled=False)
+    dmm.set_nplc(dmm_id=1, nplc=1.0)
+    dmm.set_auto_zero(dmm_id=1, enabled=True)
+    dmm.set_trigger_source(dmm_id=1, source="IMM")
+    dmm.initiate(dmm_id=1)
+    assert dmm.measure_voltage_dc(dmm_id=1, key="voltage") == 4.98
+    assert io.events == [
+        "CONF:VOLT:DC", "CONF?", "SENS:VOLT:DC:RANG 10.0", "CONF?", "SENS:VOLT:DC:RANG:AUTO 0",
+        "CONF?", "SENS:VOLT:DC:NPLC 1.0", "CONF?", "SENS:VOLT:DC:ZERO:AUTO 1",
+        "TRIG:SOUR IMM", "INIT", "CONF?", "FETC?",
+    ]
+
+
+def test_truevolt_uses_voltage_range_for_frequency_and_checks_function():
+    meter, io = driver("dmm", "keysight-34461a", {"CONF?": '"FREQ +1,+0.001"'})
+    meter.set_range(1.0)
+    with pytest.raises(EquipmentCapabilityError):
+        meter.set_nplc(1.0)
+    with pytest.raises(EquipmentCapabilityError):
+        meter.measure_voltage_dc()
+    with pytest.raises(EquipmentCapabilityError):
+        meter.fetch(channel=2)
+    assert io.events == ["CONF?", "SENS:FREQ:VOLT:RANG 1.0", "CONF?", "CONF?"]
+
+
+@pytest.mark.parametrize("reply", ["9.9e37", "nan", "inf", "1,2", ""])
+def test_truevolt_rejects_invalid_scalar_fetch(reply):
+    meter, io = driver("dmm", "keysight-34470a", {"FETC?": reply})
+    with pytest.raises(EquipmentResponseError):
+        meter.fetch()
+    assert io.events == ["FETC?"]
+
+
+@pytest.mark.parametrize("model", [
+    "rigol-dl3021", "rigol-dl3021a", "rigol-dl3031", "rigol-dl3031a",
+    "siglent-sdl1020x", "siglent-sdl1020x-e", "siglent-sdl1030x", "siglent-sdl1030x-e",
+])
+def test_static_load_public_setup_and_measurements(model, unit_runtime_context, monkeypatch, caplog):
+    from colosseum_equipment.api import eload
+
+    load, io = driver("eload", model, {
+        "SOUR:INP:STAT?": "1", "MEAS:VOLT?": "5", "MEAS:CURR?": "0.2", "MEAS:POW?": "1.05",
+    })
+    monkeypatch.setattr(eload, "get_cached_instrument", lambda *args: load)
+    eload.set_mode(eload_id=1, mode=" cc ")
+    eload.set_current(eload_id=1, current=0.2)
+    eload.set_voltage(eload_id=1, voltage=5.0)
+    eload.set_power(eload_id=1, power=1.0)
+    eload.set_resistance(eload_id=1, resistance=25.0)
+    assert io.events == ["SOUR:FUNC CURR", "SOUR:CURR 0.2", "SOUR:VOLT 5.0", "SOUR:POW 1.0", "SOUR:RES 25.0"]
+    io.events.clear()
+    eload.engage(eload_id=1)
+    assert eload.measure_input_state(eload_id=1, key="state") == 1
+    assert eload.measure_voltage(eload_id=1, key="voltage") == 5
+    assert eload.measure_current(eload_id=1, key="current") == 0.2
+    assert eload.measure_power_w(eload_id=1, key="power") == 1.05
+    eload.disengage(eload_id=1)
+    assert io.events == [
+        "SOUR:INP:STAT ON", "SOUR:INP:STAT?", "MEAS:VOLT?", "MEAS:CURR?", "MEAS:POW?", "SOUR:INP:STAT OFF",
+    ]
+    assert "generic SCPI" not in caplog.text
+
+
+@pytest.mark.parametrize("model", ["rigol-dl3031a", "siglent-sdl1030x"])
+def test_static_load_rejects_invalid_inputs_and_malformed_readbacks(model):
+    load, io = driver("eload", model, {"MEAS:POW?": "1,2", "SOUR:INP:STAT?": "2"})
+    with pytest.raises(EquipmentCapabilityError):
+        load.set_mode("CC;INP ON")
+    with pytest.raises(EquipmentCapabilityError):
+        load.engage(channel=2)
+    with pytest.raises(EquipmentCapabilityError):
+        load.set_current(float("nan"))
+    with pytest.raises(EquipmentCapabilityError):
+        driver("eload", model, channels=2)
+    assert io.events == []
+    with pytest.raises(EquipmentResponseError):
+        load.measure_power_w()
+    with pytest.raises(EquipmentResponseError):
+        load.measure_input_state()
+    assert io.events == ["MEAS:POW?", "SOUR:INP:STAT?"]

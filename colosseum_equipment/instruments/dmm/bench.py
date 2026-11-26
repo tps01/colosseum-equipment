@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
 from colosseum_equipment.instruments._capabilities import supported_commands
 from colosseum_equipment.instruments.dmm.generic import GenericDMM
-from colosseum_equipment.instruments.registry import instrument_model
+from colosseum_equipment.instruments.registry import _confirmed_generic_commands, instrument_model
 
 if TYPE_CHECKING:
     from colosseum_equipment.transports.base import Transport
@@ -188,6 +188,45 @@ class Keysight3441x(BenchDmm):
         if math.isnan(ohms) or (ohms != 1e7 and ohms < 1e10):
             raise EquipmentCapabilityError("input impedance is 10 Mohm or automatic high impedance")
         self._scpi.write(f"VOLT:DC:IMP:AUTO {int(ohms >= 1e10)}")
+
+
+@_confirmed_generic_commands("initiate", "get_trigger_source", "measure_voltage", "measure_current")
+class KeysightTruevolt(BenchDmm):
+    """Keysight Truevolt Series Operating and Service Guide, 9018-03876."""
+
+    def _function(self, function: str) -> str:
+        token = function.strip().strip('"').upper()
+        if token in {"CAP", "CONT", "DIOD", "PER", "TEMP"}:
+            return token
+        return super()._function(token)
+
+    def get_function(self, *, channel: int = 1) -> str:
+        self._require_channel(channel)
+        raw = self._scpi.query("CONF?")
+        fields = raw.partition(",")[0].split()
+        try:
+            return self._function(fields[0])
+        except (IndexError, EquipmentCapabilityError) as exc:
+            raise EquipmentResponseError(f"invalid Truevolt configuration reply: {raw!r}") from exc
+
+    def _sense(self, channel: int, suffix: str, *, integrating: bool = False) -> str:
+        function = self.get_function(channel=channel)
+        if integrating:
+            supported = {"VOLT:DC", "CURR:DC", "RES", "FRES", "TEMP"}
+            if function not in supported or (suffix == "ZERO:AUTO" and function == "FRES"):
+                raise EquipmentCapabilityError(f"{suffix} is unavailable for {function}")
+        elif function in {"CONT", "DIOD", "TEMP"}:
+            raise EquipmentCapabilityError(f"{suffix} is unavailable for {function}")
+        if function in {"FREQ", "PER"}:
+            function += ":VOLT"
+        return f"SENS:{function}:{suffix}"
+
+    def set_auto_zero(self, enabled: bool, *, channel: int = 1) -> None:
+        self._scpi.write(f"{self._sense(channel, 'ZERO:AUTO', integrating=True)} {int(enabled)}")
+
+    def get_auto_zero(self, *, channel: int = 1) -> bool:
+        command = self._sense(channel, "ZERO:AUTO", integrating=True)
+        return bool(int(self._scpi.query(f"{command}?")))
 
 
 @instrument_model("dmm", "keithley-2100")
