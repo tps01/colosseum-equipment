@@ -359,7 +359,7 @@ docstring records the manual link.
 | `tektronix-fca3120` | freqcounter | <https://www.tek.com/en/frequency-counter/mca3000-manual/fca3000-and-fca3100-series-mca3000-series> | alias of `tektronix-fca3000` |
 | `tektronix-mca3027` | freqcounter | <https://www.tek.com/en/frequency-counter/mca3000-manual/fca3000-and-fca3100-series-mca3000-series> | alias of `tektronix-fca3000` |
 | `tektronix-mca3040` | freqcounter | <https://www.tek.com/en/frequency-counter/mca3000-manual/fca3000-and-fca3100-series-mca3000-series> | alias of `tektronix-fca3000` |
-| `rigol-ds1054z` | oscope | <https://www.rigolna.com/support/downloads/> | generic SCPI |
+| `rigol-ds1054z` | oscope | <https://telonic.co.uk/jg/wp-content/uploads/2021/05/Rigol-DS1000Z-ProgrammingGuide.pdf> | Normal display-memory waveform export uses the native ASCII voltages and waveform preamble. Other inherited commands remain best-effort. Physical qualification is pending. |
 | `rigol-ds1074z` | oscope | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-ds1104z` | oscope | <https://www.rigolna.com/support/downloads/> | generic SCPI |
 | `rigol-mso1074z` | oscope | <https://www.rigolna.com/support/downloads/> | generic SCPI |
