@@ -60,6 +60,7 @@ API_FUNCTIONS: tuple[tuple[str, str, str], ...] = (
 GUIDES: tuple[str, ...] = (
     "docs/documentation-history.md",
     "docs/jtag.md",
+    "docs/equipment/digilent-ad3.md",
     "docs/sphinx/source/guides/api_conventions.rst",
     "docs/sphinx/source/guides/getting_started.rst",
     "docs/sphinx/source/guides/transports_support.rst",

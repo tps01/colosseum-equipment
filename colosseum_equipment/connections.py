@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 from colosseum.config.loader import ConfigError
@@ -63,11 +64,13 @@ def get_cached_instrument(kind: str, equipment_id: int) -> Any:  # noqa: ANN401
     model = str(cfg.get("model") or "generic").lower()
 
     def _open() -> Any:  # noqa: ANN401
+        from colosseum_equipment.exceptions import EquipmentConnectionError
         from colosseum_equipment.instruments.factory import build_instrument
         from colosseum_equipment.instruments.identify import (
             instrument_config,
             resolve_instrument_model,
         )
+        from colosseum_equipment.transports.digilent import DigilentConnection
 
         transport = get_transport(kind, equipment_id)
         resolved_model = resolve_instrument_model(kind, cfg, transport)
@@ -77,12 +80,19 @@ def get_cached_instrument(kind: str, equipment_id: int) -> Any:  # noqa: ANN401
             equipment_id,
             resolved_model,
         )
-        return build_instrument(
-            kind,
-            equipment_id,
-            instrument_config(kind, cfg, resolved_model),
-            transport,
-        )
+        try:
+            return build_instrument(
+                kind,
+                equipment_id,
+                instrument_config(kind, cfg, resolved_model),
+                transport,
+            )
+        except Exception:
+            if isinstance(transport, DigilentConnection):
+                ctx.resource_cache.pop(_cache_key(kind, equipment_id), None)
+                with suppress(EquipmentConnectionError):
+                    transport.close()
+            raise
 
     return cached_resource(
         ctx.resource_cache,

@@ -3,6 +3,7 @@
 ## Documentation
 
 - [JTAG setup for Vivado and Quartus](docs/jtag.md)
+- [Digilent Analog Discovery 3 setup and loopback](docs/equipment/digilent-ad3.md)
 
 API reference (GitHub Pages): <https://tps01.github.io/colosseum-equipment/>
 

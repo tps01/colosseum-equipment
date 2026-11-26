@@ -68,7 +68,7 @@ def _parse_ascii_waveform(raw: str, *, points_expected: int) -> list[float]:
     return values
 
 
-@instrument_model("oscope", "generic", extra_optional=("measurement_slot", "channels"))
+@instrument_model("oscope", "generic", extra_optional=("measurement_slot", "channels", "library"))
 @best_effort_commands
 class GenericOscope(ScpiInstrumentMixin):
     """Generic SCPI oscilloscope (subset; vendor models extend).
