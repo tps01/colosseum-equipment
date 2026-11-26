@@ -95,3 +95,56 @@ def test_tek_wait_times_out_while_still_running(monkeypatch):
     monkeypatch.setattr("colosseum_equipment.instruments.oscope.tek_mdo4000.time.sleep", lambda _: None)
     with pytest.raises(EquipmentTimeoutError):
         scope.wait_complete(timeout_s=1)
+
+
+@pytest.mark.parametrize(
+    ("preamble", "payload", "error"),
+    [
+        ("2,0,2,1,0.5,-1,0,0.01,0,128", "#180.5,-0.5", None),
+        ("2,0,2,1,0.5,-1,0,0.01,0,128", "#190.5,-0.5", "truncated"),
+        ("2,0,2,1,0.5,-1,0,0.01,0,128", "0.5,nan", "invalid DS1054Z waveform samples"),
+        ("2,0,3,1,0.5,-1,0,0.01,0,128", "0.5,-0.5", "waveform truncated"),
+        ("2,0,2,1,0.5,-1,0,0.01,0,128", "0.5,-0.5,0.0", "point count"),
+        ("2,0,2,1,0,-1,0,0.01,0,128", "", "time axis"),
+        ("bad preamble", "", "invalid DS1054Z waveform preamble"),
+    ],
+)
+def test_ds1054z_export_uses_ascii_volts_and_restores_transfer(
+    preamble, payload, error, unit_runtime_context, tmp_path, monkeypatch,
+):
+    from colosseum_equipment.api import oscope
+    from colosseum_equipment.exceptions import EquipmentResponseError
+    from colosseum_equipment.instruments.factory import build_instrument
+
+    replies = {
+        "WAV:SOUR?": "CHAN2", "WAV:MODE?": "MAX", "WAV:FORM?": "BYTE",
+        "WAV:PRE?": preamble, "WAV:DATA?": payload,
+    }
+    transport = Transport()
+
+    def query(command):
+        transport.queries.append(command)
+        return replies[command]
+
+    monkeypatch.setattr(transport, "query", query)
+    scope = build_instrument("oscope", 1, {"model": "rigol-ds1054z"}, transport)
+    monkeypatch.setattr(oscope, "get_cached_instrument", lambda *_: scope)
+    path = tmp_path / "rigol.csv"
+
+    if error:
+        with pytest.raises(EquipmentResponseError, match=error):
+            oscope.save_waveform(oscope_id=1, channel=1, path=str(path), key="rigol")
+        assert not path.exists()
+        assert unit_runtime_context.db.get_measurement("equipment", "save_waveform", "rigol") is None
+    else:
+        oscope.save_waveform(oscope_id=1, channel=1, path=str(path), key="rigol")
+        with path.open(newline="", encoding="utf-8") as handle:
+            assert list(csv.reader(handle)) == [["time_s", "voltage_v"], ["-1.0", "0.5"], ["-0.5", "-0.5"]]
+        row = unit_runtime_context.db.get_measurement("equipment", "save_waveform", "rigol")
+        assert row.value["points"] == 2
+
+    assert transport.writes == [
+        "WAV:SOUR CHAN1", "WAV:MODE NORM", "WAV:FORM ASC",
+        "WAV:FORM BYTE", "WAV:MODE MAX", "WAV:SOUR CHAN2",
+    ]
+    assert transport.queries[:4] == ["WAV:SOUR?", "WAV:MODE?", "WAV:FORM?", "WAV:PRE?"]
