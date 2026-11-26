@@ -199,6 +199,24 @@ its generated configuration before enabling outputs. Opt-in ``gpib_scan=True``
 sweeps GPIB primary addresses when the board is present but enumeration is
 empty. FTDI adapters stay manual. See :doc:`/api/autoconfig`.
 
+On Linux, an ASRL device path and its serial symlinks are treated as the
+same port. Autoconfig keeps the resource or port that first identifies the
+instrument successfully.
+
+If a working TCPIP INSTR resource is missing from VISA enumeration, pass
+``subnets="192.168.0.0/24"`` to ``col.equipment.autoconfig``. To search
+more than one IPv4 subnet, use ``subnets=["192.168.0.0/24", "192.168.2.0/24"]``.
+The additional search defaults to addresses already in the local ARP cache
+on Windows and Linux. Pass ``exhaustive=True`` to check every usable address
+in the supplied subnets, including instruments absent from the cache.
+Both modes check standard VXI-11
+(``inst0``, TCP port 111 for the port mapper) and HiSLIP (``hislip0``,
+TCP port 4880) endpoints. It respects the subnet blacklist and skips IPv4
+addresses already identified. Each TCP port check uses at most 200 ms, or
+less if the requested probe timeout is shorter. Only instruments with a
+classifiable identity are added, using the resource string that responded. Raw SCPI socket
+resources and nonstandard endpoints still require explicit configuration.
+
 What support means
 ------------------
 

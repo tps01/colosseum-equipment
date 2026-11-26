@@ -247,7 +247,7 @@ class _LogCapture:
 
 def _discover(rm: _FakeResourceManager, **kwargs: object) -> object:
     kwargs.setdefault("list_comports", lambda: [])
-    return discover_equipment_config(resource_manager=rm, timeout=1.0, **kwargs)  # type: ignore[arg-type]
+    return discover_equipment_config(resource_manager=rm, **kwargs)  # type: ignore[arg-type]
 
 
 class _FakeUsbtmcTransport:
@@ -281,6 +281,8 @@ def test_discover_assigns_ids_by_connection_order() -> None:
     assert psu_rows[1]["resource"].startswith("GPIB")
     assert result.raw["equipment"]["dmm"][0]["dmm_id"] == 1
     assert all(inst.closed for inst in rm.opened)
+    assert {inst.timeout for inst in rm.opened} == {500}
+    assert {kwargs["open_timeout"] for kwargs in rm.open_kwargs} == {500}
 
 
 def test_discover_blacklist_excludes_tcpip_subnet() -> None:
@@ -768,6 +770,7 @@ def test_discover_probes_usbtmc_without_visa_open(monkeypatch) -> None:
     assert result.raw["equipment"]["psu"][0]["model"] == "bk-9115"
     assert rm.opened == []
     assert opened and opened[0].closed
+    assert opened[0].timeout == 1.0
 
 
 class _HiddenGpibResourceManager(_FakeResourceManager):
@@ -818,3 +821,170 @@ def test_gpib_scan_skipped_when_list_resources_already_has_gpib() -> None:
     result = _discover(rm, gpib_scan=True, gpib_board_present=lambda: True)
     assert result.raw["equipment"]["dmm"][0]["resource"] == "GPIB0::1::INSTR"
     assert probes == ["GPIB0::1::INSTR"]
+
+
+@pytest.mark.parametrize("listed", [(), ("ASRL7::INSTR",)])
+@pytest.mark.parametrize("subnets", ["192.168.0.8/29", ["192.168.0.10/32", "192.168.0.9/32"]])
+def test_tcpip_scan_finds_hidden_vsgs_in_numeric_order(monkeypatch, listed, subnets) -> None:
+    first = "TCPIP0::192.168.0.9::inst0::INSTR"
+    second = "TCPIP0::192.168.0.10::hislip0::INSTR"
+    unclassified = "TCPIP0::192.168.0.10::inst0::INSTR"
+    rm = _FakeResourceManager({
+        first: "Keysight Technologies,N5182B,1,1",
+        second: "Keysight Technologies,N5182B,2,1",
+        unclassified: "UNKNOWN,WIDGET,1,1",
+        "ASRL7::INSTR": "BK PRECISION,9115,1,1",
+    })
+    monkeypatch.setattr(rm, "list_resources", lambda query: listed)
+    reachable = {("192.168.0.9", 111), ("192.168.0.10", 111), ("192.168.0.10", 4880)}
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.tcpip_scan._reachable",
+        lambda host, port, timeout: (host, port) in reachable,
+    )
+    progress = _LogCapture()
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.tcpip_scan._cached_ipv4_neighbors",
+        lambda: pytest.fail("an exhaustive scan should not read the ARP cache"),
+    )
+    result = _discover(rm, subnets=subnets, exhaustive=True, logger=progress)
+    assert result.scanned_count == len(listed)
+    assert [(row.item_id, row.resource) for row in result.assignments if row.kind == "vsg"] == [
+        (1, first), (2, second),
+    ]
+    assert [(skip.resource, skip.reason) for skip in result.skipped] == [(unclassified, "no_kind_match")]
+    assert all(inst.closed for inst in rm.opened)
+    assert ("info", f"Autoconfig VISA enumeration returned {len(listed)} resources") in progress.messages
+    assert ("info", "Autoconfig TCPIP exhaustive scan found 2 additional instruments") in progress.messages
+
+
+@pytest.mark.parametrize(("timeout", "connect_timeout"), [(1.0, 0.2), (0.05, 0.05)])
+def test_tcpip_scan_skips_blacklisted_and_assigned_addresses(monkeypatch, timeout, connect_timeout) -> None:
+    listed = "TCPIP0::192.168.0.98::INSTR"
+    rm = _FakeResourceManager({listed: "Keysight Technologies,N5182B,1,1"})
+    attempts = []
+
+    def unreachable(host, port, timeout):
+        attempts.append((host, port, timeout))
+        return False
+
+    monkeypatch.setattr("colosseum_equipment.autoconfig.tcpip_scan._reachable", unreachable)
+    assert len(_discover(rm).assignments) == 1
+    assert len(_discover(rm, subnets=[]).assignments) == 1
+    assert attempts == []
+    result = discover_equipment_config(
+        resource_manager=rm, list_comports=lambda: [], timeout=timeout,
+        subnets=["192.168.0.99/32", "192.168.0.96/29"], exhaustive=True, blacklist="eth1",
+        network_bindings=[IPv4NetworkBinding("eth1", "192.168.0.102", "192.168.0.100", 30)],
+    )
+    assert [row.resource for row in result.assignments] == [listed]
+    assert sorted(attempts) == [
+        (host, port, connect_timeout) for host in ("192.168.0.97", "192.168.0.99") for port in (111, 4880)
+    ]
+    assert rm.open_kwargs[-1]["open_timeout"] == int(timeout * 1000)
+
+
+@pytest.mark.parametrize("subnet", ["192.168.0.99", "192.168.0.99/24", ["192.168.0.0/24", "2001:db8::/64"]])
+def test_tcpip_scan_requires_ipv4_cidr_before_visa_listing(monkeypatch, subnet) -> None:
+    rm = _FakeResourceManager({})
+    monkeypatch.setattr(rm, "list_resources", lambda query: pytest.fail("unexpected VISA listing"))
+    with pytest.raises(ConfigError, match="subnets"):
+        _discover(rm, subnets=subnet)
+
+
+def test_autoconfig_exports_successful_tcpip_fallback(unit_runtime_context, monkeypatch, tmp_path) -> None:
+    from ipaddress import IPv4Address
+
+    from colosseum.config.toml_io import read_toml
+
+    resource = "TCPIP0::192.168.0.99::hislip0::INSTR"
+    rm = _FakeResourceManager({resource: "Keysight Technologies,N5182B,1,1"})
+    monkeypatch.setattr(rm, "list_resources", lambda query: ())
+    monkeypatch.setattr("colosseum_equipment.autoconfig.discovery.open_resource_manager", lambda library: rm)
+    monkeypatch.setattr("colosseum_equipment.autoconfig.discovery._list_com_ports", lambda list_comports: [])
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.tcpip_scan._cached_ipv4_neighbors",
+        lambda: {IPv4Address(host) for host in ("192.168.0.99", "192.168.0.103", "192.168.1.1")},
+    )
+    attempts = []
+
+    def reachable(host, port, timeout):
+        attempts.append((host, port))
+        return port == 4880
+
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.tcpip_scan._reachable",
+        reachable,
+    )
+    export_path = tmp_path / "tcpip.toml"
+    store = autoconfig(subnets=["192.168.0.96/29", "192.168.2.0/30"], export_path=export_path)
+    assert store.require_item("equipment.vsg", 1)["resource"] == resource
+    assert rm.open_kwargs[-1]["open_timeout"] == 500
+    assert rm.opened[-1].timeout == 500
+    raw = read_toml(export_path)["equipment"]["vsg"]
+    assert (raw[0] if isinstance(raw, list) else raw)["resource"] == resource
+    assert attempts == [("192.168.0.99", 111), ("192.168.0.99", 4880)]
+
+
+@pytest.mark.parametrize("platform", ["linux", "win32"])
+def test_tcpip_scan_reads_resolved_ipv4_neighbors(monkeypatch, platform) -> None:
+    from types import SimpleNamespace
+
+    from colosseum_equipment.autoconfig import tcpip_scan
+
+    monkeypatch.setattr(tcpip_scan, "sys", SimpleNamespace(platform=platform))
+    if platform == "linux":
+        data = """IP address       HW type  Flags  HW address         Mask  Device
+192.168.0.98     0x1      0x0    00:00:00:00:00:00  *     eth0
+192.168.0.99     0x1      0x2    02:00:00:00:00:01  *     eth0
+"""
+        monkeypatch.setattr(tcpip_scan.Path, "read_text", lambda self, **kwargs: data)
+    else:
+        data = """Interface : 192.168.0.5 --- 0x1
+  Internet Address      Physical Address      Type
+  192.168.0.99           02-00-00-00-00-01     dynamic
+"""
+        monkeypatch.setattr(tcpip_scan.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout=data))
+    assert {str(host) for host in tcpip_scan._cached_ipv4_neighbors()} == {"192.168.0.99"}
+
+
+@pytest.mark.parametrize("visa", [False, True])
+def test_linux_serial_symlinks_share_port_identity_across_discovery_paths(monkeypatch, visa) -> None:
+    target, alias, other = "/dev/ttyS0", "/dev/ttyUSB_DIG_PWR_SUPPLY", "/dev/ttyS1"
+    idn = "BK PRECISION,9115,1,1"
+    monkeypatch.setattr(
+        "colosseum_equipment.autoconfig.discovery.realpath",
+        lambda port: target if port == alias else port,
+    )
+    resources = {f"ASRL{port}::INSTR": idn for port in (target, alias)} if visa else {}
+    rm = _FakeResourceManager(resources)
+    serial_opens = []
+
+    def open_serial(port, baud, timeout):
+        serial_opens.append(port)
+        return _FakeSerialPort(idn=idn, fail_idn=False)
+
+    result = _discover(
+        rm, list_comports=lambda: [_ComPort(port) for port in (target, alias, other)], open_serial=open_serial,
+    )
+    assert len(result.assignments) == 2
+    assert result.assignments[1].port == other  # Same IDN, different device.
+    if visa:
+        assert result.assignments[0].resource == f"ASRL{target}::INSTR"
+        assert len(rm.opened) == 1
+        assert serial_opens == [other]
+    else:
+        assert result.assignments[0].port == target
+        assert serial_opens == [target, other]
+
+
+def test_linux_serial_alias_can_succeed_after_visa_target_fails(monkeypatch) -> None:
+    target, alias = "/dev/ttyS0", "/dev/ttyUSB_DIG_PWR_SUPPLY"
+    monkeypatch.setattr("colosseum_equipment.autoconfig.discovery.realpath", lambda port: target)
+    rm = _FakeResourceManager({f"ASRL{target}::INSTR": _FakeInstrument(open_error=OSError("open failed"))})
+    result = _discover(
+        rm,
+        list_comports=lambda: [_ComPort(alias)],
+        open_serial=lambda *args: _FakeSerialPort(idn="BK PRECISION,9115,1,1", fail_idn=False),
+    )
+    assert len(result.assignments) == 1
+    assert result.assignments[0].port == alias
