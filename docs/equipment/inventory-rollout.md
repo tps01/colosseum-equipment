@@ -66,6 +66,11 @@ Read voltage, current, and power from the load. On the Truevolt meter use
 `eload.disengage` in cleanup. The commands in this subset were checked against
 vendor manuals and synthetic transport replies. Physical qualification is pending.
 
+For the DL3000 and SDL1000X, `eload.set_slew_rate` takes amperes per second and
+sets the rising edge. Rigol documents this control for transient operation and
+Siglent documents it for static CC. Setting slew leaves the falling edge,
+operating mode, and input state as configured. Pass `500_000` for 0.5 A/µs.
+
 ## Configuration and acquisition
 
 Copy selected rows from

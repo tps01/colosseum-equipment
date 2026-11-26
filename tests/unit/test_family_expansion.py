@@ -482,3 +482,23 @@ def test_static_load_rejects_invalid_inputs_and_malformed_readbacks(model):
     with pytest.raises(EquipmentResponseError):
         load.measure_input_state()
     assert io.events == ["MEAS:POW?", "SOUR:INP:STAT?"]
+
+
+@pytest.mark.parametrize("model", [
+    "rigol-dl3021", "rigol-dl3021a", "rigol-dl3031", "rigol-dl3031a",
+    "siglent-sdl1020x", "siglent-sdl1020x-e", "siglent-sdl1030x", "siglent-sdl1030x-e",
+])
+def test_static_load_slew_rate_converts_public_units(model, unit_runtime_context, monkeypatch):
+    from colosseum_equipment.api import eload
+
+    load, io = driver("eload", model)
+    monkeypatch.setattr(eload, "get_cached_instrument", lambda *_: load)
+    for invalid in (0, -1, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="finite and positive"):
+            eload.set_slew_rate(eload_id=1, amps_per_s=invalid)
+    with pytest.raises(EquipmentCapabilityError):
+        eload.set_slew_rate(eload_id=1, amps_per_s=500_000, channel=2)
+    assert io.events == []
+
+    eload.set_slew_rate(eload_id=1, amps_per_s=500_000)
+    assert io.events == ["SOUR:CURR:SLEW:POS 0.5"]
