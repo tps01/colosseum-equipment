@@ -16,6 +16,7 @@ import math
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from ipaddress import IPv4Network
 from pathlib import Path
 from posixpath import realpath
@@ -382,6 +383,18 @@ class _DiscoveryState:
     next_id: dict[str, int] = field(default_factory=dict)
     logger: AutoconfigProgress | None = None
 
+    def is_assigned(self, resource: str, port: str | None = None) -> bool:
+        if resource in self.seen_resources:
+            return True
+        port_key = _serial_port_key(port, resource)
+        return port_key is not None and port_key in self.covered_ports
+
+
+class _SerialSweep(Enum):
+    ASSIGNED = auto()
+    NO_RESPONSE = auto()
+    ABORT_PORT = auto()
+
 
 @dataclass(frozen=True)
 class _SerialHit:
@@ -648,8 +661,7 @@ def _sweep_serial_bauds(
     label: str,
     resource: str,
     port: str | None,
-) -> bool | None:
-    """Run a baud sweep. True=assigned, False=hard abort, None=no hit."""
+) -> _SerialSweep:
     for baud in bauds:
         log_probing(state.logger, log_label, baud=baud)
         probe = _open_serial_baud(
@@ -661,7 +673,7 @@ def _sweep_serial_bauds(
             label=label,
         )
         if probe is _HARD_ABORT:
-            return False
+            return _SerialSweep.ABORT_PORT
         if probe is None:
             continue
         try:
@@ -680,8 +692,8 @@ def _sweep_serial_bauds(
             baudrate=baud,
             device_address=hit.device_address,
         )
-        return True
-    return None
+        return _SerialSweep.ASSIGNED
+    return _SerialSweep.NO_RESPONSE
 
 
 def _probe_serial_candidate(
@@ -716,7 +728,7 @@ def _probe_serial_candidate(
             resource=resource,
             port=port,
         )
-        if outcome is not None:
+        if outcome is not _SerialSweep.NO_RESPONSE:
             return
 
     detail = "; ".join(last_errors) if last_errors else "no response"
@@ -770,7 +782,7 @@ def _probe_visa_instr(
 
 def _probe_usbtmc_path(state: _DiscoveryState, path: str, timeout: float) -> None:
     """Identify a Linux ``/dev/usbtmcN`` node without opening it through VISA."""
-    if path in state.seen_resources:
+    if state.is_assigned(path):
         _record_skip(state, path, "duplicate_resource")
         return
     log_probing(state.logger, path)
@@ -803,13 +815,10 @@ def _probe_visa_resource(
     qm: bool,
     gnss: bool,
 ) -> None:
-    if resource in state.seen_resources:
+    if state.is_assigned(resource):
         _record_skip(state, resource, "duplicate_resource")
         return
     if _is_asrl_resource(resource):
-        if _serial_port_key(None, resource) in state.covered_ports:
-            _record_skip(state, resource, "duplicate_resource")
-            return
         _probe_serial_candidate(
             state,
             label=resource,
@@ -888,10 +897,10 @@ def _probe_leftover_com_ports(
 ) -> None:
     for info in _list_com_ports(list_comports):
         port = str(getattr(info, "device", "") or "").strip()
-        if not port or _serial_port_key(port) in state.covered_ports:
+        if not port:
             continue
-        asrl = _asrl_from_port(port)
-        if asrl and asrl in state.seen_resources:
+        resource = _asrl_from_port(port) or ""
+        if state.is_assigned(resource, port):
             continue
 
         def _open_for_port(
@@ -905,7 +914,7 @@ def _probe_leftover_com_ports(
         _probe_serial_candidate(
             state,
             label=port,
-            resource=asrl or "",
+            resource=resource,
             port=port,
             open_probe=_open_for_port,
             qm=qm,

@@ -443,14 +443,14 @@ def set_auto_attenuation(*, rtsa_id: EquipmentId, enabled: bool) -> None:
 @command
 @broadcastable("rtsa", "rtsa_id")
 def set_bandwidth(*, rtsa_id: EquipmentId, bandwidth_hz: float) -> None:
-    """Legacy model-dependent bandwidth setting in hertz.
+    """Set the model's default bandwidth quantity in hertz.
 
-    Tek and generic drivers set spectrum RBW; Spike sets IQ IF bandwidth.
-    Prefer :func:`set_rbw` or :func:`set_iq_bandwidth` in new scripts.
+    Tek and generic drivers set spectrum RBW. Spike sets IQ IF bandwidth.
+    Use :func:`set_rbw` or :func:`set_iq_bandwidth` to specify the quantity explicitly.
 
     :param rtsa_id: Configured ``equipment.rtsa`` ID.
 
-    :param bandwidth_hz: Bandwidth in hertz, with the legacy model-specific meaning.
+    :param bandwidth_hz: Spectrum RBW or IQ IF bandwidth in hertz, depending on the driver.
     """
     _logger.info("Setting bandwidth on RTSA %s to %s Hz", rtsa_id, bandwidth_hz)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_bandwidth(bandwidth_hz)
@@ -582,7 +582,7 @@ def set_trigger_position(*, rtsa_id: EquipmentId, position_dbm: float) -> None:
 
     :param rtsa_id: Configured ``equipment.rtsa`` ID.
 
-    :param position_dbm: Legacy name: percent on USB RSA and Spike; native units on other models.
+    :param position_dbm: Percent on USB RSA and Spike. Other models use their native units.
     """
     _logger.info("Setting trigger position on RTSA %s to %s (native units)", rtsa_id, position_dbm)
     get_cached_instrument("rtsa", require_int_id(rtsa_id, kind="rtsa")).set_trigger_position(position_dbm)

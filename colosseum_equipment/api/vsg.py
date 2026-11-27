@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from colosseum.decorators import command, measurement
 from colosseum.logging import get_logger
+from colosseum.units import unit_inputs
 
 from colosseum_equipment import calibration as _cal
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
@@ -408,6 +409,7 @@ def set_arb_trigger_source(*, vsg_id: EquipmentId, source: str) -> None:
 
 @command
 @broadcastable("vsg", "vsg_id")
+@unit_inputs(attenuation_db="dB")
 def set_attenuation(*, vsg_id: EquipmentId, attenuation_db: float) -> None:
     """Set output attenuation in dB.
 
@@ -533,6 +535,7 @@ def set_phase(*, vsg_id: EquipmentId, phase_deg: float) -> None:
 
 @command
 @broadcastable("vsg", "vsg_id")
+@unit_inputs(power_dbm="dBm")
 def set_power(*, vsg_id: EquipmentId, power_dbm: float, calibration: str | None = None) -> None:
     """Set output power in dBm.
 

@@ -102,7 +102,7 @@ class SignalHoundSpikeIq(GenericRtsa):
         self._scpi.write(f"TRIG:ZS:IF:LEV {level_dbm}DBM")
 
     def set_trigger_position(self, position_dbm: float) -> None:
-        # Public legacy parameter name is misleading: this quantity is percent.
+        # The public position_dbm argument specifies a percentage for this driver.
         if not 0 <= position_dbm <= 100:
             raise ValueError("trigger pre-position is a percentage, 0..100")
         self._scpi.write(f"TRIG:ZS:POS {position_dbm}")

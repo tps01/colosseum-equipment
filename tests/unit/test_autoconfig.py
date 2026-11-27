@@ -758,7 +758,7 @@ def test_discover_probes_usbtmc_without_visa_open(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "colosseum_equipment.autoconfig.discovery.list_usbtmc_devices",
-        lambda: ["/dev/usbtmc0"],
+        lambda: ["/dev/usbtmc0", "/dev/usbtmc0"],
     )
     monkeypatch.setattr(
         "colosseum_equipment.autoconfig.discovery.UsbtmcTransport",
@@ -769,8 +769,12 @@ def test_discover_probes_usbtmc_without_visa_open(monkeypatch) -> None:
     assert result.raw["equipment"]["psu"][0]["resource"] == "/dev/usbtmc0"
     assert result.raw["equipment"]["psu"][0]["model"] == "bk-9115"
     assert rm.opened == []
-    assert opened and opened[0].closed
+    assert len(opened) == 1
+    assert opened[0].closed
     assert opened[0].timeout == 1.0
+    assert [(skip.resource, skip.reason) for skip in result.skipped] == [
+        ("/dev/usbtmc0", "duplicate_resource"),
+    ]
 
 
 class _HiddenGpibResourceManager(_FakeResourceManager):
@@ -966,10 +970,13 @@ def test_linux_serial_symlinks_share_port_identity_across_discovery_paths(monkey
     result = _discover(
         rm, list_comports=lambda: [_ComPort(port) for port in (target, alias, other)], open_serial=open_serial,
     )
-    assert len(result.assignments) == 2
+    assert [assignment.item_id for assignment in result.assignments] == [1, 2]
     assert result.assignments[1].port == other  # Same IDN, different device.
     if visa:
         assert result.assignments[0].resource == f"ASRL{target}::INSTR"
+        assert [(skip.resource, skip.reason) for skip in result.skipped] == [
+            (f"ASRL{alias}::INSTR", "duplicate_resource"),
+        ]
         assert len(rm.opened) == 1
         assert serial_opens == [other]
     else:

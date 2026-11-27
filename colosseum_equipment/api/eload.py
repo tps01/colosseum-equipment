@@ -16,6 +16,7 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 from colosseum.logging import get_logger
+from colosseum.units import unit_inputs
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
@@ -198,6 +199,7 @@ def preset(*, eload_id: EquipmentId) -> None:
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(current="A")
 def set_current(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set constant-current level.
 
@@ -242,6 +244,7 @@ def set_mode(*, eload_id: EquipmentId, mode: str, channel: int = 1) -> None:
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(current="A")
 def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set over-current protection level.
 
@@ -257,6 +260,7 @@ def set_ocp_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> Non
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(power="W")
 def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
     """Set over-power protection level.
 
@@ -271,6 +275,7 @@ def set_opp_w(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(voltage="V")
 def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set over-voltage protection level.
 
@@ -286,6 +291,7 @@ def set_ovp_v(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> Non
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(power="W")
 def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
     """Set constant-power level (use when load is in CP mode).
 
@@ -300,6 +306,7 @@ def set_power(*, eload_id: EquipmentId, power: float, channel: int = 1) -> None:
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(resistance="Ω")
 def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1) -> None:
     """Set constant-resistance level (use when load is in CR mode).
 
@@ -320,6 +327,7 @@ def set_resistance(*, eload_id: EquipmentId, resistance: float, channel: int = 1
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(amps_per_s="A/s")
 def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1) -> None:
     """Set current slew rate.
 
@@ -340,6 +348,7 @@ def set_slew_rate(*, eload_id: EquipmentId, amps_per_s: float, channel: int = 1)
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(current="A")
 def set_transient_level_a(*, eload_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set transient alternate current level.
 
@@ -394,6 +403,7 @@ def set_transient_timer_s(*, eload_id: EquipmentId, seconds: float, channel: int
 
 @command
 @broadcastable("eload", "eload_id")
+@unit_inputs(voltage="V")
 def set_voltage(*, eload_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set constant-voltage level.
 
