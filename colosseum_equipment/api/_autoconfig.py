@@ -42,7 +42,7 @@ def _raw_with_discovered_equipment(
 
 def autoconfig(
     *,
-    timeout: float = 1.0,
+    timeout: float | None = None,
     visa_library: str | None = None,
     blacklist: str | Sequence[str] | None = None,
     export_path: str | Path | None = None,
@@ -50,6 +50,8 @@ def autoconfig(
     qm: bool = False,
     gnss: bool = False,
     gpib_scan: bool = False,
+    subnets: str | list[str] | None = None,
+    exhaustive: bool = False,
 ) -> ConfigStore:
     """Scan VISA ``?*INSTR`` and serial COM ports; build equipment config.
 
@@ -67,8 +69,10 @@ def autoconfig(
     ``colosseum.metadata``) stay as loaded. ``export_path`` still writes the
     discovered equipment TOML alone.
 
-    :param timeout: Probe timeout in seconds for each resource/port.
-    :type timeout: float, optional
+    :param timeout: Probe timeout in seconds. Defaults to 0.5 seconds for VISA
+        and 1 second for direct serial and USBTMC probes. TCP port checks in
+        the subnet search use at most 0.2 seconds.
+    :type timeout: float | None, optional
     :param visa_library: Optional PyVISA ``ResourceManager`` library path (for example ``@ivi``).
     :type visa_library: str | None, optional
     :param blacklist: Interface name(s) or local IPv4 address(es) whose subnets are excluded
@@ -85,6 +89,13 @@ def autoconfig(
     :param gpib_scan: When ``True``, sweep ``GPIB0::<pad>::INSTR`` for pads ``0``–``30``
         if enumeration listed no GPIB resources but board ``0`` looks present.
     :type gpib_scan: bool, optional
+    :param subnets: IPv4 CIDR string or list of strings to search for standard
+        VXI-11 and HiSLIP endpoints after VISA enumeration. The search defaults
+        to addresses in the local ARP cache.
+    :type subnets: str | list[str] | None, optional
+    :param exhaustive: Check every usable address in the supplied subnets instead
+        of using the ARP cache. Only applies when subnets are provided.
+    :type exhaustive: bool, optional
 
     :returns: Normalized configuration store for discovered equipment.
     :rtype: ConfigStore
@@ -115,6 +126,8 @@ def autoconfig(
         qm=qm,
         gnss=gnss,
         gpib_scan=gpib_scan,
+        subnets=subnets,
+        exhaustive=exhaustive,
     )
     raw = _raw_with_discovered_equipment(ctx, result.raw)
     store = apply_raw_config(ctx, raw, source_label="(autoconfig)")

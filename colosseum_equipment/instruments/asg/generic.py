@@ -24,7 +24,7 @@ _WAVEFORMS = {
 @instrument_model(
     "asg",
     "generic",
-    extra_optional=("frequency", "amplitude_vpp", "output", "channels"),
+    extra_optional=("frequency", "amplitude_vpp", "output", "channels", "library"),
 )
 @best_effort_commands
 class GenericASG(ScpiInstrumentMixin):

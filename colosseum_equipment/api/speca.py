@@ -582,6 +582,8 @@ def set_average_type(*, speca_id: EquipmentId, average_type: str) -> None:
     :param speca_id: Configured ``equipment.speca`` ID.
 
     :param average_type: Averaging type string accepted by the configured model.
+        X-Series accepts ``LOG``, ``RMS`` or ``SCAL``. Anritsu MS272x uses
+        ``NONE``, ``SCAL``, ``MAX`` or ``MIN`` to select trace processing.
     """
     _logger.info("Setting average type on SpecA %s to %s", speca_id, average_type)
     get_cached_instrument("speca", require_int_id(speca_id, kind="speca")).set_average_type(average_type)

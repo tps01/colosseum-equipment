@@ -118,7 +118,14 @@ def _open_visa(
 
 
 def _native_transport(kind: str, driver: str, config: dict[str, Any]) -> Transport | None:
+    from colosseum_equipment.transports.digilent import DRIVER, MODEL, DigilentConnection
     from colosseum_equipment.transports.tektronix_rsa import USB_RSA_MODELS, RsaApiTransport
+
+    model = str(config.get("model", "")).lower()
+    if driver == DRIVER or model == MODEL:
+        if driver != DRIVER or kind not in {"oscope", "asg"}:
+            raise _open_failed(f"Analog Discovery 3 equipment requires {DRIVER} and an oscope or asg row")
+        return DigilentConnection(kind, config)
 
     usb_rsa = str(config.get("model", "")).lower() in USB_RSA_MODELS
     if usb_rsa and driver != "rsa-api":

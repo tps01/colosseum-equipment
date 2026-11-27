@@ -10,6 +10,9 @@ A new model is one class file in ``instruments/<kind>/``:
 
 The kind package loads that file on its own. Override only the methods whose
 commands differ from the generic class.
+For manual-confirmed matching commands, use ``_confirmed_generic_commands``
+to reuse the implementation without a best-effort warning. Keep confirmation
+inside a driver's documented capability boundary.
 """
 
 from __future__ import annotations
@@ -180,6 +183,8 @@ _CONFIG_KIND_ADDRESS: dict[str, str] = {
     "serial": "either",
 }
 _CONFIG_KIND_EXTRA: dict[str, tuple[str, ...]] = {
+    "asg": ("library",),
+    "oscope": ("library",),
     "serial": ("baudrate", "sim_read"),
     "gnss": ("baudrate", "connection", "sim_read"),
 }

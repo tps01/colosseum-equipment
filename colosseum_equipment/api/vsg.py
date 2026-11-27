@@ -701,9 +701,13 @@ def upload_waveform(
 
     Requires a capable ``model`` (for example ``keysight-esg`` with E4438C IDN).
 
+    R&S SMBV100B accepts a complete native ``.wv`` file via SCPI
+    (``method="auto"`` or ``"tcpip"``). Encode marker blanking in that file.
+
     :param vsg_id: Configured ``equipment.vsg`` ID.
 
-    :param local_path: Path to local ``.bin`` / ``.mat`` / ``.iq.tar`` waveform.
+    :param local_path: Path to local ``.bin`` / ``.mat`` / ``.iq.tar`` waveform,
+        or a native ``.wv`` file for SMBV100B.
 
     :param remote_name: Destination filename on the instrument.
 

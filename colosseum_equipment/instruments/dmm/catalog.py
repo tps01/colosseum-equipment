@@ -8,6 +8,7 @@ docstring is the manual link.
 from __future__ import annotations
 
 from colosseum_equipment.exceptions import EquipmentCapabilityError, EquipmentResponseError
+from colosseum_equipment.instruments.dmm.bench import KeysightTruevolt
 from colosseum_equipment.instruments.dmm.generic import GenericDMM
 from colosseum_equipment.instruments.dmm.keithley_dmm6500 import KeithleyDmm6500Family
 from colosseum_equipment.instruments.dmm.keysight_34401a import Keysight34401A
@@ -89,29 +90,24 @@ class SiglentSdm3065x(GenericDMM):
 class Keysight34401a(Keysight34401A):
     """Manual: https://www.keysight.com/us/en/assets/9018-01063/user-manuals/9018-01063.pdf"""
 
-# TODO: Validate keysight-34460a inherited commands against its vendor manual and hardware.
-
 @instrument_model("dmm", "keysight-34460a")
-class Keysight34460a(GenericDMM):
-    """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
+class Keysight34460a(KeysightTruevolt):
+    """Keysight Truevolt Series Operating and Service Guide, 9018-03876."""
 
-# TODO: Validate keysight-34461a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34461a")
-class Keysight34461a(GenericDMM):
-    """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
+class Keysight34461a(KeysightTruevolt):
+    """Keysight Truevolt Series Operating and Service Guide, 9018-03876."""
 
-# TODO: Validate keysight-34465a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34465a")
-class Keysight34465a(GenericDMM):
-    """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
+class Keysight34465a(KeysightTruevolt):
+    """Keysight Truevolt Series Operating and Service Guide, 9018-03876."""
 
-# TODO: Validate keysight-34470a inherited commands against its vendor manual and hardware.
 
 @instrument_model("dmm", "keysight-34470a")
-class Keysight34470a(GenericDMM):
-    """Manual: https://www.keysight.com/ie/en/support/34465A/digital-multimeter-6-5-digit-truevolt-dmm.html"""
+class Keysight34470a(KeysightTruevolt):
+    """Keysight Truevolt Series Operating and Service Guide, 9018-03876."""
 
 
 @instrument_model("dmm", "keithley-dmm6500")

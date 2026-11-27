@@ -12,10 +12,13 @@ digital IO adapters are not discovered here.
 from __future__ import annotations
 
 import contextlib
+import math
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from ipaddress import IPv4Network
 from pathlib import Path
+from posixpath import realpath
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from colosseum.config.loader import ConfigError
@@ -40,7 +43,8 @@ from colosseum_equipment.autoconfig.network_filter import (
     resolve_blacklist,
 )
 from colosseum_equipment.autoconfig.qm_probe import query_qm_model
-from colosseum_equipment.autoconfig.sort import interface_name, sort_resources
+from colosseum_equipment.autoconfig.sort import interface_name, parse_tcpip_host_ip, sort_resources
+from colosseum_equipment.autoconfig.tcpip_scan import reachable_resources, scan_hosts
 from colosseum_equipment.instruments.identify import probe_identity
 from colosseum_equipment.transports.usbtmc import UsbtmcTransport, list_usbtmc_devices
 from colosseum_equipment.transports.visa import normalize_visa_resource, open_resource_manager
@@ -51,6 +55,8 @@ if TYPE_CHECKING:
 _IDN_BAUDS = (9600, 115200, 19200)
 _QM_BAUDS = (9600, 115200)
 _GPIB_PRIMARY_ADDRESSES = range(31)
+_DEFAULT_VISA_TIMEOUT_S = 0.5
+_DEFAULT_DIRECT_TIMEOUT_S = 1.0
 _ASRL_NUM = re.compile(r"^ASRL(\d+)", re.IGNORECASE)
 _COM_NUM = re.compile(r"^COM(\d+)$", re.IGNORECASE)
 _HARD_OPEN_MARKERS = (
@@ -286,6 +292,15 @@ def _port_from_asrl(resource: str) -> str | None:
     return f"COM{int(match.group(1))}"
 
 
+def _serial_port_key(port: str | None, resource: str = "") -> str | None:
+    if port is None:
+        board = resource.split("::", 1)[0]
+        port = board[4:] if board[:5].upper() == "ASRL/" else _port_from_asrl(resource)
+    if port is None:
+        return None
+    return realpath(port) if port.startswith("/") else port.upper()
+
+
 def _asrl_from_port(port: str) -> str | None:
     match = _COM_NUM.match(port.strip())
     if match is None:
@@ -426,13 +441,11 @@ def _record_assignment(
         driver = "serial"
         if baud_out is None:
             baud_out = 9600
-    if port_out:
-        state.covered_ports.add(port_out.upper())
+    port_key = _serial_port_key(port_out, resource)
+    if port_key is not None:
+        state.covered_ports.add(port_key)
     if resource:
         state.seen_resources.add(resource)
-        asrl_port = _port_from_asrl(resource)
-        if asrl_port:
-            state.covered_ports.add(asrl_port.upper())
     assignment = AutoconfigAssignment(
         section=section,
         item_id=item_id,
@@ -741,18 +754,18 @@ def _probe_visa_instr(
     manager: object,
     resource: str,
     timeout: float,
-) -> None:
+) -> bool:
     """Open → identify → classify/assign for non-ASRL VISA (GPIB, USBTMC, TCPIP, …)."""
     log_probing(state.logger, resource)
     identified = _identify_visa_instr(manager, resource, timeout)
     if isinstance(identified, str):
         _record_skip(state, resource, f"probe_failed: {identified}")
-        return
+        return False
     idn, bare = identified
     if idn is None:
         _record_skip(state, resource, "probe_failed: no identity")
-        return
-    _assign_classified_idn(state, idn=idn, bare=bare, resource=resource)
+        return False
+    return _assign_classified_idn(state, idn=idn, bare=bare, resource=resource)
 
 
 def _probe_usbtmc_path(state: _DiscoveryState, path: str, timeout: float) -> None:
@@ -794,6 +807,9 @@ def _probe_visa_resource(
         _record_skip(state, resource, "duplicate_resource")
         return
     if _is_asrl_resource(resource):
+        if _serial_port_key(None, resource) in state.covered_ports:
+            _record_skip(state, resource, "duplicate_resource")
+            return
         _probe_serial_candidate(
             state,
             label=resource,
@@ -812,6 +828,42 @@ def _list_visa_instr(manager: object) -> list[str]:
         return list(manager.list_resources("?*INSTR"))  # type: ignore[attr-defined]
     except Exception as exc:
         raise ConfigError(f"VISA resource scan failed: {exc}") from exc
+
+
+def _parse_subnet(value: str) -> IPv4Network:
+    if "/" not in value:
+        raise ConfigError("subnets entries must be IPv4 CIDRs, such as 192.168.0.0/24")
+    try:
+        return IPv4Network(value)
+    except ValueError as exc:
+        raise ConfigError(f"Invalid IPv4 CIDR in subnets: {value!r} ({exc})") from exc
+
+
+def _probe_tcpip_subnets(
+    state: _DiscoveryState,
+    manager: object,
+    networks: Sequence[IPv4Network],
+    blocked: Sequence[BlockedSubnet],
+    timeout: float,
+    *,
+    exhaustive: bool,
+) -> None:
+    assigned_ips = {parse_tcpip_host_ip(assignment.resource) for assignment in state.assignments}
+    hosts = (
+        host for host in scan_hosts(networks, exhaustive=exhaustive)
+        if host not in assigned_ips and not any(host in subnet.network for subnet in blocked)
+    )
+    initial_count = len(state.assignments)
+    for candidates in reachable_resources(hosts, timeout):
+        for resource in candidates:
+            if _probe_visa_instr(state, manager, resource, timeout):
+                break
+    if state.logger is not None:
+        state.logger.info(
+            "Autoconfig TCPIP %s scan found %d additional instruments",
+            "exhaustive" if exhaustive else "neighbor-cache",
+            len(state.assignments) - initial_count,
+        )
 
 
 def _list_com_ports(list_comports: Callable[[], Sequence[Any]] | None) -> Sequence[Any]:
@@ -836,7 +888,7 @@ def _probe_leftover_com_ports(
 ) -> None:
     for info in _list_com_ports(list_comports):
         port = str(getattr(info, "device", "") or "").strip()
-        if not port or port.upper() in state.covered_ports:
+        if not port or _serial_port_key(port) in state.covered_ports:
             continue
         asrl = _asrl_from_port(port)
         if asrl and asrl in state.seen_resources:
@@ -887,7 +939,7 @@ def _finalize_discovery(
 
 def discover_equipment_config(
     *,
-    timeout: float = 1.0,
+    timeout: float | None = None,
     visa_library: str | None = None,
     blacklist: str | Sequence[str] | None = None,
     network_bindings: Sequence[IPv4NetworkBinding] | None = None,
@@ -899,6 +951,8 @@ def discover_equipment_config(
     gnss: bool = False,
     gpib_scan: bool = False,
     gpib_board_present: Callable[[], bool] | None = None,
+    subnets: str | list[str] | None = None,
+    exhaustive: bool = False,
 ) -> AutoconfigResult:
     """Scan VISA ``?*INSTR`` and local COM ports; build a raw equipment config dict.
 
@@ -908,8 +962,16 @@ def discover_equipment_config(
     enabled) miss. With ``gpib_scan=True``, primary addresses ``0``–``30`` on
     ``GPIB0`` are probed when ``list_resources`` returned no GPIB names but a
     board appears present. Linux ``/dev/usbtmcN`` nodes are probed without VISA.
+    Search cached IPv4 neighbors in ``subnets`` for standard VXI-11 and HiSLIP
+    endpoints. With ``exhaustive=True``, try every usable address in those subnets.
     FTDI adapters are not discovered.
     """
+    visa_timeout = _DEFAULT_VISA_TIMEOUT_S if timeout is None else timeout
+    direct_timeout = _DEFAULT_DIRECT_TIMEOUT_S if timeout is None else timeout
+    subnet_values = [subnets] if isinstance(subnets, str) else subnets or []
+    networks = [_parse_subnet(value) for value in subnet_values]
+    if networks and (not math.isfinite(visa_timeout) or visa_timeout <= 0):
+        raise ConfigError("TCPIP subnet scan requires a positive finite timeout")
     resolution = resolve_blacklist(blacklist, bindings=network_bindings)
     blocked = list(resolution.blocked)
     log_scan_start(logger)
@@ -918,6 +980,8 @@ def discover_equipment_config(
     else:
         rm = resource_manager
     resources = _list_visa_instr(rm)
+    if logger is not None:
+        logger.info("Autoconfig VISA enumeration returned %d resources", len(resources))
     allowed, blacklisted = filter_resources(resources, blocked)
     for resource, subnet in blacklisted:
         log_blacklist(logger, resource, subnet)
@@ -925,7 +989,10 @@ def discover_equipment_config(
     state = _DiscoveryState(logger=logger)
     sorted_resources = sort_resources(allowed)
     for resource in sorted_resources:
-        _probe_visa_resource(state, rm, resource, timeout=timeout, qm=qm, gnss=gnss)
+        _probe_visa_resource(state, rm, resource, timeout=visa_timeout, qm=qm, gnss=gnss)
+
+    if networks:
+        _probe_tcpip_subnets(state, rm, networks, blocked, visa_timeout, exhaustive=exhaustive)
 
     board_present_fn = gpib_board_present or _default_gpib_board_present
     if gpib_scan and not _listed_gpib_resources(sorted_resources) and board_present_fn():
@@ -934,17 +1001,17 @@ def discover_equipment_config(
                 state,
                 rm,
                 f"GPIB0::{pad}::INSTR",
-                timeout=timeout,
+                timeout=visa_timeout,
                 qm=qm,
                 gnss=gnss,
             )
 
     for path in list_usbtmc_devices():
-        _probe_usbtmc_path(state, path, timeout)
+        _probe_usbtmc_path(state, path, direct_timeout)
 
     _probe_leftover_com_ports(
         state,
-        timeout=timeout,
+        timeout=direct_timeout,
         qm=qm,
         gnss=gnss,
         open_serial_fn=open_serial or _default_open_serial,

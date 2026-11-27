@@ -134,7 +134,10 @@ def test_analog_generator_refuses_vector_operations_without_io(model):
         source.play_iq("test.bin", 1e9, -10, 1e6)
     assert io.events == []
     source.set_power(-10)
-    assert io.events == ["UNIT:POW DBM", "POW -10.000000"]
+    expected = ["UNIT:POW DBM", "POW -10.000000"] if model == "rohde-sma100b" else [
+        "UNIT:POW DBM", "POW:MODE FIX", "POW:AMPL -10.000DBM",
+    ]
+    assert io.events == expected
 
 
 def test_53150a_selects_input_in_measurement_not_sticky_routing():
@@ -563,7 +566,7 @@ def test_afg_uses_native_amplitude_without_apply_output_side_effect():
     assert not any("APPL" in event for event in io.events)
 
 
-def test_genesys_serial_uses_cr_acknowledgements_and_optional_address():
+def test_genesys_serial_uses_cr_acknowledgements_and_optional_address(caplog):
     class NativeSerial(RecordingTransport):
         def write_bytes(self, data):
             self.events.append(data)
@@ -572,13 +575,17 @@ def test_genesys_serial_uses_cr_acknowledgements_and_optional_address():
             assert terminator == b"\r"
             return self.responses[self.events[-1].decode().strip()]
 
-    io = NativeSerial({"ADR 3": "OK\r", "PV 5.000000": "OK\r", "OUT?": "OFF\r", "OUT 1": "E07\r"})
+    io = NativeSerial({"ADR 3": "OK\r", "PV 5.000000": "OK\r", "OUT?": "OFF\r", "OUT 1": "E07\r", "MV?": "5\r"})
     config = {"model": "tdk-genesys-serial", "driver": "serial", "baudrate": 9600, "device_address": 3, "voltage": 5}
     psu = build_instrument("psu", 1, config, io)
     assert io.events == [b"ADR 3\r", b"PV 5.000000\r"]
     assert psu.get_output() is False
     with pytest.raises(EquipmentResponseError, match="E07"):
         psu.set_output(True)
+    with caplog.at_level("WARNING", logger="colosseum.equipment"):
+        psu.wait_for_voltage(5, timeout_s=1)
+    assert io.events[-2:] == [b"MV?\r", b"MV?\r"]
+    assert "using generic SCPI" not in caplog.text
     assert all(b"\n" not in command for command in io.events)
     direct = NativeSerial({"PV 5.000000": "OK\r"})
     build_instrument("psu", 1, {k: v for k, v in config.items() if k != "device_address"}, direct)

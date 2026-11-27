@@ -3,17 +3,14 @@
 This change adds **83 model identities / 85 kind/model registrations** from
 `misc_equipment.xlsx` across 12 existing equipment kinds. The first implementation
 pass covered 55 identities; subsequent passes added 28. Two Spike devices each
-have separate spectrum and IQ interfaces. Version **0.6.0** includes the audit
-fixes described in the [manual analysis](inventory-manual-analysis.md).
+have separate spectrum and IQ interfaces.
 
 These are bounded implementations based on command documentation and synthetic
 recording-transport tests. The inventory expansion pass itself was not
 hardware-qualified; CI does not gate physical qualification. Some lab
 validation of pre-existing drivers exists outside this inventory table, but
 those exercises are not recorded here as formal hardware-qualified rows.
-Registration does not mean every generic API operation is supported. The table
-below records the first implementation pass; the manual analysis lists the
-additional profiles, source references and remaining category work.
+The table below records the implemented operations from the first pass.
 
 ## Implemented subsets
 
@@ -54,6 +51,26 @@ directory fixes also apply to existing export paths.
 | Phase noise | `keysight-e5052b` | PN1 offset span, averaging/correlation counts, initiation/completion, actual-axis CSV and spot noise | Carrier detection is instrument managed. Fetch does not rearm; initiate and wait before reading. Spot estimates interpolate dB linearly in log(offset), with no extrapolation. No jitter integration or generic carrier controls. |
 | Signal Hound spectrum / IQ | `signalhound-bb60c-spike`, `signalhound-sm200c-spike` in `speca` or `rtsa` | Spike SA single-detector trace export; ZS finite IQ capture with real rate/count and BIN/MAT/IQ TAR export | Running Spike SCPI server required. One connection/mode per Spike instance. Choose one kind explicitly; no automatic selection between SA and IQ. Spectrum export requires dBm units. IQ rate and IF bandwidth are distinct. IQ is interleaved little-endian float64 in sqrt(mW), not normalized ADC counts. No direct SDK or continuous streaming. |
 
+### Steady-state power tests
+
+| Family | Verified SCPI subset | Setup and limits |
+| --- | --- | --- |
+| Keysight Truevolt 34460A/61A/65A/70A | Function-qualified range, autorange, integration and autozero where available, trigger and scalar fetch | Configure and initiate explicitly. Set one sample and one trigger for scalar fetch. Model-dependent digitizing and buffered retrieval are outside this subset. [Keysight Truevolt guide](https://www.keysight.com/co/en/assets/9018-03876/service-manuals/9018-03876.pdf) |
+| Rigol DL3021/3021A/3031/3031A | Static CC/CV/CP/CR setpoints, input control and state, direct voltage/current/power | Select fixed regulation (`SOUR:FUNC:MODE FIX`) explicitly before static setup. [Rigol DL3000 programming guide](https://rigoltechnologies.com/product/dl3000/) |
+| Siglent SDL1020X/1020X-E/1030X/1030X-E | Static CC/CV/CP/CR setpoints, input control and state, direct voltage/current/power, existing LED selection and short control | Select static operation at the instrument before the test. [Siglent SDL1000X programming guide](https://siglentna.com/wp-content/uploads/dlm_uploads/2023/10/SDL1000X_programming_guide_E02B.pdf) |
+
+With the load input off, select CC, set the current, and call `eload.engage`.
+Read voltage, current, and power from the load. On the Truevolt meter use
+`dmm.set_function(..., function="VOLT:DC")`, `dmm.initiate`, and
+`dmm.measure_voltage_dc` for an independent voltage reading. Call
+`eload.disengage` in cleanup. The commands in this subset were checked against
+vendor manuals and synthetic transport replies. Physical qualification is pending.
+
+For the DL3000 and SDL1000X, `eload.set_slew_rate` takes amperes per second and
+sets the rising edge. Rigol documents this control for transient operation and
+Siglent documents it for static CC. Setting slew leaves the falling edge,
+operating mode, and input state as configured. Pass `500_000` for 0.5 A/µs.
+
 ## Configuration and acquisition
 
 Copy selected rows from
@@ -88,12 +105,9 @@ export and spot reads fetch the captured trace without starting another sweep.
 
 ## Remaining category work
 
-The current category-by-category disposition is maintained in
-[the manual analysis](inventory-manual-analysis.md). That follow-up implements
-most remaining conventional bench instruments and documents unresolved model
-identities, host-controlled sensors, SDK interfaces and deeper acquisition
-workflows. The original plan is not fully completed; remaining entries are not
-counted as covered merely because a generic kind exists.
+Later passes added conventional bench instruments. Unresolved model identities,
+host-controlled sensors, SDK interfaces and deeper acquisition workflows remain
+outside the original rollout.
 
 The new ML2495A profile reads the current CW result and does not implement fresh
 `acquire`. New native Tek RSA exports fetch a completed capture, without rearming.
