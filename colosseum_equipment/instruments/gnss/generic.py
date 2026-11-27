@@ -859,6 +859,11 @@ class GenericGnss:
         self._epoch_timer.start()
 
     def stop_logging(self) -> None:
+        self._stop_logging_workers()
+        self._record_final_measurements()
+        self._close_recording_files()
+
+    def _stop_logging_workers(self) -> None:
         self._epoch_stop.set()
         if self._epoch_timer is not None:
             self._epoch_timer.join(timeout=2.0)
@@ -868,6 +873,8 @@ class GenericGnss:
         if self._listener is not None:
             self._listener.stop()
             self._listener = None
+
+    def _record_final_measurements(self) -> None:
         if self._logging_key and self._epochs_total:
             enqueue_measurement(
                 domain="equipment",
@@ -902,9 +909,15 @@ class GenericGnss:
                     value=float(self._reacquisition_s),
                     units="s",
                 )
+
+    def _close_recording_files(self) -> None:
         if self._raw_log is not None:
             self._raw_log.close()
             self._raw_log = None
+        if self._track_csv is not None:
+            self._track_csv.close()
+            self._track_csv = None
+        self._track_writer = None
         if self._wire_log is not None:
             self._wire_log.close()
             self._wire_log = None
@@ -916,10 +929,6 @@ class GenericGnss:
                     path=self._wire_log_path,
                     value={"path": str(self._wire_log_path)},
                 )
-        if self._track_csv is not None:
-            self._track_csv.close()
-            self._track_csv = None
-        self._track_writer = None
 
     def _track_rows(self) -> list[dict[str, float | str]]:
         # Prefer the full CSV (complete soak history) over the bounded in-memory tail.
