@@ -22,6 +22,7 @@ from typing import Any
 
 from colosseum.decorators import VerificationResult, command, measurement, verification
 from colosseum.logging import get_logger
+from colosseum.units import unit_inputs
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
@@ -430,6 +431,7 @@ def set_channel_display(*, oscope_id: EquipmentId, channel: int, enabled: bool) 
 
 @command
 @broadcastable("oscope", "oscope_id")
+@unit_inputs(ohms="Ω")
 def set_channel_impedance(*, oscope_id: EquipmentId, channel: int, ohms: float) -> None:
     """Set channel termination impedance (``50`` or ``1e6``).
 
@@ -444,6 +446,7 @@ def set_channel_impedance(*, oscope_id: EquipmentId, channel: int, ohms: float) 
 
 @command
 @broadcastable("oscope", "oscope_id")
+@unit_inputs(offset_v="V")
 def set_channel_offset_v(*, oscope_id: EquipmentId, channel: int, offset_v: float) -> None:
     """Set vertical offset in volts.
 
@@ -478,6 +481,7 @@ def set_channel_probe_attenuation(*, oscope_id: EquipmentId, channel: int, atten
 
 @command
 @broadcastable("oscope", "oscope_id")
+@unit_inputs(volts_per_div="V/div")
 def set_channel_scale_v(*, oscope_id: EquipmentId, channel: int, volts_per_div: float) -> None:
     """Set vertical scale in volts per division.
 
@@ -549,6 +553,7 @@ def set_trigger_holdoff_s(*, oscope_id: EquipmentId, holdoff_s: float) -> None:
 
 @command
 @broadcastable("oscope", "oscope_id")
+@unit_inputs(level_v="V")
 def set_trigger_level_v(*, oscope_id: EquipmentId, level_v: float) -> None:
     """Set edge trigger level in volts.
 

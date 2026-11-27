@@ -69,12 +69,13 @@ notation. Bandwidth plots mark both edges; center plots mark the midpoint.
 edge analysis. Bandwidth is the distance between the edges; center frequency
 is their midpoint, not the peak frequency or a power centroid.
 
-* Omit both ``method`` and ``threshold_db`` to retain the existing 3 dB method.
-  An explicit ``threshold_db`` selects another drop below the reference power. This legacy
-  method interpolates in dBm and retains its existing window-boundary behavior.
+* The default threshold method uses a 3 dB drop when both ``method`` and
+  ``threshold_db`` are omitted. An explicit ``threshold_db`` selects another
+  drop below the reference power. This method interpolates in dBm. When it finds
+  no crossing on one side, it uses the outermost sampled frequency on that side.
 * ``method="fwhm"`` measures full width at half the peak's **linear power**,
   equivalent to a 3.0103 dB drop. It interpolates in linear power, so it can
-  differ from legacy threshold interpolation on a coarsely sampled trace.
+  differ from dBm threshold interpolation on a coarsely sampled trace.
 * ``method="occupied_power"`` integrates linear power over frequency and finds
   equal-tail edges enclosing ``occupied_power_pct`` (default 99). This uses
   cumulative trapezoidal integration and interpolates the cumulative curve;
@@ -143,8 +144,8 @@ apply an additional correction. An error saving a requested plot fails the
 measurement normally.
 
 These methods run in host trace analysis. The separate ``measure_obw_hz`` API
-retains its native-instrument-query-first behavior and legacy threshold fallback;
-use ``measure_bw(method="occupied_power")`` for the percentage-based host method.
+queries the instrument first and falls back to host threshold interpolation.
+Use ``measure_bw(method="occupied_power")`` for the percentage-based host method.
 
 Capability errors
 -----------------
@@ -236,9 +237,8 @@ accepts an attenuation magnitude and sends the API's negative-dB value. Rigol an
 Siglent accept positive attenuation in dB. Preamp operation requires the relevant
 installed hardware option. Unsupported controls raise ``EquipmentCapabilityError``.
 
-The legacy argument ``set_trigger_position(position_dbm=...)`` is retained for
-compatibility. It is a percentage on USB RSA and Spike, despite its old name;
-other models retain their native trigger-position units.
+The ``position_dbm`` argument to ``set_trigger_position()`` takes a percentage
+on USB RSA and Spike. Other models use their native trigger-position units.
 
 .. list-table:: RTSA implementation support (manual-backed, hardware qualification pending)
    :header-rows: 1
@@ -309,9 +309,9 @@ Decoded IQ byte order
 Use ``endianness="big"`` for big-endian ``bin`` and ``iq.tar`` output with any
 supported ``sample_format`` (``f32``, ``i16``, or ``c64``). Binary metadata records
 ``endianness``; IQ archives include it in ``metadata.json``. Int16 samples retain
-the existing peak scaling and interleaved I/Q order. For a legacy MATLAB
-``ieee-be`` int16 stream use ``file_format="bin", sample_format="i16",
-endianness="big"``. This encoding option does not change the instrument wire format.
+peak scaling and interleaved I/Q order. To create an int16 stream that MATLAB
+can read with ``ieee-be``, use ``file_format="bin", sample_format="i16",
+endianness="big"``. The option controls the saved encoding.
 
 MATLAB files store complex samples directly; requesting big-endian export for
 ``file_format="mat"`` is rejected. ``save_IQ_data`` retains each driver's existing
@@ -334,7 +334,7 @@ Configure the instrument as ``equipment.rtsa`` ID 1 before running it. The first
     )
     col.equipment.rtsa.capture_iq(
         rtsa_id=1, center_hz=1e9, span_hz=20e6, bandwidth_hz=10e6,
-        seconds=0.01, path="captures/legacy.iq.tar", file_format="iq.tar",
+        seconds=0.01, path="captures/big-endian.iq.tar", file_format="iq.tar",
         sample_format="i16", endianness="big", key="iq_capture",
     )
 

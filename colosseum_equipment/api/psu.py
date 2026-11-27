@@ -14,6 +14,7 @@ from typing import Any
 
 from colosseum.decorators import command, measurement
 from colosseum.logging import get_logger
+from colosseum.units import unit_inputs
 
 from colosseum_equipment.api._broadcast import EquipmentId, broadcastable, require_int_id
 from colosseum_equipment.api._verify import tolerance_verifier
@@ -239,6 +240,7 @@ def measure_voltage(*, psu_id: int, channel: int = 1, key: str) -> float:
 
 @command
 @broadcastable("psu", "psu_id")
+@unit_inputs(current="A")
 def set_current_limit(*, psu_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set the current limit.
 
@@ -252,6 +254,7 @@ def set_current_limit(*, psu_id: EquipmentId, current: float, channel: int = 1) 
 
 @command
 @broadcastable("psu", "psu_id")
+@unit_inputs(current="A")
 def set_ocp_a(*, psu_id: EquipmentId, current: float, channel: int = 1) -> None:
     """Set over-current protection level.
 
@@ -279,6 +282,7 @@ def set_output(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) -> None:
 
 @command
 @broadcastable("psu", "psu_id")
+@unit_inputs(voltage="V")
 def set_ovp_v(*, psu_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set over-voltage protection level.
 
@@ -306,6 +310,7 @@ def set_remote_sense(*, psu_id: EquipmentId, enabled: bool, channel: int = 1) ->
 
 @command
 @broadcastable("psu", "psu_id")
+@unit_inputs(amps_per_s="A/s")
 def set_slew_current(*, psu_id: EquipmentId, amps_per_s: float, channel: int = 1) -> None:
     """Set current slew rate (best-effort SCPI).
 
@@ -320,6 +325,7 @@ def set_slew_current(*, psu_id: EquipmentId, amps_per_s: float, channel: int = 1
 
 @command
 @broadcastable("psu", "psu_id")
+@unit_inputs(volts_per_s="V/s")
 def set_slew_voltage(*, psu_id: EquipmentId, volts_per_s: float, channel: int = 1) -> None:
     """Set voltage slew rate (best-effort SCPI).
 
@@ -348,6 +354,7 @@ def set_tracking_mode(*, psu_id: EquipmentId, mode: str, channel: int = 1) -> No
 
 @command
 @broadcastable("psu", "psu_id")
+@unit_inputs(voltage="V")
 def set_voltage(*, psu_id: EquipmentId, voltage: float, channel: int = 1) -> None:
     """Set the programmed output voltage.
 

@@ -54,7 +54,7 @@ Only the following licenses are allowed:
 
 ## Packaging
 
-- Requires `colosseum-core>=0.18,<0.19`; keep compatibility guidance aligned
+- Requires `colosseum-core>=0.18.16,<0.19`; keep compatibility guidance aligned
   with the manifest. Example configs use `config*.toml` naming.
 - Put runtime packages in `[project].dependencies` in `pyproject.toml`. Wheel
   and offline installs follow that list only (what test-script authors need).
