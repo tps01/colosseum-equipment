@@ -285,6 +285,22 @@ def test_discover_assigns_ids_by_connection_order() -> None:
     assert {kwargs["open_timeout"] for kwargs in rm.open_kwargs} == {500}
 
 
+def test_discover_probes_mixed_tcpip_addresses_in_id_order() -> None:
+    rm = _FakeResourceManager(
+        {
+            "TCPIP0::scope.local::INSTR": "TDK-Lambda,GENESYS-28-80,3,1",
+            "TCPIP0::192.0.2.1::INSTR": "TDK-Lambda,GENESYS-28-80,1,1",
+            "TCPIP0::192.0.2.1::5025::SOCKET": "TDK-Lambda,GENESYS-28-80,2,1",
+        },
+    )
+    rows = _discover(rm).raw["equipment"]["psu"]
+    assert [(row["psu_id"], row["resource"]) for row in rows] == [
+        (1, "TCPIP0::192.0.2.1::5025::SOCKET"),
+        (2, "TCPIP0::192.0.2.1::INSTR"),
+        (3, "TCPIP0::scope.local::INSTR"),
+    ]
+
+
 def test_discover_blacklist_excludes_tcpip_subnet() -> None:
     rm = _FakeResourceManager(
         {
