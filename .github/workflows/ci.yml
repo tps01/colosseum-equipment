@@ -11,6 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  # Core #149 supplies the required 0.18.16 API while it is awaiting merge into develop.
+  COLOSSEUM_CORE_REF: 89a1ce455bcf4a62cf7c6b3a327df0f802b1d744
+
 jobs:
   test:
     runs-on: ubuntu-24.04
@@ -23,7 +27,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: tps01/colosseum-core
-          ref: develop
+          ref: ${{ env.COLOSSEUM_CORE_REF }}
           path: .deps/colosseum-core
       - uses: actions/setup-python@v6
         with:
@@ -58,7 +62,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: tps01/colosseum-core
-          ref: develop
+          ref: ${{ env.COLOSSEUM_CORE_REF }}
           path: .deps/colosseum-core
       - uses: actions/setup-python@v6
         with:
@@ -95,7 +99,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: tps01/colosseum-core
-          ref: develop
+          ref: ${{ env.COLOSSEUM_CORE_REF }}
           path: .deps/colosseum-core
       - uses: actions/setup-python@v6
         with:

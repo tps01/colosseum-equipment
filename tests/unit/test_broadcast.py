@@ -9,6 +9,7 @@ import colosseum as col
 import pytest
 from colosseum.config.loader import ConfigError, apply_raw_config
 from colosseum.context import init_context
+from colosseum_equipment.api import eload as eload_api
 from colosseum_equipment.api import psu as psu_api
 from colosseum_equipment.api import vsg as vsg_api
 from colosseum_equipment.api._broadcast import (
@@ -133,3 +134,25 @@ def test_vsg_upload_waveform_all(tmp_path, monkeypatch) -> None:
         (1, str(wave), "WAVE1"),
         (2, str(wave), "WAVE1"),
     ]
+
+
+def test_explicit_equipment_quantities_reach_driver_in_base_units(unit_runtime_context, monkeypatch) -> None:
+    load = MagicMock()
+    supply = MagicMock()
+    monkeypatch.setattr(eload_api, "_inst", lambda _: load)
+    monkeypatch.setattr(psu_api, "_inst", lambda _: supply)
+
+    eload_api.set_power(eload_id=1, power="2e-1 kW")
+    eload_api.set_resistance(eload_id=1, resistance="2 kohm")
+    psu_api.set_current_limit(psu_id=1, current="250 mA")
+
+    load.set_power.assert_called_once_with(200.0, channel=1)
+    load.set_resistance.assert_called_once_with(2000.0, channel=1)
+    supply.set_current_limit.assert_called_once_with(0.25, channel=1)
+
+    supply.measure_voltage.return_value = 0.5
+    psu_api.measure_voltage(psu_id=1, key="supply")
+    result = psu_api.verify_voltage(key="supply", expected_val="501 mV", tolerance="2 mV")
+    assert result.status == "PASS"
+    with pytest.raises(ValueError, match="power: Invalid W"):
+        eload_api.set_power(eload_id=1, power="2 dBm")

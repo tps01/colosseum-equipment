@@ -25,6 +25,15 @@ generic driver for the equipment kind. See the
 for fallback behavior and qualification status. Vendor adapter runtimes are
 installed separately; see the [adapter guide](https://tps01.github.io/colosseum-equipment/guides/io_digital.html).
 
+## Unit-bearing arguments
+
+PSU, electronic-load, and oscilloscope setters accept quantities such as
+``voltage="500 mV"``, ``power="1e-1 kW"``, and ``volts_per_div="200 mV/div"``
+where those arguments are available. Numeric inputs continue to use the
+argument's documented base unit. Limits for built-in Equipment verifiers
+accept the documented measurement unit, such as ``tolerance="10 mV"``.
+Prefixes are case-sensitive. Signal-generator power in dBm uses its own unit.
+
 ## Install
 
 Download the wheel from [GitHub Releases](https://github.com/tps01/colosseum-equipment/releases)

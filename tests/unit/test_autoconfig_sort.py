@@ -103,6 +103,27 @@ def test_pxi_numeric_board_order() -> None:
     ]
 
 
+def test_mixed_address_shapes_sort_deterministically() -> None:
+    expected = [
+        "TCPIP0::192.0.2.2::INSTR",
+        "TCPIP0::192.0.2.10::9::SOCKET",
+        "TCPIP0::192.0.2.10::5025::SOCKET",
+        "TCPIP0::192.0.2.10::INSTR",
+        "TCPIP0::scope.local::INSTR",
+        "USB0::0x1234::0x0001::INSTR",
+        "USB0::4660::1::INSTR",
+        "GPIB0::01::INSTR",
+        "GPIB0::1::INSTR",
+        "GPIB0::INTFC",
+        "ASRL2::INSTR",
+        "ASRL::INSTR",
+        "PXI1::CH1",
+        "PXI::MEMACC",
+    ]
+    assert sort_resources(expected) == expected
+    assert sort_resources(expected[::-1]) == expected
+
+
 def interface_prefix(resource: str) -> str:
     prefix = resource.split("::", 1)[0].upper()
     return prefix.rstrip("0123456789") or prefix

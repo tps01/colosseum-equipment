@@ -14,6 +14,7 @@ _INTERFACE_RANK: dict[str, int] = {
     "ASRL": 3,
     "PXI": 4,
 }
+_UNKNOWN_INTERFACE_RANK = 99
 
 _USB_RE = re.compile(r"^USB(\d+)::0x([0-9A-Fa-f]+)::0x([0-9A-Fa-f]+)(?:::([^:]+))?", re.IGNORECASE)
 _GPIB_RE = re.compile(r"^GPIB(\d+)::(\d+)", re.IGNORECASE)
@@ -52,32 +53,28 @@ def parse_tcpip_host_ip(resource: str) -> ipaddress.IPv4Address | None:
 
 def _interface_rank(resource: str) -> int:
     name = interface_name(resource)
-    return _INTERFACE_RANK.get(name, 99)
+    return _INTERFACE_RANK.get(name, _UNKNOWN_INTERFACE_RANK)
 
 
 def _address_sort_key(resource: str) -> tuple[Any, ...]:
     upper = resource.upper()
-    if is_tcpip_resource(resource):
+    if interface_name(resource) == "TCPIP":
         host_ip = parse_tcpip_host_ip(resource)
         if host_ip is not None:
             tail = resource.split("::")[2:]
-            numeric_tail: list[int | str] = []
-            for part in tail:
-                if part.isdigit():
-                    numeric_tail.append(int(part))
-                else:
-                    numeric_tail.append(part.lower())
-            return (tuple(int(o) for o in str(host_ip).split(".")), tuple(numeric_tail))
-        return (resource.lower(),)
+            suffix = tuple((0, int(part)) if part.isdecimal() else (1, part.lower()) for part in tail)
+            return (0, int(host_ip), suffix)
+        return (1, resource.lower())
 
     match = _GPIB_RE.match(upper)
     if match:
-        return (int(match.group(1)), int(match.group(2)))
+        return (0, int(match.group(1)), int(match.group(2)))
 
     match = _USB_RE.match(resource)
     if match:
         serial = match.group(4) or ""
         return (
+            0,
             int(match.group(1)),
             int(match.group(2), 16),
             int(match.group(3), 16),
@@ -86,18 +83,20 @@ def _address_sort_key(resource: str) -> tuple[Any, ...]:
 
     match = _ASRL_RE.match(upper)
     if match:
-        return (int(match.group(1)), resource.lower())
+        return (0, int(match.group(1)), resource.lower())
 
     match = _PXI_RE.match(upper)
     if match:
-        return (int(match.group(1)), resource.lower())
+        return (0, int(match.group(1)), resource.lower())
 
-    return (resource.lower(),)
+    return (1, resource.lower())
 
 
 def resource_sort_key(resource: str) -> tuple[Any, ...]:
     """Compute a global sort key for ``resource`` (connection type, then address)."""
-    return (_interface_rank(resource), _address_sort_key(resource))
+    rank = _interface_rank(resource)
+    address = _address_sort_key(resource) if rank != _UNKNOWN_INTERFACE_RANK else ()
+    return (rank, address, resource.lower(), resource)
 
 
 def sort_resources(resources: list[str]) -> list[str]:

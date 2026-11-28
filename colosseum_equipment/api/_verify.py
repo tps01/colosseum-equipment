@@ -11,6 +11,7 @@ from colosseum.decorators import (
     verification,
 )
 from colosseum.decorators._common import command_id_for_module
+from colosseum.units import unit_inputs
 
 from colosseum_equipment.api._docstrings import tolerance_verify_doc
 
@@ -80,6 +81,8 @@ def tolerance_verifier(
     verify.__qualname__ = name
     verify.__module__ = module
     verify.__doc__ = tolerance_verify_doc(source_command, unit=unit)
+    if unit:
+        unit_inputs(expected_val=unit, tolerance=unit)(verify)
     return cast(
         "Callable[..., VerificationResult]",
         verification(verify),
@@ -132,4 +135,6 @@ def limit_verifier(
     :returns: VerificationResult with actual numeric value and PASS/FAIL, or ERROR/BLOCKED when
         evidence is missing.
     """
+    if unit:
+        unit_inputs(limit=unit)(verify)
     return cast("Callable[..., VerificationResult]", verification(verify))

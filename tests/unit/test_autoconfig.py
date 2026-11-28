@@ -285,6 +285,22 @@ def test_discover_assigns_ids_by_connection_order() -> None:
     assert {kwargs["open_timeout"] for kwargs in rm.open_kwargs} == {500}
 
 
+def test_discover_probes_mixed_tcpip_addresses_in_id_order() -> None:
+    rm = _FakeResourceManager(
+        {
+            "TCPIP0::scope.local::INSTR": "TDK-Lambda,GENESYS-28-80,3,1",
+            "TCPIP0::192.0.2.1::INSTR": "TDK-Lambda,GENESYS-28-80,1,1",
+            "TCPIP0::192.0.2.1::5025::SOCKET": "TDK-Lambda,GENESYS-28-80,2,1",
+        },
+    )
+    rows = _discover(rm).raw["equipment"]["psu"]
+    assert [(row["psu_id"], row["resource"]) for row in rows] == [
+        (1, "TCPIP0::192.0.2.1::5025::SOCKET"),
+        (2, "TCPIP0::192.0.2.1::INSTR"),
+        (3, "TCPIP0::scope.local::INSTR"),
+    ]
+
+
 def test_discover_blacklist_excludes_tcpip_subnet() -> None:
     rm = _FakeResourceManager(
         {
@@ -758,7 +774,7 @@ def test_discover_probes_usbtmc_without_visa_open(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "colosseum_equipment.autoconfig.discovery.list_usbtmc_devices",
-        lambda: ["/dev/usbtmc0"],
+        lambda: ["/dev/usbtmc0", "/dev/usbtmc0"],
     )
     monkeypatch.setattr(
         "colosseum_equipment.autoconfig.discovery.UsbtmcTransport",
@@ -769,8 +785,12 @@ def test_discover_probes_usbtmc_without_visa_open(monkeypatch) -> None:
     assert result.raw["equipment"]["psu"][0]["resource"] == "/dev/usbtmc0"
     assert result.raw["equipment"]["psu"][0]["model"] == "bk-9115"
     assert rm.opened == []
-    assert opened and opened[0].closed
+    assert len(opened) == 1
+    assert opened[0].closed
     assert opened[0].timeout == 1.0
+    assert [(skip.resource, skip.reason) for skip in result.skipped] == [
+        ("/dev/usbtmc0", "duplicate_resource"),
+    ]
 
 
 class _HiddenGpibResourceManager(_FakeResourceManager):
@@ -966,10 +986,13 @@ def test_linux_serial_symlinks_share_port_identity_across_discovery_paths(monkey
     result = _discover(
         rm, list_comports=lambda: [_ComPort(port) for port in (target, alias, other)], open_serial=open_serial,
     )
-    assert len(result.assignments) == 2
+    assert [assignment.item_id for assignment in result.assignments] == [1, 2]
     assert result.assignments[1].port == other  # Same IDN, different device.
     if visa:
         assert result.assignments[0].resource == f"ASRL{target}::INSTR"
+        assert [(skip.resource, skip.reason) for skip in result.skipped] == [
+            (f"ASRL{alias}::INSTR", "duplicate_resource"),
+        ]
         assert len(rm.opened) == 1
         assert serial_opens == [other]
     else:

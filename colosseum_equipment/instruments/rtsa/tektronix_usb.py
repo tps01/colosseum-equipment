@@ -195,7 +195,7 @@ class TekUsbRsa(GenericRtsa):
         self._api.call("TRIG_SetIFPowerTriggerLevel", level_dbm)
 
     def set_trigger_position(self, position_dbm: float) -> None:
-        # Legacy public argument name; the API quantity is percent, not dBm.
+        # The public position_dbm argument specifies a percentage for this driver.
         if not 1 <= position_dbm <= 99:
             raise ValueError("trigger position must be within 1..99 percent")
         self._invalidate()

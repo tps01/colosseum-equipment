@@ -95,7 +95,7 @@ and ``rbw`` configure spectrum span and resolution bandwidth; they do not set
 IQ sample rate. ``capture_iq`` configures the requested spectrum span and IQ
 bandwidth separately and calculates record length from the actual rate. Immediate,
 external and IF-power triggers are implemented; trigger position is 1–99 percent
-despite the legacy public argument name ``position_dbm``. Continuous streaming,
+through the ``position_dbm`` argument. Continuous streaming,
 DPX and peak-marker control are outside this subset.
 
 Completed IQ records are retained for export without reacquisition; configuration
